@@ -1,0 +1,8 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="36" y="36" width="440" height="440" rx="112" fill="#0C1F46"/>
+  <path d="M256 112L394 174L378 302L256 384L134 302L118 174L256 112Z" fill="#1976D2"/>
+  <path d="M256 138L356 188L314 246L256 218L198 246L156 188L256 138Z" fill="#40C4FF"/>
+  <path d="M354 142C376.091 142 394 124.091 394 102C394 79.9086 376.091 62 354 62C331.909 62 314 79.9086 314 102C314 124.091 331.909 142 354 142Z" fill="#FFD54F"/>
+  <path d="M337 131L302 171" stroke="#FFD54F" stroke-width="12" stroke-linecap="round"/>
+  <text x="256" y="307" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="92" font-weight="800" fill="white">DMS</text>
+</svg>
