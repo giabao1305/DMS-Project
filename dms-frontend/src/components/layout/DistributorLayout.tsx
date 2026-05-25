@@ -27,7 +27,7 @@ import {
 } from "antd";
 import type { MenuProps } from "antd";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { useLogoutSessionMutation } from "@/features/auth/authService";
 import { logout } from "@/features/auth/authSlice";
@@ -64,8 +64,6 @@ export default function DistributorLayout({
   const isSocketConnected = useSocketStatus();
   const [logoutSession] = useLogoutSessionMutation();
   const [collapsed, setCollapsed] = useState(false);
-  const contentScrollRef = useRef<HTMLElement | null>(null);
-  const isScrollingRef = useRef(false);
   const { data: unreadData } = useGetUnreadCountQuery();
   const unreadCount = unreadData?.unreadCount ?? 0;
 
@@ -143,37 +141,6 @@ export default function DistributorLayout({
     dispatch(logout());
     router.replace("/auth/login");
   };
-
-  useEffect(() => {
-    const contentScroll = contentScrollRef.current;
-
-    if (!contentScroll) {
-      return;
-    }
-
-    let scrollTimeout = 0;
-
-    const handleScroll = () => {
-      if (!isScrollingRef.current) {
-        isScrollingRef.current = true;
-        contentScroll.classList.add("is-scrolling");
-      }
-
-      window.clearTimeout(scrollTimeout);
-      scrollTimeout = window.setTimeout(() => {
-        isScrollingRef.current = false;
-        contentScroll.classList.remove("is-scrolling");
-      }, 140);
-    };
-
-    contentScroll.addEventListener("scroll", handleScroll, { passive: true });
-
-    return () => {
-      window.clearTimeout(scrollTimeout);
-      isScrollingRef.current = false;
-      contentScroll.removeEventListener("scroll", handleScroll);
-    };
-  }, []);
 
   return (
     <Layout className="distributor-shell">
@@ -272,7 +239,7 @@ export default function DistributorLayout({
           </div>
         </Header>
 
-        <Content ref={contentScrollRef} className="distributor-content">
+        <Content className="distributor-content">
           <div key={pathname} className="distributor-content-frame">
             {children}
           </div>
@@ -530,14 +497,7 @@ export default function DistributorLayout({
 
         .distributor-content-frame {
           min-width: 0;
-          animation: distributor-page-enter 240ms ease-out both;
-        }
-
-        .distributor-content.is-scrolling *,
-        .distributor-content.is-scrolling *::before,
-        .distributor-content.is-scrolling *::after {
-          transition: none !important;
-          animation-play-state: paused !important;
+          animation: none;
         }
 
         .distributor-content
@@ -582,38 +542,13 @@ export default function DistributorLayout({
             [class*="-panel"]
           ):hover {
           border-color: #b7ddd8 !important;
-          box-shadow: 0 8px 18px rgba(11, 47, 42, 0.045) !important;
+          box-shadow: 0 4px 12px rgba(11, 47, 42, 0.035) !important;
           transform: none !important;
         }
 
         .distributor-content [class*="-hero"] {
-          box-shadow: 0 10px 22px rgba(11, 47, 42, 0.055) !important;
+          box-shadow: 0 5px 14px rgba(11, 47, 42, 0.045) !important;
           contain: paint;
-        }
-
-        .distributor-content.is-scrolling
-          :is(
-            .ant-card,
-            .ant-table-wrapper,
-            [class*="-card"],
-            [class*="-panel"],
-            [class*="-table"],
-            [class*="-hero"]
-          ) {
-          box-shadow: 0 8px 18px rgba(11, 47, 42, 0.04) !important;
-          transform: none !important;
-        }
-
-        .distributor-content.is-scrolling
-          :is(
-            .ant-table-wrapper,
-            .ant-table,
-            .ant-table-container,
-            .ant-table-content,
-            [class*="-table"],
-            [class*="-table-card"]
-          ) {
-          box-shadow: none !important;
         }
 
         .distributor-content .ant-table-tbody > tr > td {

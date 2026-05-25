@@ -26,7 +26,7 @@ import {
   Typography,
 } from "antd";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useLogoutSessionMutation } from "@/features/auth/authService";
 import { logout } from "@/features/auth/authSlice";
@@ -64,8 +64,6 @@ export default function SellerLayout({
   const [logoutSession] = useLogoutSessionMutation();
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const contentScrollRef = useRef<HTMLElement | null>(null);
-  const isScrollingRef = useRef(false);
 
   const { data: unreadData, refetch } = useGetUnreadCountQuery();
   const unreadCount = unreadData?.unreadCount ?? 0;
@@ -90,37 +88,6 @@ export default function SellerLayout({
       socket.off("new-notification", handleRefreshUnreadCount);
     };
   }, [refetch]);
-
-  useEffect(() => {
-    const contentScroll = contentScrollRef.current;
-
-    if (!contentScroll) {
-      return;
-    }
-
-    let scrollTimeout = 0;
-
-    const handleScroll = () => {
-      if (!isScrollingRef.current) {
-        isScrollingRef.current = true;
-        contentScroll.classList.add("is-scrolling");
-      }
-
-      window.clearTimeout(scrollTimeout);
-      scrollTimeout = window.setTimeout(() => {
-        isScrollingRef.current = false;
-        contentScroll.classList.remove("is-scrolling");
-      }, 140);
-    };
-
-    contentScroll.addEventListener("scroll", handleScroll, { passive: true });
-
-    return () => {
-      window.clearTimeout(scrollTimeout);
-      isScrollingRef.current = false;
-      contentScroll.removeEventListener("scroll", handleScroll);
-    };
-  }, []);
 
   const menuItems: MenuProps["items"] = useMemo(
     () => [
@@ -338,7 +305,7 @@ export default function SellerLayout({
             </div>
           </Header>
 
-          <Content ref={contentScrollRef} className="seller-content">
+          <Content className="seller-content">
             <div key={pathname} className="seller-content-frame">
               {children}
             </div>
@@ -751,14 +718,7 @@ export default function SellerLayout({
 
         .seller-content-frame {
           min-width: 0;
-          animation: seller-page-enter 240ms ease-out both;
-        }
-
-        .seller-content.is-scrolling *,
-        .seller-content.is-scrolling *::before,
-        .seller-content.is-scrolling *::after {
-          transition: none !important;
-          animation-play-state: paused !important;
+          animation: none;
         }
 
         .seller-content
@@ -803,38 +763,13 @@ export default function SellerLayout({
             [class*="-panel"]
           ):hover {
           border-color: #b7ddd8 !important;
-          box-shadow: 0 8px 18px rgba(11, 47, 42, 0.045) !important;
+          box-shadow: 0 4px 12px rgba(11, 47, 42, 0.035) !important;
           transform: none !important;
         }
 
         .seller-content [class*="-hero"] {
-          box-shadow: 0 10px 22px rgba(11, 47, 42, 0.055) !important;
+          box-shadow: 0 5px 14px rgba(11, 47, 42, 0.045) !important;
           contain: paint;
-        }
-
-        .seller-content.is-scrolling
-          :is(
-            .ant-card,
-            .ant-table-wrapper,
-            [class*="-card"],
-            [class*="-panel"],
-            [class*="-table"],
-            [class*="-hero"]
-          ) {
-          box-shadow: 0 8px 18px rgba(11, 47, 42, 0.04) !important;
-          transform: none !important;
-        }
-
-        .seller-content.is-scrolling
-          :is(
-            .ant-table-wrapper,
-            .ant-table,
-            .ant-table-container,
-            .ant-table-content,
-            [class*="-table"],
-            [class*="-table-card"]
-          ) {
-          box-shadow: none !important;
         }
 
         .seller-content .ant-table-tbody > tr > td {

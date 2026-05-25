@@ -22,7 +22,7 @@ import {
 import type { MenuProps } from "antd";
 import type { ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   adminRouteByKey,
@@ -67,8 +67,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   const [collapsed, setCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const contentScrollRef = useRef<HTMLElement | null>(null);
-  const isScrollingRef = useRef(false);
 
   const isSocketConnected = useSocketStatus();
   const { data: unreadData, refetch } = useGetUnreadCountQuery();
@@ -97,37 +95,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       setMobileSidebarOpen(false);
     }
   }, [isMobile, pathname]);
-
-  useEffect(() => {
-    const contentScroll = contentScrollRef.current;
-
-    if (!contentScroll) {
-      return;
-    }
-
-    let scrollTimeout = 0;
-
-    const handleScroll = () => {
-      if (!isScrollingRef.current) {
-        isScrollingRef.current = true;
-        contentScroll.classList.add("is-scrolling");
-      }
-
-      window.clearTimeout(scrollTimeout);
-      scrollTimeout = window.setTimeout(() => {
-        isScrollingRef.current = false;
-        contentScroll.classList.remove("is-scrolling");
-      }, 140);
-    };
-
-    contentScroll.addEventListener("scroll", handleScroll, { passive: true });
-
-    return () => {
-      window.clearTimeout(scrollTimeout);
-      isScrollingRef.current = false;
-      contentScroll.removeEventListener("scroll", handleScroll);
-    };
-  }, []);
 
   const activeRoute = useMemo(() => {
     return (
@@ -443,7 +410,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             </Flex>
           </Header>
 
-          <Content ref={contentScrollRef} className="admin-content-scroll">
+          <Content className="admin-content-scroll">
             <main className="admin-content">
               <div key={pathname} className="admin-content-frame">
                 {children}
@@ -477,12 +444,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           --admin-info: #0ea5e9;
           --admin-radius: 8px;
           --admin-radius-lg: 12px;
-          --admin-shadow-sm: 0 8px 20px rgba(17, 24, 39, 0.05);
-          --admin-shadow-md: 0 16px 36px rgba(17, 24, 39, 0.08);
-          --admin-motion: 160ms ease;
-          --admin-layout-motion: 180ms cubic-bezier(0.2, 0, 0, 1);
-          --admin-enter-motion: 260ms ease-out;
-          --admin-float-motion: 180ms ease-out;
+          --admin-shadow-sm: 0 4px 14px rgba(17, 24, 39, 0.045);
+          --admin-shadow-md: 0 8px 22px rgba(17, 24, 39, 0.06);
+          --admin-motion: 120ms ease;
+          --admin-layout-motion: 150ms cubic-bezier(0.2, 0, 0, 1);
+          --admin-enter-motion: 0ms;
+          --admin-float-motion: 120ms ease-out;
         }
 
         .admin-layout-root,
@@ -526,8 +493,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             max-width var(--admin-layout-motion),
             flex-basis var(--admin-layout-motion) !important;
           contain: layout paint;
-          will-change: width, min-width, max-width;
-          animation: admin-sidebar-enter var(--admin-enter-motion) both;
+          animation: none;
         }
 
         .admin-layout-sider .ant-layout-sider-children {
@@ -1240,18 +1206,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           background: #ffffff;
           box-shadow: var(--admin-shadow-sm);
           transform-origin: top center;
-          animation: admin-content-enter var(--admin-enter-motion) both;
+          animation: none;
         }
 
         .admin-content-frame > * {
           max-width: 100%;
-        }
-
-        .admin-layout-root .admin-content-scroll.is-scrolling *,
-        .admin-layout-root .admin-content-scroll.is-scrolling *::before,
-        .admin-layout-root .admin-content-scroll.is-scrolling *::after {
-          transition: none !important;
-          animation-play-state: paused !important;
         }
 
         .admin-layout-root .admin-content-frame .ant-card,
@@ -1298,7 +1257,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         }
 
         .admin-layout-root .admin-content-frame [class*="-hero"] {
-          box-shadow: 0 10px 24px rgba(7, 26, 36, 0.12) !important;
+          box-shadow: 0 6px 16px rgba(7, 26, 36, 0.08) !important;
           contain: paint;
         }
 
@@ -1371,32 +1330,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           border-color: #cbd5e1 !important;
           box-shadow: var(--admin-shadow-sm) !important;
           transform: none !important;
-        }
-
-        .admin-layout-root .admin-content-scroll.is-scrolling .ant-card,
-        .admin-layout-root
-          .admin-content-scroll.is-scrolling
-          .ant-table-wrapper,
-        .admin-layout-root
-          .admin-content-scroll.is-scrolling
-          [class*="-table-card"],
-        .admin-layout-root
-          .admin-content-scroll.is-scrolling
-          [class*="-filter-card"],
-        .admin-layout-root
-          .admin-content-scroll.is-scrolling
-          [class*="-stat-card"],
-        .admin-layout-root
-          .admin-content-scroll.is-scrolling
-          [class*="-panel"] {
-          box-shadow: var(--admin-shadow-sm) !important;
-          transform: none !important;
-        }
-
-        .admin-layout-root
-          .admin-content-scroll.is-scrolling
-          [class*="-hero"] {
-          box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06) !important;
         }
 
         .admin-page-card .ant-card-head,
