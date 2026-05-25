@@ -1279,9 +1279,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           :is(
             .ant-card,
             [class*="-card"],
-            [class*="-panel"],
-            [class*="-item"],
-            [class*="-row"]
+            [class*="-panel"]
           ) {
           transition:
             border-color 150ms ease,
@@ -1294,9 +1292,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           :is(
             .ant-card,
             [class*="-card"],
-            [class*="-panel"],
-            [class*="-item"],
-            [class*="-row"]
+            [class*="-panel"]
           ):hover {
           transform: none !important;
         }
@@ -1370,8 +1366,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             [class*="-stat-card"],
             [class*="-panel"],
             [class*="-management-row"],
-            [class*="-queue-item"],
-            [class*="-item"]
+            [class*="-queue-item"]
           ):hover {
           border-color: #cbd5e1 !important;
           box-shadow: var(--admin-shadow-sm) !important;

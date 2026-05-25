@@ -768,9 +768,7 @@ export default function SellerLayout({
             [class*="-card"],
             [class*="-panel"],
             [class*="-table"],
-            [class*="-hero"],
-            [class*="-item"],
-            [class*="-row"]
+            [class*="-hero"]
           ) {
           backface-visibility: hidden;
         }
@@ -790,9 +788,7 @@ export default function SellerLayout({
           :is(
             .ant-card,
             [class*="-card"],
-            [class*="-panel"],
-            [class*="-item"],
-            [class*="-row"]
+            [class*="-panel"]
           ) {
           transition:
             border-color 150ms ease,
@@ -804,9 +800,7 @@ export default function SellerLayout({
           :is(
             .ant-card,
             [class*="-card"],
-            [class*="-panel"],
-            [class*="-item"],
-            [class*="-row"]
+            [class*="-panel"]
           ):hover {
           border-color: #b7ddd8 !important;
           box-shadow: 0 8px 18px rgba(11, 47, 42, 0.045) !important;
@@ -825,9 +819,7 @@ export default function SellerLayout({
             [class*="-card"],
             [class*="-panel"],
             [class*="-table"],
-            [class*="-hero"],
-            [class*="-item"],
-            [class*="-row"]
+            [class*="-hero"]
           ) {
           box-shadow: 0 8px 18px rgba(11, 47, 42, 0.04) !important;
           transform: none !important;
