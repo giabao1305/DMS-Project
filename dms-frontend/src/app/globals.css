@@ -253,17 +253,6 @@ select {
   line-height: 1.45;
 }
 
-.login-shell,
-.login-product-panel,
-.login-form-panel,
-.login-preview-board,
-.login-pipeline-track span {
-  animation: none !important;
-  transition: none !important;
-  transform: none !important;
-  clip-path: none !important;
-}
-
 @media (max-width: 960px) {
   .login-page {
     padding: 18px;
@@ -645,7 +634,7 @@ select {
   border: 1px solid #dcebea;
   background: #ffffff;
   box-shadow: 0 24px 70px rgba(15, 23, 42, 0.12);
-  animation: none;
+  animation: login-shell-enter 360ms ease-out both;
 }
 
 .login-product-panel {
@@ -662,7 +651,7 @@ select {
     #102033 100%
   );
   color: #ffffff;
-  animation: none;
+  animation: login-slice-left 360ms ease-out 40ms both;
 }
 
 .login-topbar {
@@ -748,7 +737,7 @@ select {
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.1);
   box-shadow: 0 18px 42px rgba(2, 6, 23, 0.18);
-  animation: none;
+  animation: login-preview-float 420ms ease-out 120ms both;
 }
 
 .login-preview-header,
@@ -869,7 +858,7 @@ select {
   border-radius: inherit;
   background: linear-gradient(90deg, #2dd4bf, #60a5fa);
   transform-origin: left;
-  animation: none;
+  animation: login-track-grow 700ms ease-out 180ms both;
 }
 
 .login-route-card {
@@ -902,7 +891,7 @@ select {
   align-items: center;
   justify-content: center;
   background: linear-gradient(180deg, #ffffff 0%, #f8fcfb 100%);
-  animation: none;
+  animation: login-slice-right 360ms ease-out 70ms both;
 }
 
 .login-form-card {
@@ -1071,48 +1060,44 @@ select {
 @keyframes login-shell-enter {
   from {
     opacity: 0;
-    transform: translateY(18px) scale(0.985);
+    transform: translate3d(0, 10px, 0) scale(0.992);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translate3d(0, 0, 0) scale(1);
   }
 }
 
 @keyframes login-slice-left {
   from {
     opacity: 0;
-    clip-path: inset(0 100% 0 0);
-    transform: translateX(-18px);
+    transform: translate3d(-10px, 0, 0);
   }
   to {
     opacity: 1;
-    clip-path: inset(0 0 0 0);
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 
 @keyframes login-slice-right {
   from {
     opacity: 0;
-    clip-path: inset(0 0 0 100%);
-    transform: translateX(18px);
+    transform: translate3d(10px, 0, 0);
   }
   to {
     opacity: 1;
-    clip-path: inset(0 0 0 0);
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 
 @keyframes login-preview-float {
   from {
     opacity: 0;
-    transform: translateY(16px);
+    transform: translate3d(0, 10px, 0);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 

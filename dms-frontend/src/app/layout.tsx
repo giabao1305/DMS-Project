@@ -36,7 +36,6 @@ const criticalLoginStyles = `
 .login-form input:-webkit-autofill,.login-form input:-webkit-autofill:hover,.login-form input:-webkit-autofill:focus{-webkit-text-fill-color:#0b2f2a;box-shadow:0 0 0 1000px #fff inset!important;caret-color:#0b2f2a;transition:background-color 9999s ease-out 0s}
 .login-submit-button.ant-btn{height:48px;margin-top:6px;display:inline-flex;align-items:center;justify-content:center;gap:9px;border:0;border-radius:14px;background:linear-gradient(135deg,#0d9488,#0f766e);font-weight:850;box-shadow:0 12px 24px rgba(13,148,136,.2)}
 .login-security-note{margin-top:18px;padding:12px 14px;display:flex;align-items:center;gap:10px;border-radius:14px;background:#f3fbf9;color:#5d7471;font-size:13px;font-weight:700;line-height:1.45}
-.login-shell,.login-product-panel,.login-form-panel,.login-preview-board,.login-pipeline-track span{animation:none!important;transition:none!important;transform:none!important;clip-path:none!important}
 @media (max-width:960px){.login-page{padding:18px;align-items:flex-start}.login-shell{min-height:0;grid-template-columns:1fr}.login-product-panel{padding:28px}.login-product-copy h1.ant-typography{font-size:34px}.login-form-panel{padding:34px 28px}}
 @media (max-width:560px){.login-page{padding:0;background:#fff}.login-shell{border:0;border-radius:0;box-shadow:none}.login-product-panel{padding:22px 20px;gap:20px}.login-live-pill,.login-preview-board{display:none}.login-product-copy h1.ant-typography{font-size:28px}.login-form-panel{padding:28px 20px 34px}}
 `;
