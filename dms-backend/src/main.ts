@@ -4,6 +4,12 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 import { AppModule } from './app.module';
 
+const defaultCorsOrigins = [
+  'https://tgbaodev.id.vn',
+  'https://www.tgbaodev.id.vn',
+  'https://dms-tttn-deploy.vercel.app',
+];
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
@@ -15,7 +21,9 @@ async function bootstrap() {
     }),
   );
 
-  const configuredCorsOrigins = (process.env.CORS_ORIGIN || '')
+  const configuredCorsOrigins = (process.env.CORS_ORIGIN || defaultCorsOrigins.join(
+    ',',
+  ))
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);

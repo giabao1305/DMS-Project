@@ -27,12 +27,18 @@ type SocketAuth = {
   token?: unknown;
 };
 
+const defaultSocketCorsOrigins = [
+  'https://tgbaodev.id.vn',
+  'https://www.tgbaodev.id.vn',
+  'https://dms-tttn-deploy.vercel.app',
+  'http://localhost:3000',
+  'http://localhost:8082',
+];
+
 @WebSocketGateway({
   cors: {
-    origin: process.env.SOCKET_CORS_ORIGIN?.split(',') ?? [
-      'http://localhost:3000',
-      'http://localhost:8082',
-    ],
+    origin:
+      process.env.SOCKET_CORS_ORIGIN?.split(',') ?? defaultSocketCorsOrigins,
     credentials: true,
   },
 })
