@@ -232,8 +232,7 @@ export default function LoginPage() {
           border: 1px solid #dcebea;
           background: #ffffff;
           box-shadow: 0 24px 70px rgba(15, 23, 42, 0.12);
-          animation: login-shell-enter 720ms cubic-bezier(0.22, 1, 0.36, 1)
-            both;
+          animation: none;
         }
 
         .login-product-panel {
@@ -250,8 +249,7 @@ export default function LoginPage() {
             #102033 100%
           );
           color: #ffffff;
-          animation: login-slice-left 760ms cubic-bezier(0.22, 1, 0.36, 1)
-            80ms both;
+          animation: none;
         }
 
         .login-topbar {
@@ -337,8 +335,7 @@ export default function LoginPage() {
           border-radius: 18px;
           background: rgba(255, 255, 255, 0.1);
           box-shadow: 0 18px 42px rgba(2, 6, 23, 0.18);
-          animation: login-preview-float 820ms cubic-bezier(0.22, 1, 0.36, 1)
-            260ms both;
+          animation: none;
         }
 
         .login-preview-header,
@@ -459,8 +456,7 @@ export default function LoginPage() {
           border-radius: inherit;
           background: linear-gradient(90deg, #2dd4bf, #60a5fa);
           transform-origin: left;
-          animation: login-track-grow 1.35s cubic-bezier(0.22, 1, 0.36, 1)
-            520ms both;
+          animation: none;
         }
 
         .login-route-card {
@@ -493,8 +489,7 @@ export default function LoginPage() {
           align-items: center;
           justify-content: center;
           background: linear-gradient(180deg, #ffffff 0%, #f8fcfb 100%);
-          animation: login-slice-right 760ms cubic-bezier(0.22, 1, 0.36, 1)
-            160ms both;
+          animation: none;
         }
 
         .login-form-card {

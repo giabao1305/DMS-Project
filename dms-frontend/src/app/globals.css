@@ -253,6 +253,17 @@ select {
   line-height: 1.45;
 }
 
+.login-shell,
+.login-product-panel,
+.login-form-panel,
+.login-preview-board,
+.login-pipeline-track span {
+  animation: none !important;
+  transition: none !important;
+  transform: none !important;
+  clip-path: none !important;
+}
+
 @media (max-width: 960px) {
   .login-page {
     padding: 18px;
