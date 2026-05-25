@@ -166,7 +166,7 @@ export default function LoginPage() {
               >
                 <Input
                   prefix={<UserOutlined />}
-                  placeholder="admin@gmail.com"
+                  placeholder="Nhập email tài khoản"
                   size="large"
                   autoComplete="email"
                 />
@@ -572,6 +572,17 @@ export default function LoginPage() {
             box-shadow 160ms ease;
         }
 
+        .login-form
+          .ant-form-item-has-success
+          .ant-input-affix-wrapper,
+        .login-form
+          .ant-form-item-has-success
+          .ant-input-affix-wrapper:hover {
+          border-color: #d7ebe7 !important;
+          background: #ffffff !important;
+          box-shadow: none !important;
+        }
+
         .login-form .ant-input-affix-wrapper:hover,
         .login-form .ant-input-affix-wrapper-focused {
           border-color: #0d9488 !important;
@@ -595,6 +606,15 @@ export default function LoginPage() {
         .login-form .ant-input-password input::placeholder {
           color: #8aa5a1;
           font-weight: 600;
+        }
+
+        .login-form input:-webkit-autofill,
+        .login-form input:-webkit-autofill:hover,
+        .login-form input:-webkit-autofill:focus {
+          -webkit-text-fill-color: #0b2f2a;
+          box-shadow: 0 0 0 1000px #ffffff inset !important;
+          caret-color: #0b2f2a;
+          transition: background-color 9999s ease-out 0s;
         }
 
         .login-submit-button.ant-btn {

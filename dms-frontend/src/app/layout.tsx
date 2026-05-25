@@ -30,6 +30,9 @@ const criticalLoginStyles = `
 .login-form-heading h2.ant-typography{margin:0;color:#0b2f2a;font-size:32px;font-weight:950;line-height:1.1}
 .login-form .ant-form-item{margin-bottom:16px}
 .login-form .ant-input-affix-wrapper{height:48px;padding-inline:14px;border-color:#d7ebe7;border-radius:14px;background:#fff}
+.login-form .ant-form-item-has-success .ant-input-affix-wrapper,.login-form .ant-form-item-has-success .ant-input-affix-wrapper:hover{border-color:#d7ebe7!important;background:#fff!important;box-shadow:none!important}
+.login-form .ant-input-affix-wrapper:hover,.login-form .ant-input-affix-wrapper-focused{border-color:#0d9488!important;box-shadow:0 0 0 3px rgba(13,148,136,.1)}
+.login-form input:-webkit-autofill,.login-form input:-webkit-autofill:hover,.login-form input:-webkit-autofill:focus{-webkit-text-fill-color:#0b2f2a;box-shadow:0 0 0 1000px #fff inset!important;caret-color:#0b2f2a;transition:background-color 9999s ease-out 0s}
 .login-submit-button.ant-btn{height:48px;margin-top:6px;display:inline-flex;align-items:center;justify-content:center;gap:9px;border:0;border-radius:14px;background:linear-gradient(135deg,#0d9488,#0f766e);font-weight:850;box-shadow:0 12px 24px rgba(13,148,136,.2)}
 .login-security-note{margin-top:18px;padding:12px 14px;display:flex;align-items:center;gap:10px;border-radius:14px;background:#f3fbf9;color:#5d7471;font-size:13px;font-weight:700;line-height:1.45}
 @media (max-width:960px){.login-page{padding:18px;align-items:flex-start}.login-shell{min-height:0;grid-template-columns:1fr}.login-product-panel{padding:28px}.login-product-copy h1.ant-typography{font-size:34px}.login-form-panel{padding:34px 28px}}
