@@ -45,6 +45,7 @@ import { useRealtimeRefetch } from "@/hooks/useRealtimeRefetch";
 const { Text, Title } = Typography;
 
 type CustomerStatusFilter = "all" | CustomerStatus;
+const isMongoId = (value: string) => /^[a-f\d]{24}$/i.test(value);
 
 const statusMap: Record<CustomerStatus, { color: string; text: string }> = {
   pending: { color: "gold", text: "Chờ duyệt" },
@@ -55,7 +56,11 @@ const statusMap: Record<CustomerStatus, { color: string; text: string }> = {
 const getSellerName = (customer: Customer) => {
   const seller = customer.assignedSeller;
   if (!seller) return "-";
-  return typeof seller === "string" ? seller : seller.fullName || seller.email || "-";
+  return typeof seller === "string"
+    ? isMongoId(seller)
+      ? "-"
+      : seller
+    : seller.fullName || seller.email || "-";
 };
 
 export default function CustomersPage() {

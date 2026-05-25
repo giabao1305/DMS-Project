@@ -42,22 +42,26 @@ export class RoutesController {
     return this.routesService.findAll(query);
   }
 
-  @Roles(UserRole.SELLER)
+  @Roles(UserRole.DISTRIBUTOR, UserRole.SELLER)
   @Get('my-routes')
   findMyRoutes(
     @CurrentUser() user: UserDocument,
     @Query() query: PaginationQueryDto,
   ) {
-    return this.routesService.findMyRoutes(user._id.toString(), query);
+    return this.routesService.findMyRoutes(
+      user._id.toString(),
+      user.role,
+      query,
+    );
   }
 
-  @Roles(UserRole.SELLER)
+  @Roles(UserRole.DISTRIBUTOR, UserRole.SELLER)
   @Get('today')
   findToday(@CurrentUser() user: UserDocument) {
-    return this.routesService.findToday(user._id.toString());
+    return this.routesService.findToday(user._id.toString(), user.role);
   }
 
-  @Roles(UserRole.ADMIN, UserRole.SELLER)
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR, UserRole.SELLER)
   @Get(':id')
   findById(@Param('id') id: string, @CurrentUser() user: UserDocument) {
     return this.routesService.findById(id, user._id.toString(), user.role);

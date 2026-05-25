@@ -12,6 +12,7 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
 export class AuthService {
@@ -117,6 +118,10 @@ export class AuthService {
 
   async me(userId: string) {
     return this.usersService.findById(userId);
+  }
+
+  async updateProfile(userId: string, updateProfileDto: UpdateProfileDto) {
+    return this.usersService.update(userId, updateProfileDto);
   }
 
   async refresh(refreshToken: string, request?: Request) {

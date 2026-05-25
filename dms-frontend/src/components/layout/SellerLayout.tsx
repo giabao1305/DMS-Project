@@ -26,15 +26,16 @@ import {
   Typography,
 } from "antd";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useLogoutSessionMutation } from "@/features/auth/authService";
 import { logout } from "@/features/auth/authSlice";
 import { getRoleLabel, isSalesRepRole } from "@/features/auth/roleUtils";
 import { useGetUnreadCountQuery } from "@/features/notifications/notificationService";
 import { useSocketStatus } from "@/hooks/useSocketStatus";
-import { getSocket } from "@/lib/socket";
+import { getSocket, resetSocket } from "@/lib/socket";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { resetApiState } from "@/store/resetApiState";
 
 const { Header, Sider, Content } = Layout;
 
@@ -63,6 +64,8 @@ export default function SellerLayout({
   const [logoutSession] = useLogoutSessionMutation();
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const contentScrollRef = useRef<HTMLElement | null>(null);
+  const isScrollingRef = useRef(false);
 
   const { data: unreadData, refetch } = useGetUnreadCountQuery();
   const unreadCount = unreadData?.unreadCount ?? 0;
@@ -87,6 +90,37 @@ export default function SellerLayout({
       socket.off("new-notification", handleRefreshUnreadCount);
     };
   }, [refetch]);
+
+  useEffect(() => {
+    const contentScroll = contentScrollRef.current;
+
+    if (!contentScroll) {
+      return;
+    }
+
+    let scrollTimeout = 0;
+
+    const handleScroll = () => {
+      if (!isScrollingRef.current) {
+        isScrollingRef.current = true;
+        contentScroll.classList.add("is-scrolling");
+      }
+
+      window.clearTimeout(scrollTimeout);
+      scrollTimeout = window.setTimeout(() => {
+        isScrollingRef.current = false;
+        contentScroll.classList.remove("is-scrolling");
+      }, 140);
+    };
+
+    contentScroll.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      window.clearTimeout(scrollTimeout);
+      isScrollingRef.current = false;
+      contentScroll.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
 
   const menuItems: MenuProps["items"] = useMemo(
     () => [
@@ -293,6 +327,8 @@ export default function SellerLayout({
                     // Local logout should still work when the server session is already gone.
                   }
 
+                  resetApiState(dispatch);
+                  resetSocket();
                   dispatch(logout());
                   router.replace("/auth/login");
                 }}
@@ -302,7 +338,11 @@ export default function SellerLayout({
             </div>
           </Header>
 
-          <Content className="seller-content">{children}</Content>
+          <Content ref={contentScrollRef} className="seller-content">
+            <div key={pathname} className="seller-content-frame">
+              {children}
+            </div>
+          </Content>
         </Layout>
       </Layout>
 
@@ -420,7 +460,7 @@ export default function SellerLayout({
           color: #ffffff;
           border-color: #14b8a6;
           background: #123a48;
-          transform: translateY(-1px);
+          transform: none;
         }
 
         .seller-sidebar-status-card {
@@ -507,7 +547,7 @@ export default function SellerLayout({
           .ant-menu-item:not(.ant-menu-item-selected):hover {
           color: #ffffff !important;
           background: #102b38 !important;
-          transform: translateX(2px);
+          transform: none;
           box-shadow: inset 3px 0 0 #14b8a6;
         }
 
@@ -515,7 +555,7 @@ export default function SellerLayout({
           .ant-menu-item:not(.ant-menu-item-selected):hover
           .ant-menu-item-icon {
           color: #70e4d7 !important;
-          transform: scale(1.04);
+          transform: none;
         }
 
         .seller-sidebar-menu.ant-menu-dark
@@ -539,7 +579,7 @@ export default function SellerLayout({
         .seller-sidebar-menu.ant-menu-dark .ant-menu-item-selected {
           color: #ffffff !important;
           background: #0d9488 !important;
-          box-shadow: 0 12px 24px rgba(13, 148, 136, 0.24);
+          box-shadow: inset 3px 0 0 rgba(255, 255, 255, 0.72);
         }
 
         .seller-sidebar-menu.ant-menu-dark
@@ -613,7 +653,7 @@ export default function SellerLayout({
 
         .seller-sidebar-menu-collapsed.ant-menu-dark
           .ant-menu-item:not(.ant-menu-item-selected):hover {
-          transform: translateY(-1px);
+          transform: none;
         }
 
         .seller-main-layout {
@@ -705,6 +745,119 @@ export default function SellerLayout({
           border: 1px solid #d7ebe7;
           border-radius: 16px;
           background: #f8fcfb;
+          overscroll-behavior: contain;
+          scrollbar-gutter: stable;
+        }
+
+        .seller-content-frame {
+          min-width: 0;
+          animation: seller-page-enter 240ms ease-out both;
+        }
+
+        .seller-content.is-scrolling *,
+        .seller-content.is-scrolling *::before,
+        .seller-content.is-scrolling *::after {
+          transition: none !important;
+          animation-play-state: paused !important;
+        }
+
+        .seller-content
+          :is(
+            .ant-card,
+            .ant-table-wrapper,
+            [class*="-card"],
+            [class*="-panel"],
+            [class*="-table"],
+            [class*="-hero"],
+            [class*="-item"],
+            [class*="-row"]
+          ) {
+          backface-visibility: hidden;
+        }
+
+        .seller-content
+          :is(
+            .ant-card,
+            .ant-table-wrapper,
+            [class*="-card"],
+            [class*="-panel"],
+            [class*="-table"]
+          ) {
+          contain: layout paint;
+        }
+
+        .seller-content
+          :is(
+            .ant-card,
+            [class*="-card"],
+            [class*="-panel"],
+            [class*="-item"],
+            [class*="-row"]
+          ) {
+          transition:
+            border-color 150ms ease,
+            background-color 150ms ease,
+            color 150ms ease !important;
+        }
+
+        .seller-content
+          :is(
+            .ant-card,
+            [class*="-card"],
+            [class*="-panel"],
+            [class*="-item"],
+            [class*="-row"]
+          ):hover {
+          border-color: #b7ddd8 !important;
+          box-shadow: 0 8px 18px rgba(11, 47, 42, 0.045) !important;
+          transform: none !important;
+        }
+
+        .seller-content [class*="-hero"] {
+          box-shadow: 0 10px 22px rgba(11, 47, 42, 0.055) !important;
+          contain: paint;
+        }
+
+        .seller-content.is-scrolling
+          :is(
+            .ant-card,
+            .ant-table-wrapper,
+            [class*="-card"],
+            [class*="-panel"],
+            [class*="-table"],
+            [class*="-hero"],
+            [class*="-item"],
+            [class*="-row"]
+          ) {
+          box-shadow: 0 8px 18px rgba(11, 47, 42, 0.04) !important;
+          transform: none !important;
+        }
+
+        .seller-content.is-scrolling
+          :is(
+            .ant-table-wrapper,
+            .ant-table,
+            .ant-table-container,
+            .ant-table-content,
+            [class*="-table"],
+            [class*="-table-card"]
+          ) {
+          box-shadow: none !important;
+        }
+
+        .seller-content .ant-table-tbody > tr > td {
+          transition: background-color 140ms ease;
+        }
+
+        @keyframes seller-page-enter {
+          from {
+            opacity: 0;
+            transform: translate3d(0, 8px, 0);
+          }
+          to {
+            opacity: 1;
+            transform: translate3d(0, 0, 0);
+          }
         }
 
         @media (max-width: 900px) {

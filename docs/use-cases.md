@@ -3,13 +3,14 @@
 ## Actors
 
 - Admin
-- Seller
+- Distributor
+- Seller / DSR
 
 ## Authentication
 
 ### Login
 
-Actor: Admin, Seller
+Actor: Admin, Distributor, Seller
 
 Main flow:
 
@@ -21,16 +22,18 @@ Main flow:
 Expected result:
 
 - Admin vào `/admin/dashboard`.
-- Seller vào `/seller/dashboard`.
+- Distributor và Seller vào `/seller/dashboard`.
 
 ### Role protection
 
-Actor: Admin, Seller
+Actor: Admin, Distributor, Seller
 
 Rules:
 
 - Seller không được truy cập khu vực `/admin`.
 - Admin không được truy cập khu vực `/seller`.
+- Distributor không được truy cập khu vực `/admin`.
+- Distributor chỉ xem dữ liệu thuộc các DSR có `manager = distributorId`.
 - Backend trả `403` khi role không hợp lệ.
 - Frontend hiển thị trang `/forbidden`.
 
@@ -41,13 +44,21 @@ Actor: Admin
 Use cases:
 
 - Tạo nhân viên.
+- Tạo nhà phân phối.
+- Tạo DSR/seller và gán `manager` là nhà phân phối phụ trách.
 - Cập nhật thông tin nhân viên.
 - Xem chi tiết nhân viên.
 - Kích hoạt hoặc vô hiệu hóa tài khoản.
 
 ## Customer Management
 
-Actor: Admin, Seller
+Actor: Admin, Distributor, Seller
+
+Distributor:
+
+- Xem khách hàng của các DSR cấp dưới.
+- Tạo khách hàng mới và chọn DSR phụ trách.
+- Cập nhật khách hàng trong phạm vi đội mình.
 
 Seller:
 
@@ -94,7 +105,13 @@ Business rules:
 
 ## Order Management
 
-Actor: Admin, Seller
+Actor: Admin, Distributor, Seller
+
+Distributor:
+
+- Tạo đơn hàng cho khách hàng thuộc DSR cấp dưới.
+- Theo dõi trạng thái đơn hàng của đội DSR.
+- Hủy hoặc cập nhật đơn pending trong phạm vi đội mình.
 
 Seller:
 
@@ -112,7 +129,7 @@ Admin:
 
 ## Route Planning
 
-Actor: Admin, Seller
+Actor: Admin, Distributor, Seller
 
 Admin:
 
@@ -129,15 +146,26 @@ Seller:
 - Theo dõi danh sách điểm bán cần ghé.
 - Check-in/check-out theo từng điểm bán trong tuyến.
 
+Distributor:
+
+- Xem tuyến của các DSR cấp dưới.
+- Theo dõi tiến độ ghé khách của đội DSR.
+- Không trực tiếp check-in/check-out.
+
 ## Visit Tracking
 
-Actor: Seller, Admin
+Actor: Seller, Distributor, Admin
 
 Seller:
 
 - Check-in tại khách hàng.
 - Check-out sau khi hoàn tất ghé thăm.
 - Ghi chú kết quả ghé thăm.
+
+Distributor:
+
+- Xem lịch sử ghé thăm của các DSR cấp dưới.
+- Kiểm tra GPS distance và trạng thái check-in/check-out của đội.
 
 Admin:
 
@@ -147,12 +175,17 @@ Admin:
 
 ## Leave Management
 
-Actor: Seller, Admin
+Actor: Seller, Distributor, Admin
 
 Seller:
 
 - Gửi yêu cầu nghỉ phép.
 - Xem trạng thái nghỉ phép.
+
+Distributor:
+
+- Xem lịch nghỉ của các DSR cấp dưới.
+- Không trực tiếp tạo đơn nghỉ phép thay DSR.
 
 Admin:
 
@@ -162,7 +195,7 @@ Admin:
 
 ## Notifications
 
-Actor: Admin, Seller
+Actor: Admin, Distributor, Seller
 
 Use cases:
 
@@ -173,7 +206,7 @@ Use cases:
 
 ## Reporting and KPI
 
-Actor: Admin, Seller
+Actor: Admin, Distributor, Seller
 
 Admin:
 
@@ -185,6 +218,11 @@ Seller:
 
 - Xem KPI cá nhân.
 - Theo dõi tiến độ mục tiêu.
+
+Distributor:
+
+- Xem KPI của các DSR cấp dưới.
+- Theo dõi hiệu suất đội bán hàng.
 
 ## Audit Logs
 

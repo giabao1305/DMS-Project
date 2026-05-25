@@ -8,6 +8,7 @@ import {
   Promotion,
   PromotionSchema,
 } from '../promotions/schemas/promotion.schema';
+import { User, UserSchema } from '../users/schemas/user.schema';
 import { Order, OrderSchema } from './schemas/order.schema';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
@@ -21,6 +22,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
       { name: Product.name, schema: ProductSchema },
       { name: Customer.name, schema: CustomerSchema },
       { name: Promotion.name, schema: PromotionSchema },
+      { name: User.name, schema: UserSchema },
     ]),
   ],
   controllers: [OrdersController],

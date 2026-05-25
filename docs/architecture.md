@@ -108,7 +108,9 @@ Hiện tại hệ thống có:
 
 - JWT access token.
 - Refresh token rotation và revoke khi logout.
-- Role guard cho admin/seller.
+- Role guard cho `admin`, `distributor` và `seller`.
+- `seller` là role kỹ thuật của DSR. Chữ DSR chỉ là nhãn hiển thị.
+- `distributor` dùng seller portal nhưng dữ liệu được lọc theo các DSR có `manager = distributorId`.
 - DTO validation với whitelist và forbid non-whitelisted fields.
 - Rate limit cho các endpoint auth nhạy cảm.
 - Account lockout sau nhiều lần đăng nhập sai.
@@ -121,3 +123,11 @@ Các nâng cấp bảo mật nên làm tiếp:
 - HttpOnly cookie thay vì localStorage.
 - Permission matrix chi tiết theo chức năng.
 - Audit log UI cho admin tra cứu.
+
+## Role model
+
+- `admin`: quản trị toàn hệ thống, quản lý master data, kho, đơn hàng, tuyến, KPI, báo cáo, duyệt khách hàng và nghỉ phép.
+- `distributor`: nhà phân phối/quản lý đội DSR. Role này vào seller portal để xem dashboard, khách hàng, tuyến, đơn hàng, lượt ghé, nghỉ phép và KPI của các DSR cấp dưới.
+- `seller`: DSR đi thị trường. Role này tạo khách hàng, tạo đơn, check-in/check-out, xem tuyến, xem KPI cá nhân và gửi nghỉ phép.
+
+Quan hệ quản lý được lưu trên `users.manager`: user role `seller` trỏ tới user role `distributor`.

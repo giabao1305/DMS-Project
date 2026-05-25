@@ -42,6 +42,38 @@ import type {
 import { useRealtimeRefetch } from "@/hooks/useRealtimeRefetch";
 
 const { Text, Title } = Typography;
+const CATEGORY_CODE_PREFIX = "NES-CAT-";
+
+function CategoryCodeInput({
+  value,
+  onChange,
+  disabled,
+}: {
+  value?: string;
+  onChange?: (value: string) => void;
+  disabled?: boolean;
+}) {
+  const suffix = value?.replace(/^NES-CAT-/i, "") ?? "";
+
+  return (
+    <Space.Compact className="admin-category-code-compact">
+      <span className="admin-category-code-prefix">{CATEGORY_CODE_PREFIX}</span>
+      <Input
+        size="large"
+        placeholder="COF"
+        disabled={disabled}
+        value={suffix}
+        onChange={(event) => {
+          const nextSuffix = event.target.value
+            .toUpperCase()
+            .replace(/^NES-CAT-/i, "")
+            .replace(/[^A-Z0-9]/g, "");
+          onChange?.(`${CATEGORY_CODE_PREFIX}${nextSuffix}`);
+        }}
+      />
+    </Space.Compact>
+  );
+}
 
 export default function CategoriesPage() {
   const { message } = App.useApp();
@@ -75,6 +107,7 @@ export default function CategoriesPage() {
     return categories.filter((category) => {
       return (
         normalizedKeyword.length === 0 ||
+        category.code?.toLowerCase().includes(normalizedKeyword) ||
         category.name.toLowerCase().includes(normalizedKeyword) ||
         category.description?.toLowerCase().includes(normalizedKeyword)
       );
@@ -92,6 +125,7 @@ export default function CategoriesPage() {
   const handleOpenEdit = (category: Category) => {
     setEditingCategory(category);
     form.setFieldsValue({
+      code: category.code,
       name: category.name,
       description: category.description,
     });
@@ -156,10 +190,20 @@ export default function CategoriesPage() {
 
   const columns: ColumnsType<Category> = [
     {
+      title: "Mã danh mục",
+      dataIndex: "code",
+      width: 170,
+      fixed: "left",
+      render: (value?: string) => (
+        <Text code className="admin-categories-code">
+          {value || "-"}
+        </Text>
+      ),
+    },
+    {
       title: "Tên danh mục",
       dataIndex: "name",
       width: 280,
-      fixed: "left",
       render: (value: string) => (
         <Flex align="center" gap={12}>
           <Flex
@@ -294,7 +338,7 @@ export default function CategoriesPage() {
                 Bộ lọc danh mục
               </Title>
               <Text className="admin-categories-filter-description">
-                Tìm theo tên hoặc mô tả danh mục sản phẩm.
+                Tìm theo mã, tên hoặc mô tả danh mục sản phẩm.
               </Text>
             </div>
 
@@ -302,7 +346,7 @@ export default function CategoriesPage() {
               <Input
                 allowClear
                 size="large"
-                placeholder="Tìm tên hoặc mô tả danh mục"
+                placeholder="Tìm mã, tên hoặc mô tả danh mục"
                 prefix={<SearchOutlined />}
                 className="admin-categories-search-input"
                 value={keyword}
@@ -348,7 +392,7 @@ export default function CategoriesPage() {
             loading={isLoading || creating || updating || deleting}
             dataSource={filteredCategories}
             columns={columns}
-            scroll={{ x: 1070 }}
+            scroll={{ x: 1240 }}
             className="admin-categories-table"
             pagination={{
               pageSize: 10,
@@ -419,6 +463,23 @@ export default function CategoriesPage() {
           >
             <section className="admin-category-form-section">
               <Form.Item
+                label="Mã danh mục"
+                name="code"
+                rules={[
+                  {
+                    required: true,
+                    message: "Vui lòng nhập mã danh mục",
+                  },
+                  {
+                    pattern: /^NES-CAT-[A-Z0-9]{2,6}$/,
+                    message: "Mã danh mục có dạng NES-CAT-COF",
+                  },
+                ]}
+              >
+                <CategoryCodeInput disabled={submitting} />
+              </Form.Item>
+
+              <Form.Item
                 label="Tên danh mục"
                 name="name"
                 rules={[
@@ -484,6 +545,34 @@ export default function CategoriesPage() {
         .admin-categories-shell {
           margin: -2px -2px 0;
           padding: 2px;
+        }
+
+        .admin-categories-code {
+          white-space: nowrap;
+          font-weight: 800;
+        }
+
+        .admin-category-code-compact {
+          width: 100%;
+        }
+
+        .admin-category-code-prefix {
+          height: 40px;
+          padding: 0 12px;
+          display: inline-flex;
+          align-items: center;
+          border: 1px solid #d9d9d9;
+          border-right: 0;
+          border-radius: 8px 0 0 8px;
+          background: #f5f7fb;
+          color: #475569;
+          font-weight: 700;
+          line-height: 1;
+          white-space: nowrap;
+        }
+
+        .admin-category-code-compact .ant-input {
+          border-radius: 0 8px 8px 0 !important;
         }
 
         .admin-categories-hero {

@@ -17,7 +17,9 @@ import { useLoginMutation } from "@/features/auth/authService";
 import { setCredentials } from "@/features/auth/authSlice";
 import type { LoginRequest } from "@/features/auth/authTypes";
 import { getRoleHomePath } from "@/features/auth/roleUtils";
+import { resetSocket } from "@/lib/socket";
 import { useAppDispatch } from "@/store/hooks";
+import { resetApiState } from "@/store/resetApiState";
 
 const { Title, Text } = Typography;
 
@@ -43,6 +45,9 @@ export default function LoginPage() {
   const handleSubmit = async (values: LoginRequest) => {
     try {
       const response = await login(values).unwrap();
+
+      resetApiState(dispatch);
+      resetSocket();
 
       dispatch(
         setCredentials({
@@ -227,6 +232,8 @@ export default function LoginPage() {
           border: 1px solid #dcebea;
           background: #ffffff;
           box-shadow: 0 24px 70px rgba(15, 23, 42, 0.12);
+          animation: login-shell-enter 720ms cubic-bezier(0.22, 1, 0.36, 1)
+            both;
         }
 
         .login-product-panel {
@@ -243,6 +250,8 @@ export default function LoginPage() {
             #102033 100%
           );
           color: #ffffff;
+          animation: login-slice-left 760ms cubic-bezier(0.22, 1, 0.36, 1)
+            80ms both;
         }
 
         .login-topbar {
@@ -328,6 +337,8 @@ export default function LoginPage() {
           border-radius: 18px;
           background: rgba(255, 255, 255, 0.1);
           box-shadow: 0 18px 42px rgba(2, 6, 23, 0.18);
+          animation: login-preview-float 820ms cubic-bezier(0.22, 1, 0.36, 1)
+            260ms both;
         }
 
         .login-preview-header,
@@ -447,6 +458,9 @@ export default function LoginPage() {
           height: 100%;
           border-radius: inherit;
           background: linear-gradient(90deg, #2dd4bf, #60a5fa);
+          transform-origin: left;
+          animation: login-track-grow 1.35s cubic-bezier(0.22, 1, 0.36, 1)
+            520ms both;
         }
 
         .login-route-card {
@@ -479,6 +493,8 @@ export default function LoginPage() {
           align-items: center;
           justify-content: center;
           background: linear-gradient(180deg, #ffffff 0%, #f8fcfb 100%);
+          animation: login-slice-right 760ms cubic-bezier(0.22, 1, 0.36, 1)
+            160ms both;
         }
 
         .login-form-card {
@@ -624,6 +640,63 @@ export default function LoginPage() {
           font-size: 16px;
         }
 
+        @keyframes login-shell-enter {
+          from {
+            opacity: 0;
+            transform: translateY(18px) scale(0.985);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        @keyframes login-slice-left {
+          from {
+            opacity: 0;
+            clip-path: inset(0 100% 0 0);
+            transform: translateX(-18px);
+          }
+          to {
+            opacity: 1;
+            clip-path: inset(0 0 0 0);
+            transform: translateX(0);
+          }
+        }
+
+        @keyframes login-slice-right {
+          from {
+            opacity: 0;
+            clip-path: inset(0 0 0 100%);
+            transform: translateX(18px);
+          }
+          to {
+            opacity: 1;
+            clip-path: inset(0 0 0 0);
+            transform: translateX(0);
+          }
+        }
+
+        @keyframes login-preview-float {
+          from {
+            opacity: 0;
+            transform: translateY(16px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes login-track-grow {
+          from {
+            transform: scaleX(0);
+          }
+          to {
+            transform: scaleX(1);
+          }
+        }
+
         @media (max-width: 960px) {
           .login-page {
             padding: 18px;
@@ -684,6 +757,19 @@ export default function LoginPage() {
 
           .login-form-heading h2.ant-typography {
             font-size: 30px;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .login-shell,
+          .login-product-panel,
+          .login-form-panel,
+          .login-preview-board,
+          .login-pipeline-track span {
+            animation: none !important;
+            transition: none !important;
+            transform: none !important;
+            clip-path: none !important;
           }
         }
       `}</style>

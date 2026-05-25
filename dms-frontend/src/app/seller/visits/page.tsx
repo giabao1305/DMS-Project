@@ -31,6 +31,7 @@ import SellerPageHeader from "@/components/ui/SellerPageHeader";
 import { useGetMyVisitsQuery } from "@/features/visits/visitService";
 import type { Visit } from "@/features/visits/visitTypes";
 import { useRealtimeRefetch } from "@/hooks/useRealtimeRefetch";
+import { useAppSelector } from "@/store/hooks";
 
 const { Text } = Typography;
 
@@ -61,11 +62,13 @@ const statusMap = {
 };
 
 const getCustomerName = (customer: Visit["customer"]) => {
-  if (typeof customer === "string") return customer;
+  if (typeof customer === "string") return /^[a-f\d]{24}$/i.test(customer) ? "-" : customer;
   return customer?.name || "-";
 };
 
 export default function SellerVisitsPage() {
+  const currentUser = useAppSelector((state) => state.auth.user);
+  const isDistributor = currentUser?.role === "distributor";
   const { data: visits = [], isLoading, refetch } = useGetMyVisitsQuery();
 
   useRealtimeRefetch(["new-notification", "visit-updated"], refetch);
@@ -184,6 +187,7 @@ export default function SellerVisitsPage() {
         title="Lịch sử ghé thăm"
         description="Theo dõi hoạt động check-in, check-out và tiến độ ghé khách hàng."
         extra={
+          isDistributor ? null : (
           <Link href="/seller/visits/create">
             <Button
               type="primary"
@@ -193,6 +197,7 @@ export default function SellerVisitsPage() {
               Check-in mới
             </Button>
           </Link>
+          )
         }
       />
 

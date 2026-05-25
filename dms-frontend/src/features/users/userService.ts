@@ -19,6 +19,12 @@ export const userService = createApi({
       providesTags: ["Users"],
     }),
 
+    getSellerUsers: builder.query<User[], void>({
+      query: () => "/users/sellers",
+      providesTags: ["Users"],
+      keepUnusedDataFor: 0,
+    }),
+
     getUserById: builder.query<User, string>({
       query: (id) => `/users/${id}`,
       providesTags: ["Users"],
@@ -68,6 +74,7 @@ export const userService = createApi({
 
 export const {
   useGetUsersQuery,
+  useGetSellerUsersQuery,
   useGetUserByIdQuery,
   useCreateUserMutation,
   useUpdateUserMutation,

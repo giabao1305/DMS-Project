@@ -5,10 +5,12 @@ import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 import { User, UserSchema } from './schemas/user.schema';
 import { SocketModule } from '../socket/socket.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
     SocketModule,
+    NotificationsModule,
 
     MongooseModule.forFeature([
       {

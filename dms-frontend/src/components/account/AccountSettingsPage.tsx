@@ -32,13 +32,14 @@ import {
   useGetUserByIdQuery,
   useUpdateUserMutation,
 } from "@/features/users/userService";
+import { getRoleLabel } from "@/features/auth/roleUtils";
 import type { UpdateUserRequest, User } from "@/features/users/userTypes";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
 const { Text, Title } = Typography;
 
 type AccountSettingsPageProps = {
-  accent?: "admin" | "seller";
+  accent?: "admin" | "distributor" | "seller";
 };
 
 type ProfileFormValues = {
@@ -74,9 +75,8 @@ export default function AccountSettingsPage({
   const profileUser = currentUser as Partial<User> | null;
   const displayName = currentUser?.fullName || "Tài khoản";
   const initial = displayName.trim().charAt(0).toUpperCase() || "U";
-  const isSeller = accent === "seller";
-  const roleLabel =
-    currentUser?.role === "admin" ? "Quản trị viên" : "Nhân viên bán hàng";
+  const isSalesWorkspace = accent === "seller" || accent === "distributor";
+  const roleLabel = getRoleLabel(currentUser?.role);
   const statusLabel = currentUser?.isActive ? "Đang hoạt động" : "Tạm khóa";
 
   useEffect(() => {
@@ -143,7 +143,7 @@ export default function AccountSettingsPage({
   return (
     <section
       className={`account-settings-shell ${
-        isSeller ? "is-seller" : "is-admin"
+        isSalesWorkspace ? "is-seller" : "is-admin"
       }`}
     >
       <Card className="account-settings-hero" variant="borderless">
@@ -155,7 +155,11 @@ export default function AccountSettingsPage({
 
             <div className="account-settings-copy">
               <Text className="account-settings-eyebrow">
-                {isSeller ? "Seller workspace" : "Admin console"}
+                {accent === "distributor"
+                  ? "Distributor workspace"
+                  : accent === "seller"
+                    ? "Seller workspace"
+                    : "Admin console"}
               </Text>
               <Title level={3}>{displayName}</Title>
               <Text className="account-settings-email">

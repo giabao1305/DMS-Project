@@ -31,6 +31,7 @@ type SocketAuth = {
   cors: {
     origin: process.env.SOCKET_CORS_ORIGIN?.split(',') ?? [
       'http://localhost:3000',
+      'http://localhost:8082',
     ],
     credentials: true,
   },

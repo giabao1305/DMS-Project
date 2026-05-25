@@ -37,6 +37,8 @@ type QueryFilter = mongoose.QueryFilter<LeaveRequestDocument> & {
   createdAt?: DateRangeFilter;
 };
 
+type RelationId = Types.ObjectId | string | { _id: Types.ObjectId | string };
+
 @Injectable()
 export class LeavesService {
   constructor(
@@ -54,6 +56,39 @@ export class LeavesService {
       action,
       leave,
     });
+  }
+
+  private getRelationId(value: RelationId): string {
+    if (typeof value === 'string') {
+      return value;
+    }
+
+    if (value instanceof Types.ObjectId) {
+      return value.toHexString();
+    }
+
+    if ('_id' in value) {
+      return value._id.toString();
+    }
+
+    return value;
+  }
+
+  private async getManagedSellerIds(
+    distributorId: string,
+  ): Promise<Types.ObjectId[]> {
+    const sellers = await this.userModel
+      .find({
+        role: UserRole.SELLER,
+        $or: [
+          { manager: new Types.ObjectId(distributorId) },
+          { manager: distributorId },
+        ],
+      })
+      .select('_id')
+      .exec();
+
+    return sellers.map((seller) => seller._id);
   }
 
   async create(
@@ -176,13 +211,20 @@ export class LeavesService {
 
   async findMyLeaves(
     sellerId: string,
+    role: UserRole,
     query?: PaginationQueryDto,
   ): Promise<LeaveRequest[] | PaginatedResult<LeaveRequest>> {
+    const seller =
+      role === UserRole.DISTRIBUTOR
+        ? { $in: await this.getManagedSellerIds(sellerId) }
+        : new Types.ObjectId(sellerId);
+
     const filter = await this.buildLeaveListFilter(query, {
-      seller: new Types.ObjectId(sellerId),
+      seller,
     });
     const leaveQuery = this.leaveRequestModel
       .find(filter)
+      .populate('seller', 'fullName email phone companyName')
       .populate('approvedBy', 'fullName email')
       .sort(getSort(query));
 
@@ -214,11 +256,23 @@ export class LeavesService {
       throw new NotFoundException('Leave request not found');
     }
 
-    if (
-      role === UserRole.SELLER &&
-      leaveRequest.seller._id.toString() !== userId
-    ) {
+    const leaveSellerId = this.getRelationId(leaveRequest.seller);
+
+    if (role === UserRole.SELLER && leaveSellerId !== userId) {
       throw new ForbiddenException('You can only view your own leave requests');
+    }
+
+    if (role === UserRole.DISTRIBUTOR) {
+      const managedSellerIds = await this.getManagedSellerIds(userId);
+      const canView = managedSellerIds.some(
+        (sellerId) => sellerId.toString() === leaveSellerId,
+      );
+
+      if (!canView) {
+        throw new ForbiddenException(
+          'You can only view leave requests from your sellers',
+        );
+      }
     }
 
     return leaveRequest;

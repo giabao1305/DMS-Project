@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { getSocket } from "@/lib/socket";
+import { getSocket, resetSocket } from "@/lib/socket";
 
 type UseSocketParams = {
   userId?: string;
@@ -12,11 +12,8 @@ export function useSocket({ userId, role }: UseSocketParams) {
   useEffect(() => {
     if (!userId && !role) return;
 
+    resetSocket();
     const socket = getSocket();
-
-    if (!socket.connected) {
-      socket.connect();
-    }
 
     const handleConnect = () => {
       if (userId) {
@@ -29,6 +26,7 @@ export function useSocket({ userId, role }: UseSocketParams) {
     };
 
     socket.on("connect", handleConnect);
+    socket.connect();
 
     if (socket.connected) {
       handleConnect();
@@ -36,6 +34,7 @@ export function useSocket({ userId, role }: UseSocketParams) {
 
     return () => {
       socket.off("connect", handleConnect);
+      socket.disconnect();
     };
   }, [userId, role]);
 }

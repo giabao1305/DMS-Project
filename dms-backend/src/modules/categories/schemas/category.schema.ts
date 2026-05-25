@@ -9,6 +9,14 @@ export class Category {
     required: true,
     trim: true,
     unique: true,
+    uppercase: true,
+  })
+  code!: string;
+
+  @Prop({
+    required: true,
+    trim: true,
+    unique: true,
   })
   name!: string;
 

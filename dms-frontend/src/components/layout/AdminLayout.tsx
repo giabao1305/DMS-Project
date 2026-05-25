@@ -22,7 +22,7 @@ import {
 import type { MenuProps } from "antd";
 import type { ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   adminRouteByKey,
@@ -33,8 +33,9 @@ import { useLogoutSessionMutation } from "@/features/auth/authService";
 import { logout } from "@/features/auth/authSlice";
 import { useGetUnreadCountQuery } from "@/features/notifications/notificationService";
 import { useSocketStatus } from "@/hooks/useSocketStatus";
-import { getSocket } from "@/lib/socket";
+import { getSocket, resetSocket } from "@/lib/socket";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { resetApiState } from "@/store/resetApiState";
 
 const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -66,6 +67,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   const [collapsed, setCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const contentScrollRef = useRef<HTMLElement | null>(null);
+  const isScrollingRef = useRef(false);
 
   const isSocketConnected = useSocketStatus();
   const { data: unreadData, refetch } = useGetUnreadCountQuery();
@@ -94,6 +97,37 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       setMobileSidebarOpen(false);
     }
   }, [isMobile, pathname]);
+
+  useEffect(() => {
+    const contentScroll = contentScrollRef.current;
+
+    if (!contentScroll) {
+      return;
+    }
+
+    let scrollTimeout = 0;
+
+    const handleScroll = () => {
+      if (!isScrollingRef.current) {
+        isScrollingRef.current = true;
+        contentScroll.classList.add("is-scrolling");
+      }
+
+      window.clearTimeout(scrollTimeout);
+      scrollTimeout = window.setTimeout(() => {
+        isScrollingRef.current = false;
+        contentScroll.classList.remove("is-scrolling");
+      }, 140);
+    };
+
+    contentScroll.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      window.clearTimeout(scrollTimeout);
+      isScrollingRef.current = false;
+      contentScroll.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
 
   const activeRoute = useMemo(() => {
     return (
@@ -169,12 +203,16 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       // Local logout should still work when the server session is already gone.
     }
 
+    resetApiState(dispatch);
+    resetSocket();
     dispatch(logout());
     router.replace("/auth/login");
   }, [dispatch, logoutSession, router]);
 
   const handleToggleSidebar = useCallback(() => {
-    setCollapsed((prev) => !prev);
+    window.requestAnimationFrame(() => {
+      setCollapsed((prev) => !prev);
+    });
   }, []);
 
   const sidebarPanel = (
@@ -405,9 +443,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             </Flex>
           </Header>
 
-          <Content className="admin-content-scroll">
+          <Content ref={contentScrollRef} className="admin-content-scroll">
             <main className="admin-content">
-              <div className="admin-content-frame">{children}</div>
+              <div key={pathname} className="admin-content-frame">
+                {children}
+              </div>
             </main>
           </Content>
         </Layout>
@@ -440,7 +480,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           --admin-shadow-sm: 0 8px 20px rgba(17, 24, 39, 0.05);
           --admin-shadow-md: 0 16px 36px rgba(17, 24, 39, 0.08);
           --admin-motion: 160ms ease;
-          --admin-layout-motion: 220ms ease;
+          --admin-layout-motion: 180ms cubic-bezier(0.2, 0, 0, 1);
+          --admin-enter-motion: 260ms ease-out;
+          --admin-float-motion: 180ms ease-out;
         }
 
         .admin-layout-root,
@@ -483,7 +525,15 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             min-width var(--admin-layout-motion),
             max-width var(--admin-layout-motion),
             flex-basis var(--admin-layout-motion) !important;
-          will-change: width;
+          contain: layout paint;
+          will-change: width, min-width, max-width;
+          animation: admin-sidebar-enter var(--admin-enter-motion) both;
+        }
+
+        .admin-layout-sider .ant-layout-sider-children {
+          height: 100%;
+          overflow: hidden;
+          contain: paint;
         }
 
         .admin-sidebar-shell {
@@ -513,8 +563,15 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           border: 1px solid var(--admin-sidebar-border);
           box-shadow: 0 10px 22px rgba(3, 12, 18, 0.2);
           transition:
-            min-height var(--admin-layout-motion),
-            padding var(--admin-layout-motion);
+            border-color var(--admin-motion),
+            box-shadow var(--admin-motion),
+            background-color var(--admin-motion);
+          animation: admin-fade-float var(--admin-enter-motion) 80ms both;
+        }
+
+        .admin-brand:hover {
+          border-color: rgba(125, 211, 252, 0.28);
+          box-shadow: 0 14px 28px rgba(3, 12, 18, 0.24);
         }
 
         .admin-brand-logo {
@@ -537,9 +594,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         .admin-profile-expanded,
         .admin-menu-badge {
           transition:
-            opacity var(--admin-motion),
-            visibility var(--admin-motion),
-            transform var(--admin-motion);
+            opacity 120ms ease,
+            visibility 120ms ease;
         }
 
         .admin-brand-copy {
@@ -566,8 +622,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
         .admin-sidebar-shell.is-collapsed .admin-brand {
           box-sizing: border-box;
-          width: 60px;
-          min-height: 126px;
+          width: 58px;
+          min-height: 112px;
           grid-template-columns: 1fr;
           grid-template-rows: 44px 36px;
           justify-content: center;
@@ -592,7 +648,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         .admin-sidebar-shell.is-collapsed .admin-menu-badge {
           opacity: 0;
           visibility: hidden;
-          transform: translateX(-8px);
           pointer-events: none;
         }
 
@@ -606,8 +661,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         }
 
         .admin-sidebar-shell.is-collapsed .admin-status-zone {
-          height: 42px;
-          margin-top: 10px;
+          display: none;
+          height: 0;
+          margin-top: 0;
         }
 
         .admin-status-panel {
@@ -615,6 +671,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           border-radius: var(--admin-radius-lg);
           background: rgba(6, 32, 44, 0.72);
           border: 1px solid var(--admin-sidebar-border);
+          animation: admin-fade-float var(--admin-enter-motion) 140ms both;
         }
 
         .admin-status-copy {
@@ -659,10 +716,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           overflow-x: hidden;
           scrollbar-color: rgba(125, 211, 252, 0.28) transparent;
           contain: layout paint;
+          animation: admin-fade-float var(--admin-enter-motion) 190ms both;
         }
 
         .admin-sidebar-shell.is-collapsed .admin-menu-scroll {
-          margin-top: 8px;
+          margin-top: 10px;
           padding-right: 0;
           scrollbar-width: none;
         }
@@ -686,15 +744,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           border-radius: var(--admin-radius);
           color: var(--admin-sidebar-text);
           transition:
-            background var(--admin-motion),
-            color var(--admin-motion),
-            box-shadow var(--admin-motion);
+            background-color 120ms ease,
+            color 120ms ease;
         }
 
         .admin-sidebar-menu.ant-menu-dark .ant-menu-item:hover {
           color: #ffffff !important;
           background: var(--admin-sidebar-hover) !important;
-          box-shadow: inset 3px 0 0 #38bdf8;
         }
 
         .admin-sidebar-menu.ant-menu-dark
@@ -708,7 +764,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         .admin-sidebar-menu.ant-menu-dark .ant-menu-item-selected {
           color: #ffffff !important;
           background: #2563eb !important;
-          box-shadow: 0 12px 24px rgba(37, 99, 235, 0.26);
         }
 
         .admin-sidebar-menu.ant-menu-dark
@@ -739,9 +794,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           background: rgba(125, 211, 252, 0.1);
           border: 1px solid rgba(125, 211, 252, 0.12);
           transition:
-            color var(--admin-motion),
-            background var(--admin-motion),
-            border-color var(--admin-motion);
+            color 120ms ease,
+            background-color 120ms ease,
+            border-color 120ms ease;
         }
 
         .admin-sidebar-menu.ant-menu-dark .ant-menu-title-content {
@@ -850,8 +905,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         .admin-sidebar-shell.is-collapsed
           .admin-sidebar-menu.ant-menu-dark
           .ant-menu-item-group-title {
-          height: 8px;
+          height: 4px;
           padding: 0;
+          margin: 0;
           overflow: hidden;
           opacity: 0;
         }
@@ -881,6 +937,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           border-radius: var(--admin-radius-lg);
           background: rgba(6, 32, 44, 0.74);
           border: 1px solid var(--admin-sidebar-border);
+          animation: admin-fade-float var(--admin-enter-motion) 260ms both;
         }
 
         .admin-profile-expanded,
@@ -1006,6 +1063,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           gap: 18px;
           background: #ffffff !important;
           border-bottom: 1px solid var(--admin-border);
+          box-shadow: 0 10px 28px rgba(15, 23, 42, 0.04);
+          animation: admin-header-enter var(--admin-enter-motion) 90ms both;
         }
 
         .admin-header-left {
@@ -1053,6 +1112,17 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           border: 1px solid var(--admin-border);
           background: #ffffff;
           box-shadow: var(--admin-shadow-sm);
+          transition:
+            border-color var(--admin-motion),
+            box-shadow var(--admin-motion),
+            transform var(--admin-float-motion);
+        }
+
+        .admin-live-chip:hover,
+        .admin-header-user:hover {
+          border-color: #c7d2fe;
+          box-shadow: 0 12px 26px rgba(37, 99, 235, 0.1);
+          transform: translateY(-1px);
         }
 
         .admin-live-chip {
@@ -1082,13 +1152,17 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           transition:
             color var(--admin-motion),
             border-color var(--admin-motion),
-            background-color var(--admin-motion);
+            background-color var(--admin-motion),
+            box-shadow var(--admin-motion),
+            transform var(--admin-float-motion);
         }
 
         .admin-icon-button:hover {
           color: var(--admin-primary) !important;
           border-color: #bfd0ff !important;
           background: var(--admin-primary-soft) !important;
+          box-shadow: 0 12px 24px rgba(37, 99, 235, 0.12);
+          transform: translateY(-1px);
         }
 
         .admin-header-user {
@@ -1129,6 +1203,17 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           border-color: #fecaca !important;
           background: #ffffff !important;
           box-shadow: var(--admin-shadow-sm);
+          transition:
+            color var(--admin-motion),
+            border-color var(--admin-motion),
+            background var(--admin-motion),
+            box-shadow var(--admin-motion),
+            transform var(--admin-float-motion);
+        }
+
+        .admin-logout-button:hover {
+          box-shadow: 0 12px 24px rgba(239, 68, 68, 0.12);
+          transform: translateY(-1px);
         }
 
         .admin-content-scroll {
@@ -1137,6 +1222,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           overflow-y: auto;
           overflow-x: hidden;
           background: transparent !important;
+          overscroll-behavior: contain;
+          scrollbar-gutter: stable;
         }
 
         .admin-content {
@@ -1152,10 +1239,71 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           border: 1px solid var(--admin-border);
           background: #ffffff;
           box-shadow: var(--admin-shadow-sm);
+          transform-origin: top center;
+          animation: admin-content-enter var(--admin-enter-motion) both;
         }
 
         .admin-content-frame > * {
           max-width: 100%;
+        }
+
+        .admin-layout-root .admin-content-scroll.is-scrolling *,
+        .admin-layout-root .admin-content-scroll.is-scrolling *::before,
+        .admin-layout-root .admin-content-scroll.is-scrolling *::after {
+          transition: none !important;
+          animation-play-state: paused !important;
+        }
+
+        .admin-layout-root .admin-content-frame .ant-card,
+        .admin-layout-root .admin-content-frame .ant-table-wrapper,
+        .admin-layout-root .admin-page-card,
+        .admin-layout-root .admin-page-table {
+          contain: layout paint;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          :is(
+            .ant-card,
+            .ant-table-wrapper,
+            [class*="-card"],
+            [class*="-panel"],
+            [class*="-table"],
+            [class*="-hero"]
+          ) {
+          backface-visibility: hidden;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          :is(
+            .ant-card,
+            [class*="-card"],
+            [class*="-panel"],
+            [class*="-item"],
+            [class*="-row"]
+          ) {
+          transition:
+            border-color 150ms ease,
+            background-color 150ms ease,
+            color 150ms ease !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          :is(
+            .ant-card,
+            [class*="-card"],
+            [class*="-panel"],
+            [class*="-item"],
+            [class*="-row"]
+          ):hover {
+          transform: none !important;
+        }
+
+        .admin-layout-root .admin-content-frame [class*="-hero"] {
+          box-shadow: 0 10px 24px rgba(7, 26, 36, 0.12) !important;
+          contain: paint;
         }
 
         /* One admin page style for future files */
@@ -1166,6 +1314,94 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           background: var(--admin-card-bg) !important;
           box-shadow: var(--admin-shadow-sm);
           overflow: hidden;
+          transition:
+            border-color var(--admin-motion),
+            box-shadow var(--admin-motion),
+            transform var(--admin-float-motion);
+        }
+
+        .admin-page-card:hover,
+        .admin-content-frame .ant-card:hover {
+          border-color: #cbd5e1 !important;
+          box-shadow: var(--admin-shadow-sm);
+          transform: none;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          :is(
+            .ant-card,
+            .admin-dash-stat-card,
+            .admin-dash-panel,
+            .admin-dash-management-row,
+            .admin-kpis-stat-card,
+            .admin-kpis-filter-card,
+            .admin-kpis-table-card,
+            .admin-orders-filter-card,
+            .admin-orders-table-card,
+            .admin-reports-stat-card,
+            .admin-reports-panel,
+            .admin-visits-filter,
+            .admin-visits-table-card,
+            .admin-categories-filter-card,
+            .admin-categories-table-card,
+            .admin-inventory-filter-card,
+            .admin-inventory-table-card,
+            .admin-leaves-filter-card,
+            .admin-leaves-table-card,
+            .admin-customers-filter-card,
+            .admin-customers-table-card,
+            .admin-routes-filter-card,
+            .admin-routes-table-card,
+            .admin-products-filter-card,
+            .admin-products-table-card,
+            .admin-users-filter-card,
+            .admin-users-table-card
+          ):hover {
+          box-shadow: var(--admin-shadow-sm) !important;
+          transform: none !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          :is(
+            [class*="-filter-card"],
+            [class*="-table-card"],
+            [class*="-stat-card"],
+            [class*="-panel"],
+            [class*="-management-row"],
+            [class*="-queue-item"],
+            [class*="-item"]
+          ):hover {
+          border-color: #cbd5e1 !important;
+          box-shadow: var(--admin-shadow-sm) !important;
+          transform: none !important;
+        }
+
+        .admin-layout-root .admin-content-scroll.is-scrolling .ant-card,
+        .admin-layout-root
+          .admin-content-scroll.is-scrolling
+          .ant-table-wrapper,
+        .admin-layout-root
+          .admin-content-scroll.is-scrolling
+          [class*="-table-card"],
+        .admin-layout-root
+          .admin-content-scroll.is-scrolling
+          [class*="-filter-card"],
+        .admin-layout-root
+          .admin-content-scroll.is-scrolling
+          [class*="-stat-card"],
+        .admin-layout-root
+          .admin-content-scroll.is-scrolling
+          [class*="-panel"] {
+          box-shadow: var(--admin-shadow-sm) !important;
+          transform: none !important;
+        }
+
+        .admin-layout-root
+          .admin-content-scroll.is-scrolling
+          [class*="-hero"] {
+          box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06) !important;
         }
 
         .admin-page-card .ant-card-head,
@@ -1266,6 +1502,15 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           border-radius: var(--admin-radius) !important;
           border: 1px solid var(--admin-border);
           background: #ffffff;
+          transition:
+            border-color var(--admin-motion),
+            box-shadow var(--admin-motion);
+        }
+
+        .admin-content-frame .ant-table-wrapper:hover,
+        .admin-page-table:hover {
+          border-color: #cbd5e1;
+          box-shadow: none;
         }
 
         .admin-content-frame .ant-table,
@@ -1306,6 +1551,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         .admin-content-frame .ant-table-tbody > tr > td {
           color: var(--admin-text-main);
           border-bottom-color: #edf2f7 !important;
+          transition: background-color var(--admin-motion);
         }
 
         .admin-content-frame .ant-table-tbody > tr:hover > td,
@@ -1318,6 +1564,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           > tr:hover
           > td.ant-table-cell-fix-right {
           background: #f8fbff !important;
+        }
+
+        .admin-content-frame .ant-table-tbody > tr:hover > td:first-child {
+          box-shadow: none;
         }
 
         .admin-content-frame .ant-table-tbody > tr.ant-table-row-selected > td,
@@ -1415,6 +1665,50 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
         .ant-drawer .ant-drawer-content {
           background: var(--admin-sidebar) !important;
+        }
+
+        @keyframes admin-sidebar-enter {
+          from {
+            opacity: 0;
+            transform: translateX(-18px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        @keyframes admin-header-enter {
+          from {
+            opacity: 0;
+            transform: translateY(-14px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes admin-content-enter {
+          from {
+            opacity: 0;
+            transform: translate3d(0, 8px, 0);
+          }
+          to {
+            opacity: 1;
+            transform: translate3d(0, 0, 0);
+          }
+        }
+
+        @keyframes admin-fade-float {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
 
         @media (max-width: 1199px) {
@@ -1524,16 +1818,30 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
         @media (prefers-reduced-motion: reduce) {
           .admin-layout-sider,
+          .admin-brand,
           .admin-brand-copy,
           .admin-status-panel,
+          .admin-status-dot.online,
+          .admin-menu-scroll,
           .admin-sidebar-menu.ant-menu-dark .ant-menu-item,
           .admin-menu-badge,
+          .admin-profile-card,
           .admin-profile-expanded,
           .admin-profile-collapsed,
+          .admin-header,
+          .admin-content-frame,
+          .admin-content-frame .ant-card,
+          .admin-content-frame .ant-table-wrapper,
           .admin-collapse-button,
-          .admin-icon-button {
+          .admin-icon-button,
+          .admin-live-chip,
+          .admin-header-user,
+          .admin-logout-button {
             transition: none !important;
             animation: none !important;
+            transform: none !important;
+            clip-path: none !important;
+            filter: none !important;
           }
         }
       `}</style>

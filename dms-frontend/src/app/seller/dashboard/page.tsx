@@ -64,7 +64,7 @@ const currencyFormatter = new Intl.NumberFormat("vi-VN");
 const getCustomerName = (
   customer: RouteCustomer["customer"] | Visit["customer"] | Order["customer"],
 ) => {
-  if (typeof customer === "string") return customer;
+  if (typeof customer === "string") return /^[a-f\d]{24}$/i.test(customer) ? "-" : customer;
   return customer?.name || "-";
 };
 
@@ -148,6 +148,7 @@ function DashboardMetricCard({
 
 export default function SellerDashboardPage() {
   const seller = useAppSelector((state) => state.auth.user);
+  const isDistributor = seller?.role === "distributor";
 
   const {
     data: customers = [],
@@ -312,7 +313,13 @@ export default function SellerDashboardPage() {
             ? record.customer
             : record.customer._id;
 
-        return (
+        return isDistributor ? (
+          <Link href={`/seller/customers/${customer}`}>
+            <Button size="small" className="seller-dashboard-small-action">
+              Chi tiết
+            </Button>
+          </Link>
+        ) : (
           <Link
             href={`/seller/visits/create?customer=${customer}&route=${record.routeId}`}
           >
@@ -389,8 +396,12 @@ export default function SellerDashboardPage() {
       <SellerBreadcrumb />
 
       <SellerPageHeader
-        title="Dashboard Seller"
-        description="Tổng quan nhanh hoạt động bán hàng, đơn hàng và tuyến ghé thăm hôm nay."
+        title={isDistributor ? "Dashboard nhà phân phối" : "Dashboard Seller"}
+        description={
+          isDistributor
+            ? "Tổng quan nhanh hoạt động bán hàng, đơn hàng và tuyến ghé thăm của đội DSR."
+            : "Tổng quan nhanh hoạt động bán hàng, đơn hàng và tuyến ghé thăm hôm nay."
+        }
         extra={
           <Flex gap={10} wrap="wrap">
             <Link href="/seller/orders/create">
@@ -403,11 +414,13 @@ export default function SellerDashboardPage() {
               </Button>
             </Link>
 
-            <Link href="/seller/visits/create">
-              <Button icon={<AimOutlined />} className="seller-dashboard-button">
-                Check-in
-              </Button>
-            </Link>
+            {!isDistributor && (
+              <Link href="/seller/visits/create">
+                <Button icon={<AimOutlined />} className="seller-dashboard-button">
+                  Check-in
+                </Button>
+              </Link>
+            )}
           </Flex>
         }
       />

@@ -27,6 +27,7 @@ import { useGetMyLeavesQuery } from "@/features/leaves/leaveService";
 import type { LeaveRequest, LeaveStatus } from "@/features/leaves/leaveTypes";
 import { useRealtimeHighlight } from "@/hooks/useRealtimeHighlight";
 import { useRealtimeRefetch } from "@/hooks/useRealtimeRefetch";
+import { useAppSelector } from "@/store/hooks";
 
 const { Text } = Typography;
 
@@ -81,6 +82,8 @@ const getLeaveDays = (leave: Pick<LeaveRequest, "startDate" | "endDate">) => {
 };
 
 export default function SellerLeavesPage() {
+  const currentUser = useAppSelector((state) => state.auth.user);
+  const isDistributor = currentUser?.role === "distributor";
   const { data: leaves = [], isLoading, refetch } = useGetMyLeavesQuery();
 
   useRealtimeRefetch(["new-notification", "leave-updated"], refetch);
@@ -171,6 +174,7 @@ export default function SellerLeavesPage() {
         title="Đơn nghỉ phép"
         description="Theo dõi lịch nghỉ, trạng thái duyệt và phản hồi từ admin."
         extra={
+          isDistributor ? null : (
           <Link href="/seller/leaves/create">
             <Button
               type="primary"
@@ -180,6 +184,7 @@ export default function SellerLeavesPage() {
               Tạo đơn nghỉ phép
             </Button>
           </Link>
+          )
         }
       />
 

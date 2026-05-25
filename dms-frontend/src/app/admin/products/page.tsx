@@ -58,8 +58,11 @@ const money = (value: number) => `${value.toLocaleString("vi-VN")}đ`;
 
 const getCategoryName = (category: Product["category"]) => {
   if (!category) return "-";
-  if (typeof category === "string") return category;
-  return (category as Category)?.name || "-";
+  if (typeof category === "string") return /^[a-f\d]{24}$/i.test(category) ? "-" : category;
+  const categoryValue = category as Category;
+  return categoryValue.code
+    ? `${categoryValue.code} - ${categoryValue.name}`
+    : categoryValue.name || "-";
 };
 
 export default function ProductsPage() {

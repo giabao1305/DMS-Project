@@ -17,6 +17,21 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { UserRole } from '../users/schemas/user.schema';
 
+const imageInterceptor = FileInterceptor('file', {
+  storage: memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+  fileFilter: (_req, file, callback) => {
+    if (!file.mimetype.startsWith('image/')) {
+      callback(new BadRequestException('Chỉ được upload file ảnh'), false);
+      return;
+    }
+
+    callback(null, true);
+  },
+});
+
 @Controller('upload')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class UploadController {
@@ -30,28 +45,24 @@ export class UploadController {
 
   @Post('image')
   @Roles(UserRole.ADMIN)
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: memoryStorage(),
-      limits: {
-        fileSize: 5 * 1024 * 1024,
-      },
-      fileFilter: (_req, file, callback) => {
-        if (!file.mimetype.startsWith('image/')) {
-          callback(new BadRequestException('Chỉ được upload file ảnh'), false);
-          return;
-        }
-
-        callback(null, true);
-      },
-    }),
-  )
+  @UseInterceptors(imageInterceptor)
   async uploadImage(@UploadedFile() file: Express.Multer.File) {
+    return this.handleUpload(file, 'dms/products');
+  }
+
+  @Post('avatar')
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR, UserRole.SELLER)
+  @UseInterceptors(imageInterceptor)
+  async uploadAvatar(@UploadedFile() file: Express.Multer.File) {
+    return this.handleUpload(file, 'dms/avatars');
+  }
+
+  private async handleUpload(file: Express.Multer.File, folder: string) {
     if (!file) {
       throw new BadRequestException('Vui lòng chọn ảnh');
     }
 
-    const result = await this.uploadToCloudinary(file.buffer);
+    const result = await this.uploadToCloudinary(file.buffer, folder);
 
     return {
       imageUrl: result.secure_url,
@@ -59,11 +70,14 @@ export class UploadController {
     };
   }
 
-  private uploadToCloudinary(buffer: Buffer): Promise<UploadApiResponse> {
+  private uploadToCloudinary(
+    buffer: Buffer,
+    folder: string,
+  ): Promise<UploadApiResponse> {
     return new Promise<UploadApiResponse>((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
-          folder: 'dms/products',
+          folder,
           resource_type: 'image',
         },
         (error, result) => {

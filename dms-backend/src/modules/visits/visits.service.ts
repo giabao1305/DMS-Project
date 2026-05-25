@@ -39,6 +39,8 @@ type QueryFilter = mongoose.QueryFilter<VisitDocument> & {
   createdAt?: DateRangeFilter;
 };
 
+type RelationId = Types.ObjectId | string | { _id: Types.ObjectId | string };
+
 @Injectable()
 export class VisitsService {
   constructor(
@@ -69,6 +71,39 @@ export class VisitsService {
       source: 'visits',
       action,
     });
+  }
+
+  private getRelationId(value: RelationId): string {
+    if (typeof value === 'string') {
+      return value;
+    }
+
+    if (value instanceof Types.ObjectId) {
+      return value.toHexString();
+    }
+
+    if ('_id' in value) {
+      return value._id.toString();
+    }
+
+    return value;
+  }
+
+  private async getManagedSellerIds(
+    distributorId: string,
+  ): Promise<Types.ObjectId[]> {
+    const sellers = await this.userModel
+      .find({
+        role: UserRole.SELLER,
+        $or: [
+          { manager: new Types.ObjectId(distributorId) },
+          { manager: distributorId },
+        ],
+      })
+      .select('_id')
+      .exec();
+
+    return sellers.map((seller) => seller._id);
   }
 
   async checkIn(checkInDto: CheckInDto, sellerId: string): Promise<Visit> {
@@ -349,13 +384,20 @@ export class VisitsService {
 
   async findMyVisits(
     sellerId: string,
+    role: UserRole,
     query?: PaginationQueryDto,
   ): Promise<Visit[] | PaginatedResult<Visit>> {
+    const seller =
+      role === UserRole.DISTRIBUTOR
+        ? { $in: await this.getManagedSellerIds(sellerId) }
+        : new Types.ObjectId(sellerId);
+
     const filter = await this.buildVisitListFilter(query, {
-      seller: new Types.ObjectId(sellerId),
+      seller,
     });
     const visitQuery = this.visitModel
       .find(filter)
+      .populate('seller', 'fullName email phone companyName')
       .populate('customer', 'name phone address')
       .populate('route', 'name workDate status')
       .sort(getSort(query));
@@ -385,8 +427,23 @@ export class VisitsService {
       throw new NotFoundException('Visit not found');
     }
 
-    if (role === UserRole.SELLER && visit.seller._id.toString() !== userId) {
+    const visitSellerId = this.getRelationId(visit.seller);
+
+    if (role === UserRole.SELLER && visitSellerId !== userId) {
       throw new ForbiddenException('You can only view your own visits');
+    }
+
+    if (role === UserRole.DISTRIBUTOR) {
+      const managedSellerIds = await this.getManagedSellerIds(userId);
+      const canView = managedSellerIds.some(
+        (sellerId) => sellerId.toString() === visitSellerId,
+      );
+
+      if (!canView) {
+        throw new ForbiddenException(
+          'You can only view visits recorded by your sellers',
+        );
+      }
     }
 
     return visit;

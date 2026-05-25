@@ -443,9 +443,6 @@ export default function AdminRoutesPage() {
                   Hiển thị {routes.length.toLocaleString("vi-VN")} / {(meta?.total ?? routes.length).toLocaleString("vi-VN")} tuyến
                 </Text>
               </div>
-              <Tag color="blue" className="admin-routes-result-tag">
-                Realtime route monitoring
-              </Tag>
             </Flex>
           }
         >

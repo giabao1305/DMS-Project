@@ -85,7 +85,7 @@ const getLeaveDays = (leave: Pick<LeaveRequest, "startDate" | "endDate">) => {
 
 const getUserName = (user: LeaveRequest["approvedBy"]) => {
   if (!user) return "-";
-  if (typeof user === "string") return user;
+  if (typeof user === "string") return /^[a-f\d]{24}$/i.test(user) ? "-" : user;
   return user.fullName || user.email || "-";
 };
 

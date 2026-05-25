@@ -49,6 +49,7 @@ import {
 
 const DEMO_PASSWORDS = {
   admin: 'Admin@123456',
+  distributor: 'Distributor@123456',
   seller: 'Seller@123456',
 };
 
@@ -92,8 +93,9 @@ async function connectWithTimeout(mongoUri: string) {
 }
 
 async function upsertUsers() {
-  const [adminPassword, sellerPassword] = await Promise.all([
+  const [adminPassword, distributorPassword, sellerPassword] = await Promise.all([
     bcrypt.hash(DEMO_PASSWORDS.admin, 10),
+    bcrypt.hash(DEMO_PASSWORDS.distributor, 10),
     bcrypt.hash(DEMO_PASSWORDS.seller, 10),
   ]);
 
@@ -112,10 +114,29 @@ async function upsertUsers() {
     { returnDocument: 'after', upsert: true },
   );
 
+  const distributor = await UserModel.findOneAndUpdate(
+    { email: 'distributor@dms.local' },
+    {
+      fullName: 'Demo Distributor',
+      code: 'NPP-HCM-001',
+      email: 'distributor@dms.local',
+      password: distributorPassword,
+      phone: '0900000003',
+      role: UserRole.DISTRIBUTOR,
+      companyName: 'DMS Distributor Demo',
+      address: 'District 1, Ho Chi Minh City',
+      taxCode: 'DEMO-DIST-001',
+      createdBy: asObjectId(admin._id),
+      isActive: true,
+    },
+    { returnDocument: 'after', upsert: true },
+  );
+
   const seller = await UserModel.findOneAndUpdate(
     { email: 'seller@dms.local' },
     {
       fullName: 'Demo Seller',
+      code: 'DSR-HCM-NPP001-001',
       email: 'seller@dms.local',
       password: sellerPassword,
       phone: '0900000002',
@@ -123,19 +144,21 @@ async function upsertUsers() {
       companyName: 'DMS Distributor Demo',
       address: 'District 1, Ho Chi Minh City',
       taxCode: 'DEMO-TAX-001',
+      manager: asObjectId(distributor._id),
       createdBy: asObjectId(admin._id),
       isActive: true,
     },
     { returnDocument: 'after', upsert: true },
   );
 
-  return { admin, seller };
+  return { admin, distributor, seller };
 }
 
 async function upsertCatalog() {
   const category = await CategoryModel.findOneAndUpdate(
-    { name: 'Beverages' },
+    { code: 'NES-CAT-BEV' },
     {
+      code: 'NES-CAT-BEV',
       name: 'Beverages',
       description: 'Demo drinks category',
       isActive: true,
@@ -145,10 +168,10 @@ async function upsertCatalog() {
 
   const products = await Promise.all([
     ProductModel.findOneAndUpdate(
-      { code: 'DMS-COFFEE-001' },
+      { code: 'NES-BEV-COFFEE-001' },
       {
         name: 'Demo Coffee Box',
-        code: 'DMS-COFFEE-001',
+        code: 'NES-BEV-COFFEE-001',
         description: 'Seed product for DMS demo orders',
         category: asObjectId(category._id),
         price: 125000,
@@ -161,10 +184,10 @@ async function upsertCatalog() {
       { returnDocument: 'after', upsert: true },
     ),
     ProductModel.findOneAndUpdate(
-      { code: 'DMS-TEA-001' },
+      { code: 'NES-BEV-TEA-001' },
       {
         name: 'Demo Tea Pack',
-        code: 'DMS-TEA-001',
+        code: 'NES-BEV-TEA-001',
         description: 'Seed product for DMS demo inventory',
         category: asObjectId(category._id),
         price: 85000,
@@ -402,6 +425,9 @@ async function main() {
 
   console.log('Demo data seeded successfully');
   console.log(`Admin: admin@dms.local / ${DEMO_PASSWORDS.admin}`);
+  console.log(
+    `Distributor: distributor@dms.local / ${DEMO_PASSWORDS.distributor}`,
+  );
   console.log(`Seller: seller@dms.local / ${DEMO_PASSWORDS.seller}`);
 }
 

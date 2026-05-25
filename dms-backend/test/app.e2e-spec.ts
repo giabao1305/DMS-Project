@@ -535,6 +535,7 @@ describe('DMS critical workflows (e2e)', () => {
 
   async function seedProductAndCustomer() {
     const category = await categoryModel.create({
+      code: `E2E-CAT-${runId}`,
       name: `E2E Category ${runId}`,
       description: 'E2E test category',
       isActive: true,

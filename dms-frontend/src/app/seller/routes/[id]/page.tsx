@@ -38,6 +38,7 @@ import type {
   RouteCustomerStatus,
   RouteStatus,
 } from "@/features/routes/routeTypes";
+import { useAppSelector } from "@/store/hooks";
 
 const { Text } = Typography;
 
@@ -100,7 +101,7 @@ const customerStatusMap: Record<
 };
 
 const getCustomerName = (customer: RouteCustomer["customer"]) => {
-  if (typeof customer === "string") return customer;
+  if (typeof customer === "string") return /^[a-f\d]{24}$/i.test(customer) ? "-" : customer;
   return customer.name;
 };
 
@@ -120,6 +121,8 @@ const getCustomerId = (customer: RouteCustomer["customer"]) => {
 };
 
 export default function SellerRouteDetailPage() {
+  const currentUser = useAppSelector((state) => state.auth.user);
+  const isDistributor = currentUser?.role === "distributor";
   const params = useParams<{ id: string }>();
   const id = params.id;
   const { data: route, isLoading } = useGetRouteByIdQuery(id);
@@ -271,6 +274,7 @@ export default function SellerRouteDetailPage() {
       render: (_, record) => {
         const customerId = getCustomerId(record.customer);
         const canCheckIn =
+          !isDistributor &&
           record.status !== "visited" &&
           record.status !== "checked_in" &&
           route.status !== "cancelled" &&

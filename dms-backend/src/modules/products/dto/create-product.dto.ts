@@ -4,6 +4,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Matches,
   Min,
 } from 'class-validator';
 
@@ -14,6 +15,9 @@ export class CreateProductDto {
 
   @IsNotEmpty()
   @IsString()
+  @Matches(/^NES-[A-Z0-9]{2,6}-[A-Z0-9]{2,12}-\d{3}$/, {
+    message: 'Product code must match NES-CATEGORY-SKU-001 format',
+  })
   code!: string;
 
   @IsOptional()

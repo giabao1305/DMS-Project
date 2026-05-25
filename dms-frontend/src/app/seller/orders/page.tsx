@@ -89,7 +89,7 @@ const statusMap = {
 const currencyFormatter = new Intl.NumberFormat("vi-VN");
 
 const getCustomerName = (customer: Order["customer"]) => {
-  if (typeof customer === "string") return customer;
+  if (typeof customer === "string") return /^[a-f\d]{24}$/i.test(customer) ? "-" : customer;
   return customer?.name || "-";
 };
 

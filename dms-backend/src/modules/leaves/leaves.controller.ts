@@ -43,16 +43,20 @@ export class LeavesController {
     return this.leavesService.findAll(query);
   }
 
-  @Roles(UserRole.SELLER)
+  @Roles(UserRole.DISTRIBUTOR, UserRole.SELLER)
   @Get('my-leaves')
   findMyLeaves(
     @CurrentUser() user: UserDocument,
     @Query() query: PaginationQueryDto,
   ) {
-    return this.leavesService.findMyLeaves(user._id.toString(), query);
+    return this.leavesService.findMyLeaves(
+      user._id.toString(),
+      user.role,
+      query,
+    );
   }
 
-  @Roles(UserRole.ADMIN, UserRole.SELLER)
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR, UserRole.SELLER)
   @Get(':id')
   findById(@Param('id') id: string, @CurrentUser() user: UserDocument) {
     return this.leavesService.findById(id, user._id.toString(), user.role);

@@ -23,3 +23,11 @@ export const getSocket = () => {
 
   return socket;
 };
+
+export const resetSocket = () => {
+  if (!socket) return;
+
+  socket.removeAllListeners();
+  socket.disconnect();
+  socket = null;
+};

@@ -23,6 +23,9 @@ import { SocketGateway } from '../socket/socket.gateway';
 
 type QueryFilter = Record<string, any>;
 
+const getCategoryProductPrefix = (categoryCode: string): string =>
+  `NES-${categoryCode.replace(/^NES-CAT-/, '')}-`;
+
 @Injectable()
 export class ProductsService {
   constructor(
@@ -52,14 +55,19 @@ export class ProductsService {
   async createCategory(
     createCategoryDto: CreateCategoryDto,
   ): Promise<Category> {
+    if (!createCategoryDto.code) {
+      throw new BadRequestException('Category code is required');
+    }
+
     if (!createCategoryDto.name) {
       throw new BadRequestException('Category name is required');
     }
 
+    const code = createCategoryDto.code.toUpperCase();
     const name = createCategoryDto.name.trim();
 
     const existingCategory = await this.categoryModel.findOne({
-      name,
+      $or: [{ name }, { code }],
     });
 
     if (existingCategory) {
@@ -68,6 +76,7 @@ export class ProductsService {
 
     const category = new this.categoryModel({
       ...createCategoryDto,
+      code,
       name,
     });
 
@@ -117,6 +126,12 @@ export class ProductsService {
       throw new NotFoundException('Category not found');
     }
 
+    if (!code.startsWith(getCategoryProductPrefix(category.code))) {
+      throw new BadRequestException(
+        `Product code must match ${getCategoryProductPrefix(category.code)}SKU-001 format`,
+      );
+    }
+
     const product = new this.productModel({
       ...createProductDto,
       code,
@@ -164,7 +179,7 @@ export class ProductsService {
     const filter = this.buildProductListFilter(query);
     const productQuery = this.productModel
       .find(filter)
-      .populate('category', 'name description')
+      .populate('category', 'code name description')
       .sort(getSort(query));
 
     if (!shouldPaginate(query)) {
@@ -189,7 +204,7 @@ export class ProductsService {
           $lte: ['$stock', '$minStock'],
         },
       })
-      .populate('category', 'name description')
+      .populate('category', 'code name description')
       .sort({ stock: 1 })
       .exec();
   }
@@ -197,7 +212,7 @@ export class ProductsService {
   async findProductById(id: string): Promise<Product> {
     const product = await this.productModel
       .findOne({ _id: id, isDeleted: { $ne: true } })
-      .populate('category', 'name description')
+      .populate('category', 'code name description')
       .exec();
 
     if (!product) {
@@ -244,6 +259,14 @@ export class ProductsService {
       updateData.code = newCode;
     }
 
+    const productBeforeUpdate = await this.productModel
+      .findOne({ _id: id, isDeleted: { $ne: true } })
+      .exec();
+
+    if (!productBeforeUpdate) {
+      throw new NotFoundException('Product not found');
+    }
+
     if (category) {
       if (!Types.ObjectId.isValid(category)) {
         throw new BadRequestException('Invalid category id');
@@ -258,11 +281,29 @@ export class ProductsService {
       updateData.category = new Types.ObjectId(category);
     }
 
+    const categoryForCode = await this.categoryModel.findById(
+      updateData.category ?? productBeforeUpdate.category,
+    );
+
+    if (!categoryForCode || !categoryForCode.isActive) {
+      throw new NotFoundException('Category not found');
+    }
+
+    const productCode = updateData.code ?? productBeforeUpdate.code;
+
+    if (
+      !productCode.startsWith(getCategoryProductPrefix(categoryForCode.code))
+    ) {
+      throw new BadRequestException(
+        `Product code must match ${getCategoryProductPrefix(categoryForCode.code)}SKU-001 format`,
+      );
+    }
+
     const product = await this.productModel
       .findOneAndUpdate({ _id: id, isDeleted: { $ne: true } }, updateData, {
         returnDocument: 'after',
       })
-      .populate('category', 'name description')
+      .populate('category', 'code name description')
       .exec();
 
     if (!product) {

@@ -25,4 +25,4 @@ USER nestjs
 
 EXPOSE 5000
 
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/src/main.js"]

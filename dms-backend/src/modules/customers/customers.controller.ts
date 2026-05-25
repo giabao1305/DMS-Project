@@ -29,7 +29,7 @@ import { UpdateCustomerDto } from './dto/update-customer.dto';
 export class CustomersController {
   constructor(private readonly customersService: CustomersService) {}
 
-  @Roles(UserRole.ADMIN, UserRole.SELLER)
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR, UserRole.SELLER)
   @Post()
   create(
     @Body() createCustomerDto: CreateCustomerDto,
@@ -54,22 +54,26 @@ export class CustomersController {
     return this.customersService.findPending();
   }
 
-  @Roles(UserRole.SELLER)
+  @Roles(UserRole.DISTRIBUTOR, UserRole.SELLER)
   @Get('my-customers')
   findMyCustomers(
     @CurrentUser() user: UserDocument,
     @Query() query: PaginationQueryDto,
   ) {
-    return this.customersService.findMyCustomers(user._id.toString(), query);
+    return this.customersService.findMyCustomers(
+      user._id.toString(),
+      user.role,
+      query,
+    );
   }
 
-  @Roles(UserRole.ADMIN, UserRole.SELLER)
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR, UserRole.SELLER)
   @Get(':id')
-  findById(@Param('id') id: string) {
-    return this.customersService.findById(id);
+  findById(@Param('id') id: string, @CurrentUser() user: UserDocument) {
+    return this.customersService.findById(id, user._id.toString(), user.role);
   }
 
-  @Roles(UserRole.ADMIN, UserRole.SELLER)
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR, UserRole.SELLER)
   @Patch(':id')
   update(
     @Param('id') id: string,

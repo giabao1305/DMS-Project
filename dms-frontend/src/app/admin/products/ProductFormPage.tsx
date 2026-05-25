@@ -3,7 +3,6 @@
 import {
   DollarOutlined,
   InboxOutlined,
-  NumberOutlined,
   SaveOutlined,
   ShoppingOutlined,
   TagsOutlined,
@@ -24,7 +23,7 @@ import {
   Typography,
 } from "antd";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 import ImageUpload from "@/components/common/ImageUpload";
 import AdminBreadcrumb from "@/components/ui/AdminBreadcrumb";
@@ -45,6 +44,40 @@ const { Text } = Typography;
 
 type ProductFormMode = "create" | "edit";
 type ProductFormValues = CreateProductRequest & UpdateProductRequest;
+const DEFAULT_PRODUCT_CODE_EXAMPLE = "NES-COF-NCF-001";
+
+function ProductCodeInput({
+  value,
+  onChange,
+  prefix,
+}: {
+  value?: string;
+  onChange?: (value: string) => void;
+  prefix: string;
+}) {
+  const suffix = prefix !== "NES-" && value?.startsWith(prefix)
+    ? value.slice(prefix.length)
+    : value?.replace(/^NES-[A-Z0-9]{2,6}-/i, "") ?? "";
+
+  return (
+    <Space.Compact className="admin-product-code-compact">
+      <span className="admin-product-code-prefix">{prefix}</span>
+      <Input
+        size="large"
+        placeholder="NCF-001"
+        value={suffix}
+        disabled={prefix === "NES-"}
+        onChange={(event) => {
+          const nextSuffix = event.target.value
+            .toUpperCase()
+            .replace(/^NES-[A-Z0-9]{2,6}-/i, "")
+            .replace(/[^A-Z0-9-]/g, "");
+          onChange?.(`${prefix}${nextSuffix}`);
+        }}
+      />
+    </Space.Compact>
+  );
+}
 
 export default function ProductFormPage({ mode }: { mode: ProductFormMode }) {
   const isEdit = mode === "edit";
@@ -53,6 +86,7 @@ export default function ProductFormPage({ mode }: { mode: ProductFormMode }) {
   const params = useParams<{ id: string }>();
   const id = params?.id;
   const [form] = Form.useForm<ProductFormValues>();
+  const selectedCategoryId = Form.useWatch("category", form);
 
   const { data: categories = [] } = useGetCategoriesQuery();
   const { data: product, isLoading: loadingProduct } = useGetProductByIdQuery(
@@ -63,6 +97,17 @@ export default function ProductFormPage({ mode }: { mode: ProductFormMode }) {
   const [updateProduct, { isLoading: updating }] = useUpdateProductMutation();
   const [toggleProductStatus, { isLoading: togglingStatus }] =
     useToggleProductStatusMutation();
+  const selectedCategory = useMemo(
+    () => categories.find((category) => category._id === selectedCategoryId),
+    [categories, selectedCategoryId],
+  );
+  const productCodePrefix = selectedCategory?.code
+    ? `NES-${selectedCategory.code.replace(/^NES-CAT-/, "")}-`
+    : "NES-";
+  const productCodeExample =
+    productCodePrefix === "NES-"
+      ? DEFAULT_PRODUCT_CODE_EXAMPLE
+      : `${productCodePrefix}NCF-001`;
 
   useEffect(() => {
     if (!product) return;
@@ -232,15 +277,38 @@ export default function ProductFormPage({ mode }: { mode: ProductFormMode }) {
                   <Form.Item
                     label="Mã sản phẩm"
                     name="code"
+                    dependencies={["category"]}
+                    normalize={(value?: string) => value?.toUpperCase()}
                     rules={[
                       { required: true, message: "Vui lòng nhập mã sản phẩm" },
+                      {
+                        validator: () =>
+                          selectedCategory?.code
+                            ? Promise.resolve()
+                            : Promise.reject(new Error("Vui lòng chọn danh mục trước")),
+                      },
+                      {
+                        pattern: /^NES-[A-Z0-9]{2,6}-[A-Z0-9]{2,12}-\d{3}$/,
+                        message: `Mã sản phẩm có dạng ${productCodeExample}`,
+                      },
+                      {
+                        validator: (_, value?: string) => {
+                          if (!value || !selectedCategory?.code) {
+                            return Promise.resolve();
+                          }
+
+                          return value.startsWith(productCodePrefix)
+                            ? Promise.resolve()
+                            : Promise.reject(
+                                new Error(
+                                  `Mã sản phẩm phải có dạng ${productCodeExample}`,
+                                ),
+                              );
+                        },
+                      },
                     ]}
                   >
-                    <Input
-                      size="large"
-                      prefix={<NumberOutlined />}
-                      placeholder="Nhập mã sản phẩm"
-                    />
+                    <ProductCodeInput prefix={productCodePrefix} />
                   </Form.Item>
                 </Col>
 
@@ -272,7 +340,9 @@ export default function ProductFormPage({ mode }: { mode: ProductFormMode }) {
                       placeholder="Chọn danh mục"
                       optionFilterProp="label"
                       options={categories.map((category) => ({
-                        label: category.name,
+                        label: category.code
+                          ? `${category.code} - ${category.name}`
+                          : category.name,
                         value: category._id,
                       }))}
                     />
@@ -497,6 +567,29 @@ function ProductFormStyles() {
         margin-inline-end: 0;
         border-radius: 999px !important;
         font-weight: 800;
+      }
+
+      .admin-product-code-compact {
+        width: 100%;
+      }
+
+      .admin-product-code-prefix {
+        height: 40px;
+        padding: 0 12px;
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid #d9d9d9;
+        border-right: 0;
+        border-radius: 8px 0 0 8px;
+        background: #f5f7fb;
+        color: #475569;
+        font-weight: 700;
+        line-height: 1;
+        white-space: nowrap;
+      }
+
+      .admin-product-code-compact .ant-input {
+        border-radius: 0 8px 8px 0 !important;
       }
 
       .admin-product-form-footer {

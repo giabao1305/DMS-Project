@@ -19,6 +19,8 @@ import SellerBreadcrumb from "@/components/ui/SellerBreadcrumb";
 import SellerPageHeader from "@/components/ui/SellerPageHeader";
 import { useCreateLeaveMutation } from "@/features/leaves/leaveService";
 import type { CreateLeaveRequest } from "@/features/leaves/leaveTypes";
+import { useAppSelector } from "@/store/hooks";
+import { useEffect } from "react";
 
 const { Text } = Typography;
 
@@ -49,10 +51,17 @@ const getLeaveDays = (range?: [Dayjs, Dayjs]) => {
 export default function SellerCreateLeavePage() {
   const { message } = App.useApp();
   const router = useRouter();
+  const currentUser = useAppSelector((state) => state.auth.user);
   const [form] = Form.useForm<LeaveFormValues>();
   const [createLeave, { isLoading }] = useCreateLeaveMutation();
   const selectedRange = Form.useWatch("dateRange", form);
   const selectedDays = getLeaveDays(selectedRange);
+
+  useEffect(() => {
+    if (currentUser?.role === "distributor") {
+      router.replace("/forbidden?required=DSR&current=distributor");
+    }
+  }, [currentUser?.role, router]);
 
   const handleSubmit = async (values: LeaveFormValues) => {
     try {

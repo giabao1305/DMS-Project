@@ -58,6 +58,23 @@ export class DashboardService {
     private readonly notificationModel: Model<NotificationDocument>,
   ) {}
 
+  private async getManagedSellerIds(
+    distributorId: string,
+  ): Promise<Types.ObjectId[]> {
+    const sellers = await this.userModel
+      .find({
+        role: UserRole.SELLER,
+        $or: [
+          { manager: new Types.ObjectId(distributorId) },
+          { manager: distributorId },
+        ],
+      })
+      .select('_id')
+      .exec();
+
+    return sellers.map((seller) => seller._id);
+  }
+
   async getAdminDashboard() {
     const [
       totalSellers,
@@ -222,8 +239,12 @@ export class DashboardService {
     };
   }
 
-  async getSellerDashboard(sellerId: string) {
+  async getSellerDashboard(sellerId: string, role: UserRole) {
     const sellerObjectId = new Types.ObjectId(sellerId);
+    const sellerFilter =
+      role === UserRole.DISTRIBUTOR
+        ? { $in: await this.getManagedSellerIds(sellerId) }
+        : sellerObjectId;
 
     const now = new Date();
 
@@ -245,48 +266,49 @@ export class DashboardService {
       unreadNotifications,
     ] = await Promise.all([
       this.customerModel.countDocuments({
-        assignedSeller: sellerObjectId,
+        assignedSeller: sellerFilter,
         isActive: true,
       }),
 
       this.customerModel.countDocuments({
-        assignedSeller: sellerObjectId,
+        assignedSeller: sellerFilter,
         status: CustomerStatus.APPROVED,
         isActive: true,
       }),
 
       this.customerModel.countDocuments({
-        assignedSeller: sellerObjectId,
+        assignedSeller: sellerFilter,
         status: CustomerStatus.PENDING,
         isActive: true,
       }),
 
       this.orderModel.countDocuments({
-        seller: sellerObjectId,
+        seller: sellerFilter,
       }),
 
       this.orderModel.countDocuments({
-        seller: sellerObjectId,
+        seller: sellerFilter,
         status: OrderStatus.PENDING,
       }),
 
       this.orderModel.countDocuments({
-        seller: sellerObjectId,
+        seller: sellerFilter,
         status: OrderStatus.DELIVERED,
       }),
 
       this.visitModel.countDocuments({
-        seller: sellerObjectId,
+        seller: sellerFilter,
       }),
 
       this.routeModel
         .find({
-          seller: sellerObjectId,
+          seller: sellerFilter,
           workDate: {
             $gte: startOfToday,
             $lte: endOfToday,
           },
         })
+        .populate('seller', 'fullName email phone companyName')
         .populate('customers.customer', 'name phone address latitude longitude')
         .sort({ workDate: 1 })
         .exec(),
@@ -300,7 +322,7 @@ export class DashboardService {
     const revenueResult = await this.orderModel.aggregate<RevenueAggregate>([
       {
         $match: {
-          seller: sellerObjectId,
+          seller: sellerFilter,
           status: OrderStatus.DELIVERED,
         },
       },

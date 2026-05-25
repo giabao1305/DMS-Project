@@ -31,7 +31,7 @@ export class ProductsController {
     return this.productsService.createCategory(createCategoryDto);
   }
 
-  @Roles(UserRole.ADMIN, UserRole.SELLER)
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR, UserRole.SELLER)
   @Get('categories')
   findAllCategories() {
     return this.productsService.findAllCategories();
@@ -43,7 +43,7 @@ export class ProductsController {
     return this.productsService.createProduct(createProductDto);
   }
 
-  @Roles(UserRole.ADMIN, UserRole.SELLER)
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR, UserRole.SELLER)
   @Get()
   findAllProducts(@Query() query: PaginationQueryDto) {
     return this.productsService.findAllProducts(query);
@@ -55,7 +55,7 @@ export class ProductsController {
     return this.productsService.findLowStockProducts();
   }
 
-  @Roles(UserRole.ADMIN, UserRole.SELLER)
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR, UserRole.SELLER)
   @Get(':id')
   findProductById(@Param('id') id: string) {
     return this.productsService.findProductById(id);

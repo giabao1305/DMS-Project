@@ -81,12 +81,15 @@ export default function ProductDetailPage() {
 
   const getCategoryName = (category: Product["category"]) => {
     if (!category) return "-";
-    if (typeof category === "string") return category;
-    return (category as Category)?.name || "-";
+    if (typeof category === "string") return /^[a-f\d]{24}$/i.test(category) ? "-" : category;
+    const categoryValue = category as Category;
+    return categoryValue.code
+      ? `${categoryValue.code} - ${categoryValue.name}`
+      : categoryValue.name || "-";
   };
 
   const getCreatedByName = (user: InventoryTransaction["createdBy"]) => {
-    if (typeof user === "string") return user;
+    if (typeof user === "string") return /^[a-f\d]{24}$/i.test(user) ? "-" : user;
     return (user as User)?.fullName || "-";
   };
 

@@ -11,6 +11,14 @@ export enum UserRole {
 
 @Schema({ timestamps: true })
 export class User {
+  @Prop({
+    sparse: true,
+    trim: true,
+    unique: true,
+    uppercase: true,
+  })
+  code?: string;
+
   @Prop({ required: true, trim: true })
   fullName!: string;
 

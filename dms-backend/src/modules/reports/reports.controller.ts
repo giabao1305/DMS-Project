@@ -84,10 +84,10 @@ export class ReportsController {
     return this.reportsService.findAllKpis();
   }
 
-  @Roles(UserRole.SELLER)
+  @Roles(UserRole.DISTRIBUTOR, UserRole.SELLER)
   @Get('kpis/my-kpi')
   findMyKpis(@CurrentUser() user: UserDocument) {
-    return this.reportsService.findSellerKpis(user._id.toString());
+    return this.reportsService.findMyKpis(user._id.toString(), user.role);
   }
 
   @Roles(UserRole.ADMIN)

@@ -24,6 +24,7 @@ import {
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../notifications/schemas/notification.schema';
 import { User, UserDocument, UserRole } from '../users/schemas/user.schema';
+import { Visit, VisitDocument } from '../visits/schemas/visit.schema';
 import { CreateRouteDto } from './dto/create-route.dto';
 import { UpdateRouteStatusDto } from './dto/update-route-status.dto';
 import { UpdateRouteDto } from './dto/update-route.dto';
@@ -43,6 +44,8 @@ type QueryFilter = mongoose.QueryFilter<RouteDocument> & {
   workDate?: DateRangeFilter;
 };
 
+type RelationId = Types.ObjectId | string | { _id: Types.ObjectId | string };
+
 @Injectable()
 export class RoutesService {
   constructor(
@@ -55,6 +58,9 @@ export class RoutesService {
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
 
+    @InjectModel(Visit.name)
+    private readonly visitModel: Model<VisitDocument>,
+
     private readonly notificationsService: NotificationsService,
   ) {}
 
@@ -63,6 +69,39 @@ export class RoutesService {
       action,
       route,
     });
+  }
+
+  private getRelationId(value: RelationId): string {
+    if (typeof value === 'string') {
+      return value;
+    }
+
+    if (value instanceof Types.ObjectId) {
+      return value.toHexString();
+    }
+
+    if ('_id' in value) {
+      return value._id.toString();
+    }
+
+    return value;
+  }
+
+  private async getManagedSellerIds(
+    distributorId: string,
+  ): Promise<Types.ObjectId[]> {
+    const sellers = await this.userModel
+      .find({
+        role: UserRole.SELLER,
+        $or: [
+          { manager: new Types.ObjectId(distributorId) },
+          { manager: distributorId },
+        ],
+      })
+      .select('_id')
+      .exec();
+
+    return sellers.map((seller) => seller._id);
   }
 
   async create(
@@ -271,13 +310,21 @@ export class RoutesService {
 
   async findMyRoutes(
     sellerId: string,
+    role: UserRole,
     query?: PaginationQueryDto,
   ): Promise<Route[] | PaginatedResult<Route>> {
+    const seller =
+      role === UserRole.DISTRIBUTOR
+        ? { $in: await this.getManagedSellerIds(sellerId) }
+        : new Types.ObjectId(sellerId);
+
     const filter = await this.buildRouteListFilter(query, {
-      seller: new Types.ObjectId(sellerId),
+      seller,
     });
     const routeQuery = this.routeModel
       .find(filter)
+      .populate('seller', 'fullName email phone companyName')
+      .populate('createdBy', 'fullName email')
       .populate('customers.customer', 'name phone address latitude longitude')
       .sort(getSort(query));
 
@@ -294,7 +341,7 @@ export class RoutesService {
     return toPaginatedResult(data, total, page, limit);
   }
 
-  async findToday(sellerId: string): Promise<Route[]> {
+  async findToday(sellerId: string, role: UserRole): Promise<Route[]> {
     const now = new Date();
 
     const start = new Date(now);
@@ -303,14 +350,21 @@ export class RoutesService {
     const end = new Date(now);
     end.setHours(23, 59, 59, 999);
 
+    const seller =
+      role === UserRole.DISTRIBUTOR
+        ? { $in: await this.getManagedSellerIds(sellerId) }
+        : new Types.ObjectId(sellerId);
+
     return this.routeModel
       .find({
-        seller: new Types.ObjectId(sellerId),
+        seller,
         workDate: {
           $gte: start,
           $lte: end,
         },
       })
+      .populate('seller', 'fullName email phone companyName')
+      .populate('createdBy', 'fullName email')
       .populate('customers.customer', 'name phone address latitude longitude')
       .sort({ workDate: 1 })
       .exec();
@@ -328,8 +382,23 @@ export class RoutesService {
       throw new NotFoundException('Route not found');
     }
 
-    if (role === UserRole.SELLER && route.seller._id.toString() !== userId) {
+    const routeSellerId = this.getRelationId(route.seller);
+
+    if (role === UserRole.SELLER && routeSellerId !== userId) {
       throw new ForbiddenException('You can only view your own routes');
+    }
+
+    if (role === UserRole.DISTRIBUTOR) {
+      const managedSellerIds = await this.getManagedSellerIds(userId);
+      const canView = managedSellerIds.some(
+        (sellerId) => sellerId.toString() === routeSellerId,
+      );
+
+      if (!canView) {
+        throw new ForbiddenException(
+          'You can only view routes assigned to your sellers',
+        );
+      }
     }
 
     return route;
@@ -553,6 +622,16 @@ export class RoutesService {
   }
 
   async remove(id: string): Promise<{ message: string }> {
+    const visitCount = await this.visitModel.countDocuments({
+      route: new Types.ObjectId(id),
+    });
+
+    if (visitCount > 0) {
+      throw new BadRequestException(
+        'Route already has visits. Cancel the route instead of deleting it',
+      );
+    }
+
     const route = await this.routeModel.findByIdAndDelete(id).exec();
 
     if (!route) {

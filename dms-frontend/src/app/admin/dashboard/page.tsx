@@ -24,14 +24,13 @@ import {
   Progress,
   Row,
   Space,
-  Statistic,
   Table,
   Tag,
   Typography,
 } from "antd";
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import AdminBreadcrumb from "@/components/ui/AdminBreadcrumb";
 import AdminPageHeader from "@/components/ui/AdminPageHeader";
@@ -72,6 +71,79 @@ const compactDate = (value: string) =>
     day: "2-digit",
     month: "2-digit",
   });
+
+const easeOutCubic = (value: number) => 1 - Math.pow(1 - value, 3);
+
+function useAnimatedNumber(value: number, duration = 650) {
+  const [displayValue, setDisplayValue] = useState(value);
+  const previousValueRef = useRef(value);
+
+  useEffect(() => {
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+
+    if (reduceMotion) {
+      previousValueRef.current = value;
+      setDisplayValue(value);
+      return;
+    }
+
+    const from = previousValueRef.current;
+    const difference = value - from;
+    const startedAt = performance.now();
+    let frameId = 0;
+
+    const tick = (now: number) => {
+      const progress = Math.min((now - startedAt) / duration, 1);
+      const nextValue = from + difference * easeOutCubic(progress);
+
+      setDisplayValue(nextValue);
+
+      if (progress < 1) {
+        frameId = requestAnimationFrame(tick);
+      } else {
+        previousValueRef.current = value;
+        setDisplayValue(value);
+      }
+    };
+
+    frameId = requestAnimationFrame(tick);
+
+    return () => cancelAnimationFrame(frameId);
+  }, [duration, value]);
+
+  return displayValue;
+}
+
+function AnimatedNumber({
+  value,
+  formatter = (currentValue) => currentValue.toLocaleString("vi-VN"),
+  duration,
+}: {
+  value: number;
+  formatter?: (value: number) => string;
+  duration?: number;
+}) {
+  const animatedValue = useAnimatedNumber(value, duration);
+
+  return <>{formatter(Math.round(animatedValue))}</>;
+}
+
+const lineChartAnimate = {
+  enter: { type: "pathIn", duration: 520 },
+  update: { duration: 260 },
+} as const;
+
+const pieChartAnimate = {
+  enter: { type: "fadeIn", duration: 420 },
+  update: { duration: 260 },
+} as const;
+
+const columnChartAnimate = {
+  enter: { type: "growInY", duration: 520 },
+  update: { duration: 260 },
+} as const;
 
 const tone = {
   blue: {
@@ -173,17 +245,13 @@ function StatTile({
       <Flex align="flex-start" justify="space-between" gap={14}>
         <div className="admin-dash-stat-copy">
           <Text className="admin-dash-stat-label">{label}</Text>
-          <Statistic
-            value={value}
-            formatter={(currentValue) => formatter(Number(currentValue ?? 0))}
-            valueStyle={{
-              color: "#0F172A",
-              fontSize: 28,
-              fontWeight: 900,
-              lineHeight: 1.15,
-              letterSpacing: 0,
-            }}
-          />
+          <strong className="admin-dash-stat-number">
+              <AnimatedNumber
+                value={value}
+                formatter={formatter}
+              duration={700}
+            />
+          </strong>
         </div>
 
         <Flex align="center" justify="center" className="admin-dash-stat-icon">
@@ -356,6 +424,10 @@ export default function AdminDashboardPage() {
     };
   }, [adminSummary, orderReports, sales, sellersReport]);
 
+  const animatedCompletionRate = Math.round(
+    useAnimatedNumber(dashboard.completionRate, 650),
+  );
+
   const statTiles: StatTileProps[] = [
     {
       label: "Doanh thu tháng",
@@ -462,19 +534,29 @@ export default function AdminDashboardPage() {
               <Col xs={24} sm={8}>
                 <div className="admin-dash-hero-chip">
                   <Text>Doanh thu</Text>
-                  <strong>{money(dashboard.totalRevenue)}</strong>
+                  <strong>
+                    <AnimatedNumber
+                      value={dashboard.totalRevenue}
+                      formatter={money}
+                      duration={720}
+                    />
+                  </strong>
                 </div>
               </Col>
               <Col xs={24} sm={8}>
                 <div className="admin-dash-hero-chip">
                   <Text>Đơn đã giao</Text>
-                  <strong>{dashboard.deliveredOrders.toLocaleString("vi-VN")}</strong>
+                  <strong>
+                    <AnimatedNumber value={dashboard.deliveredOrders} />
+                  </strong>
                 </div>
               </Col>
               <Col xs={24} sm={8}>
                 <div className="admin-dash-hero-chip">
                   <Text>Tuyến hôm nay</Text>
-                  <strong>{dashboard.todayRoutesCount.toLocaleString("vi-VN")}</strong>
+                  <strong>
+                    <AnimatedNumber value={dashboard.todayRoutesCount} />
+                  </strong>
                 </div>
               </Col>
             </Row>
@@ -484,7 +566,7 @@ export default function AdminDashboardPage() {
             <Text className="admin-dash-progress-label">Tỷ lệ hoàn tất đơn</Text>
             <Progress
               type="dashboard"
-              percent={dashboard.completionRate}
+              percent={animatedCompletionRate}
               size={150}
               strokeColor="#10B981"
               trailColor="rgba(255, 255, 255, 0.14)"
@@ -495,14 +577,21 @@ export default function AdminDashboardPage() {
               )}
             />
             <Text className="admin-dash-progress-note">
-              {dashboard.deliveredOrders}/{dashboard.totalOrders} đơn đã hoàn tất
+              <AnimatedNumber value={dashboard.deliveredOrders} />/
+              <AnimatedNumber value={dashboard.totalOrders} /> đơn đã hoàn tất
             </Text>
             <div className="admin-dash-progress-meta">
               <span>
-                Chờ duyệt <strong>{dashboard.pendingOrders}</strong>
+                Chờ duyệt{" "}
+                <strong>
+                  <AnimatedNumber value={dashboard.pendingOrders} />
+                </strong>
               </span>
               <span>
-                Đã xác nhận <strong>{dashboard.approvedOrders}</strong>
+                Đã xác nhận{" "}
+                <strong>
+                  <AnimatedNumber value={dashboard.approvedOrders} />
+                </strong>
               </span>
             </div>
           </div>
@@ -656,27 +745,33 @@ export default function AdminDashboardPage() {
               <div>
                 <span>Seller hoạt động</span>
                 <strong>
-                  {dashboard.activeSellersCount}/{dashboard.sellersCount}
+                  <AnimatedNumber value={dashboard.activeSellersCount} />/
+                  <AnimatedNumber value={dashboard.sellersCount} />
                 </strong>
               </div>
               <div>
                 <span>Sản phẩm đang bán</span>
                 <strong>
-                  {dashboard.activeProductsCount}/{dashboard.productsCount}
+                  <AnimatedNumber value={dashboard.activeProductsCount} />/
+                  <AnimatedNumber value={dashboard.productsCount} />
                 </strong>
               </div>
               <div>
                 <span>Khách hàng quản lý</span>
-                <strong>{dashboard.customersCount.toLocaleString("vi-VN")}</strong>
+                <strong>
+                  <AnimatedNumber value={dashboard.customersCount} />
+                </strong>
               </div>
               <div>
                 <span>Việc cần xử lý</span>
                 <strong>
-                  {(
-                    dashboard.pendingOrders +
-                    dashboard.pendingLeavesCount +
-                    dashboard.lowStockProductsCount
-                  ).toLocaleString("vi-VN")}
+                  <AnimatedNumber
+                    value={
+                      dashboard.pendingOrders +
+                      dashboard.pendingLeavesCount +
+                      dashboard.lowStockProductsCount
+                    }
+                  />
                 </strong>
               </div>
             </div>
@@ -708,6 +803,7 @@ export default function AdminDashboardPage() {
                   shapeField="smooth"
                   colorField={() => "#2563EB"}
                   point={{ sizeField: 3 }}
+                  animate={lineChartAnimate}
                   axis={{
                     y: {
                       labelFormatter: (value: number) =>
@@ -782,6 +878,7 @@ export default function AdminDashboardPage() {
                   innerRadius={0.64}
                   legend={{ color: { position: "bottom" } }}
                   label={false}
+                  animate={pieChartAnimate}
                   tooltip={{
                     title: "status",
                     items: [
@@ -820,6 +917,7 @@ export default function AdminDashboardPage() {
                   xField="seller"
                   yField="revenue"
                   colorField={() => "#0EA5E9"}
+                  animate={columnChartAnimate}
                   axis={{
                     x: { labelAutoHide: true, labelAutoRotate: false },
                     y: {
@@ -917,22 +1015,30 @@ export default function AdminDashboardPage() {
                 <div>
                   <CheckCircleOutlined />
                   <span>Đã giao</span>
-                  <strong>{dashboard.deliveredOrders}</strong>
+                  <strong>
+                    <AnimatedNumber value={dashboard.deliveredOrders} />
+                  </strong>
                 </div>
                 <div>
                   <ShoppingCartOutlined />
                   <span>Đã xác nhận</span>
-                  <strong>{dashboard.approvedOrders}</strong>
+                  <strong>
+                    <AnimatedNumber value={dashboard.approvedOrders} />
+                  </strong>
                 </div>
                 <div>
                   <ExclamationCircleOutlined />
                   <span>Chờ xác nhận</span>
-                  <strong>{dashboard.pendingOrders}</strong>
+                  <strong>
+                    <AnimatedNumber value={dashboard.pendingOrders} />
+                  </strong>
                 </div>
                 <div>
                   <WarningOutlined />
                   <span>Đã hủy</span>
-                  <strong>{dashboard.cancelledOrders}</strong>
+                  <strong>
+                    <AnimatedNumber value={dashboard.cancelledOrders} />
+                  </strong>
                 </div>
               </div>
             </Card>
@@ -962,6 +1068,7 @@ export default function AdminDashboardPage() {
             radial-gradient(circle at 88% 18%, rgba(14, 165, 233, 0.3), transparent 27%),
             linear-gradient(135deg, #071a24 0%, #102b3a 52%, #12394a 100%);
           box-shadow: 0 22px 46px rgba(7, 26, 36, 0.18);
+          animation: admin-dash-fade-up 260ms ease-out both;
         }
 
         .admin-dash-hero::after {
@@ -1019,6 +1126,19 @@ export default function AdminDashboardPage() {
           border: 1px solid rgba(125, 211, 252, 0.18);
           border-radius: 8px;
           background: rgba(255, 255, 255, 0.08);
+          animation: admin-dash-fade-up 240ms ease-out both;
+        }
+
+        .admin-dash-hero-strip .ant-col:nth-child(1) .admin-dash-hero-chip {
+          animation-delay: 60ms;
+        }
+
+        .admin-dash-hero-strip .ant-col:nth-child(2) .admin-dash-hero-chip {
+          animation-delay: 90ms;
+        }
+
+        .admin-dash-hero-strip .ant-col:nth-child(3) .admin-dash-hero-chip {
+          animation-delay: 120ms;
         }
 
         .admin-dash-hero-chip .ant-typography {
@@ -1058,6 +1178,7 @@ export default function AdminDashboardPage() {
           box-shadow:
             inset 0 1px 0 rgba(255, 255, 255, 0.12),
             0 18px 38px rgba(0, 0, 0, 0.16);
+          animation: admin-dash-fade-up 260ms ease-out 80ms both;
         }
 
         .admin-dash-progress-card .ant-progress-text {
@@ -1131,6 +1252,35 @@ export default function AdminDashboardPage() {
             border-color 180ms ease,
             box-shadow 180ms ease,
             transform 180ms ease;
+          animation: admin-dash-fade-up 240ms ease-out both;
+        }
+
+        .admin-dash-shell > .ant-row:nth-of-type(1) .ant-col:nth-child(1) .admin-dash-stat-card {
+          animation-delay: 50ms;
+        }
+
+        .admin-dash-shell > .ant-row:nth-of-type(1) .ant-col:nth-child(2) .admin-dash-stat-card {
+          animation-delay: 70ms;
+        }
+
+        .admin-dash-shell > .ant-row:nth-of-type(1) .ant-col:nth-child(3) .admin-dash-stat-card {
+          animation-delay: 90ms;
+        }
+
+        .admin-dash-shell > .ant-row:nth-of-type(1) .ant-col:nth-child(4) .admin-dash-stat-card {
+          animation-delay: 110ms;
+        }
+
+        .admin-dash-row .ant-col:nth-child(1) .admin-dash-panel {
+          animation-delay: 40ms;
+        }
+
+        .admin-dash-row .ant-col:nth-child(2) .admin-dash-panel {
+          animation-delay: 70ms;
+        }
+
+        .admin-dash-row .ant-col:nth-child(3) .admin-dash-panel {
+          animation-delay: 100ms;
         }
 
         .admin-dash-stat-card:hover,
@@ -1163,6 +1313,15 @@ export default function AdminDashboardPage() {
 
         .admin-dash-stat-copy {
           min-width: 0;
+        }
+
+        .admin-dash-stat-number {
+          display: block;
+          color: #0f172a;
+          font-size: 28px;
+          font-weight: 900;
+          line-height: 1.15;
+          letter-spacing: 0;
         }
 
         .admin-dash-stat-label {
@@ -1380,6 +1539,7 @@ export default function AdminDashboardPage() {
           border-radius: 8px;
           background: #dbe4f0;
           box-shadow: 0 10px 24px rgba(15, 23, 42, 0.055);
+          animation: admin-dash-fade-up 240ms ease-out 60ms both;
         }
 
         .admin-dash-command-strip > div {
@@ -1389,6 +1549,7 @@ export default function AdminDashboardPage() {
           flex-direction: column;
           justify-content: center;
           background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+          animation: none;
         }
 
         .admin-dash-command-strip span {
@@ -1463,6 +1624,23 @@ export default function AdminDashboardPage() {
           border: 1px solid #dbe4f0;
           border-radius: 8px;
           background: #fbfdff;
+          animation: admin-dash-fade-up 220ms ease-out both;
+        }
+
+        .admin-dash-status-grid > div:nth-child(1) {
+          animation-delay: 40ms;
+        }
+
+        .admin-dash-status-grid > div:nth-child(2) {
+          animation-delay: 60ms;
+        }
+
+        .admin-dash-status-grid > div:nth-child(3) {
+          animation-delay: 80ms;
+        }
+
+        .admin-dash-status-grid > div:nth-child(4) {
+          animation-delay: 100ms;
         }
 
         .admin-dash-status-grid .anticon {
@@ -1487,6 +1665,17 @@ export default function AdminDashboardPage() {
           font-size: 24px;
           font-weight: 900;
           line-height: 1;
+        }
+
+        @keyframes admin-dash-fade-up {
+          from {
+            opacity: 0;
+            transform: translate3d(0, 8px, 0);
+          }
+          to {
+            opacity: 1;
+            transform: translate3d(0, 0, 0);
+          }
         }
 
         @media (max-width: 1199px) {
@@ -1528,11 +1717,21 @@ export default function AdminDashboardPage() {
         }
 
         @media (prefers-reduced-motion: reduce) {
+          .admin-dash-hero,
+          .admin-dash-hero-chip,
+          .admin-dash-progress-card,
           .admin-dash-stat-card,
           .admin-dash-panel,
+          .admin-dash-command-strip,
+          .admin-dash-command-strip > div,
+          .admin-dash-table .ant-table-tbody > tr > td,
+          .admin-dash-status-grid > div,
           .admin-dash-queue-item,
           .admin-dash-management-row {
+            animation: none !important;
             transition: none !important;
+            transform: none !important;
+            clip-path: none !important;
           }
         }
       `}</style>

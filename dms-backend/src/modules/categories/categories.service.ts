@@ -31,15 +31,20 @@ export class CategoriesService {
   }
 
   async create(createCategoryDto: CreateCategoryDto) {
+    const code = createCategoryDto.code.toUpperCase();
+
     const existedCategory = await this.categoryModel.findOne({
-      name: createCategoryDto.name,
+      $or: [{ name: createCategoryDto.name }, { code }],
     });
 
     if (existedCategory) {
       throw new BadRequestException('Category already exists');
     }
 
-    const category = await this.categoryModel.create(createCategoryDto);
+    const category = await this.categoryModel.create({
+      ...createCategoryDto,
+      code,
+    });
 
     this.emitCategoryRealtime('created', category);
 
@@ -63,9 +68,36 @@ export class CategoriesService {
   }
 
   async update(id: string, updateCategoryDto: UpdateCategoryDto) {
+    const updateData = { ...updateCategoryDto };
+
+    if (updateCategoryDto.code) {
+      const code = updateCategoryDto.code.toUpperCase();
+      const existedCategory = await this.categoryModel.findOne({
+        code,
+        _id: { $ne: id },
+      });
+
+      if (existedCategory) {
+        throw new BadRequestException('Category code already exists');
+      }
+
+      updateData.code = code;
+    }
+
+    if (updateCategoryDto.name) {
+      const existedCategory = await this.categoryModel.findOne({
+        name: updateCategoryDto.name,
+        _id: { $ne: id },
+      });
+
+      if (existedCategory) {
+        throw new BadRequestException('Category already exists');
+      }
+    }
+
     const category = await this.categoryModel.findByIdAndUpdate(
       id,
-      updateCategoryDto,
+      updateData,
       {
         new: true,
       },
@@ -74,6 +106,8 @@ export class CategoriesService {
     if (!category) {
       throw new NotFoundException('Category not found');
     }
+
+    this.emitCategoryRealtime('updated', category);
 
     return category;
   }

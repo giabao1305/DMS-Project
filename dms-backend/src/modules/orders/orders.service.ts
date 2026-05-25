@@ -28,7 +28,7 @@ import {
   PromotionDocument,
   PromotionType,
 } from '../promotions/schemas/promotion.schema';
-import { UserRole } from '../users/schemas/user.schema';
+import { User, UserDocument, UserRole } from '../users/schemas/user.schema';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { RequestReturnDto } from './dto/request-return.dto';
 import { Order, OrderDocument, OrderStatus } from './schemas/order.schema';
@@ -51,6 +51,8 @@ type QueryFilter = mongoose.QueryFilter<OrderDocument> & {
   createdAt?: DateRangeFilter;
 };
 
+type RelationId = Types.ObjectId | string | { _id: Types.ObjectId | string };
+
 @Injectable()
 export class OrdersService {
   constructor(
@@ -65,6 +67,9 @@ export class OrdersService {
 
     @InjectModel(Promotion.name)
     private readonly promotionModel: Model<PromotionDocument>,
+
+    @InjectModel(User.name)
+    private readonly userModel: Model<UserDocument>,
 
     @InjectConnection()
     private readonly connection: Connection,
@@ -91,6 +96,61 @@ export class OrdersService {
     });
   }
 
+  private getRelationId(value: RelationId): string {
+    if (typeof value === 'string') {
+      return value;
+    }
+
+    if (value instanceof Types.ObjectId) {
+      return value.toHexString();
+    }
+
+    if ('_id' in value) {
+      return value._id.toString();
+    }
+
+    return value;
+  }
+
+  private async getManagedSellerIds(
+    distributorId: string,
+  ): Promise<Types.ObjectId[]> {
+    const sellers = await this.userModel
+      .find({
+        role: UserRole.SELLER,
+        $or: [
+          { manager: new Types.ObjectId(distributorId) },
+          { manager: distributorId },
+        ],
+      })
+      .select('_id')
+      .exec();
+
+    return sellers.map((seller) => seller._id);
+  }
+
+  private async assertManagedSeller(
+    distributorId: string,
+    sellerId: string,
+  ): Promise<void> {
+    const seller = await this.userModel
+      .findOne({
+        _id: new Types.ObjectId(sellerId),
+        role: UserRole.SELLER,
+        $or: [
+          { manager: new Types.ObjectId(distributorId) },
+          { manager: distributorId },
+        ],
+        isActive: true,
+      })
+      .select('_id')
+      .exec();
+
+    if (!seller) {
+      throw new ForbiddenException('Seller is not managed by this distributor');
+    }
+  }
+
   async create(
     createOrderDto: CreateOrderDto,
     currentUserId: string,
@@ -100,10 +160,12 @@ export class OrdersService {
       throw new BadRequestException('Order items are required');
     }
 
-    const orderSellerId =
-      currentUserRole === UserRole.ADMIN && createOrderDto.seller
+    let orderSellerId =
+      currentUserRole === UserRole.ADMIN
         ? createOrderDto.seller
-        : currentUserId;
+        : currentUserRole === UserRole.DISTRIBUTOR
+          ? createOrderDto.seller
+          : currentUserId;
 
     const customer = await this.customerModel.findById(createOrderDto.customer);
 
@@ -113,6 +175,22 @@ export class OrdersService {
 
     if (customer.status !== CustomerStatus.APPROVED) {
       throw new BadRequestException('Customer has not been approved');
+    }
+
+    if (
+      (currentUserRole === UserRole.ADMIN ||
+        currentUserRole === UserRole.DISTRIBUTOR) &&
+      !orderSellerId
+    ) {
+      orderSellerId = customer.assignedSeller.toString();
+    }
+
+    if (!orderSellerId) {
+      throw new BadRequestException('Distributor must select a managed seller');
+    }
+
+    if (currentUserRole === UserRole.DISTRIBUTOR) {
+      await this.assertManagedSeller(currentUserId, orderSellerId);
     }
 
     if (customer.assignedSeller.toString() !== orderSellerId) {
@@ -244,8 +322,27 @@ export class OrdersService {
       throw new ForbiddenException('You cannot update this order');
     }
 
+    if (currentUserRole === UserRole.DISTRIBUTOR) {
+      await this.assertManagedSeller(currentUserId, order.seller.toString());
+    }
+
     if (order.status !== OrderStatus.PENDING) {
       throw new BadRequestException('Only pending orders can be updated');
+    }
+
+    const targetSellerId =
+      currentUserRole === UserRole.ADMIN && updateOrderDto.seller
+        ? updateOrderDto.seller
+        : currentUserRole === UserRole.DISTRIBUTOR && updateOrderDto.seller
+          ? updateOrderDto.seller
+          : order.seller.toString();
+
+    if (currentUserRole === UserRole.SELLER && updateOrderDto.seller) {
+      throw new ForbiddenException('Seller cannot reassign orders');
+    }
+
+    if (currentUserRole === UserRole.DISTRIBUTOR) {
+      await this.assertManagedSeller(currentUserId, targetSellerId);
     }
 
     const customerId = updateOrderDto.customer || order.customer.toString();
@@ -259,6 +356,12 @@ export class OrdersService {
 
     if (customer.status !== CustomerStatus.APPROVED) {
       throw new BadRequestException('Customer has not been approved');
+    }
+
+    if (customer.assignedSeller.toString() !== targetSellerId) {
+      throw new ForbiddenException(
+        'This customer is not assigned to selected seller',
+      );
     }
 
     const items: {
@@ -343,6 +446,7 @@ export class OrdersService {
     }
 
     order.customer = new Types.ObjectId(customerId);
+    order.seller = new Types.ObjectId(targetSellerId);
     order.items = items;
     order.promotion = promotionId;
     order.totalAmount = totalAmount;
@@ -426,13 +530,20 @@ export class OrdersService {
 
   async findMyOrders(
     sellerId: string,
+    role: UserRole,
     query?: PaginationQueryDto,
   ): Promise<Order[] | PaginatedResult<Order>> {
+    const seller =
+      role === UserRole.DISTRIBUTOR
+        ? { $in: await this.getManagedSellerIds(sellerId) }
+        : new Types.ObjectId(sellerId);
+
     const filter = this.buildOrderListFilter(query, {
-      seller: new Types.ObjectId(sellerId),
+      seller,
     });
     const orderQuery = this.orderModel
       .find(filter)
+      .populate('seller', 'fullName email phone companyName')
       .populate('customer', 'name phone address')
       .populate('promotion', 'name type discountPercent discountAmount')
       .populate('returnRequestedBy', 'fullName email')
@@ -466,8 +577,23 @@ export class OrdersService {
       throw new NotFoundException('Order not found');
     }
 
-    if (role === UserRole.SELLER && order.seller._id.toString() !== userId) {
+    const orderSellerId = this.getRelationId(order.seller);
+
+    if (role === UserRole.SELLER && orderSellerId !== userId) {
       throw new ForbiddenException('You can only view your own orders');
+    }
+
+    if (role === UserRole.DISTRIBUTOR) {
+      const managedSellerIds = await this.getManagedSellerIds(userId);
+      const canView = managedSellerIds.some(
+        (sellerId) => sellerId.toString() === orderSellerId,
+      );
+
+      if (!canView) {
+        throw new ForbiddenException(
+          'You can only view orders created by your sellers',
+        );
+      }
     }
 
     return order;
@@ -714,6 +840,10 @@ export class OrdersService {
 
     if (role === UserRole.SELLER && order.seller.toString() !== userId) {
       throw new ForbiddenException('You can only cancel your own orders');
+    }
+
+    if (role === UserRole.DISTRIBUTOR) {
+      await this.assertManagedSeller(userId, order.seller.toString());
     }
 
     if (order.status !== OrderStatus.PENDING) {

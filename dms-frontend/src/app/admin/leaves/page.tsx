@@ -88,7 +88,7 @@ const getLeaveDays = (startDate?: string, endDate?: string) => {
 };
 
 const getSellerName = (seller: LeaveRequest["seller"]) => {
-  if (typeof seller === "string") return seller;
+  if (typeof seller === "string") return /^[a-f\d]{24}$/i.test(seller) ? "-" : seller;
   return (seller as User)?.fullName || "-";
 };
 

@@ -68,13 +68,13 @@ const statusMap: Record<
 };
 
 const getCustomerName = (customer: Visit["customer"]) => {
-  if (typeof customer === "string") return customer;
+  if (typeof customer === "string") return /^[a-f\d]{24}$/i.test(customer) ? "-" : customer;
   return customer?.name || "-";
 };
 
 const getRouteName = (route: Visit["route"]) => {
   if (!route) return "-";
-  if (typeof route === "string") return route;
+  if (typeof route === "string") return /^[a-f\d]{24}$/i.test(route) ? "-" : route;
   return route?.name || "-";
 };
 

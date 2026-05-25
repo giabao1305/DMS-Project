@@ -19,9 +19,12 @@ export class DashboardController {
     return this.dashboardService.getAdminDashboard();
   }
 
-  @Roles(UserRole.SELLER)
+  @Roles(UserRole.DISTRIBUTOR, UserRole.SELLER)
   @Get('seller')
   getSellerDashboard(@CurrentUser() user: UserDocument) {
-    return this.dashboardService.getSellerDashboard(user._id.toString());
+    return this.dashboardService.getSellerDashboard(
+      user._id.toString(),
+      user.role,
+    );
   }
 }

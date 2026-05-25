@@ -10,12 +10,14 @@ import {
 } from '@nestjs/common';
 
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserRole } from './schemas/user.schema';
+import type { UserDocument } from './schemas/user.schema';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -41,9 +43,10 @@ export class UsersController {
     return this.usersService.findAll();
   }
 
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR)
   @Get('sellers')
-  findSellers() {
-    return this.usersService.findByRole(UserRole.SELLER);
+  findSellers(@CurrentUser() user: UserDocument) {
+    return this.usersService.findSellersForUser(user._id.toString(), user.role);
   }
 
   @Get(':id')

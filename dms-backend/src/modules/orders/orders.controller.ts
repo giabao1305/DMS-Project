@@ -26,6 +26,7 @@ import { UpdateOrderDto } from './dto/update-order.dto';
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR, UserRole.SELLER)
   @Post()
   create(
     @Body() createOrderDto: CreateOrderDto,
@@ -38,7 +39,7 @@ export class OrdersController {
     );
   }
 
-  @Roles(UserRole.ADMIN, UserRole.SELLER)
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR, UserRole.SELLER)
   @Patch(':id')
   update(
     @Param('id') id: string,
@@ -58,16 +59,20 @@ export class OrdersController {
     return this.ordersService.findAll(query);
   }
 
-  @Roles(UserRole.SELLER)
+  @Roles(UserRole.DISTRIBUTOR, UserRole.SELLER)
   @Get('my-orders')
   findMyOrders(
     @CurrentUser() user: UserDocument,
     @Query() query: PaginationQueryDto,
   ) {
-    return this.ordersService.findMyOrders(user._id.toString(), query);
+    return this.ordersService.findMyOrders(
+      user._id.toString(),
+      user.role,
+      query,
+    );
   }
 
-  @Roles(UserRole.ADMIN, UserRole.SELLER)
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR, UserRole.SELLER)
   @Get(':id')
   findById(@Param('id') id: string, @CurrentUser() user: UserDocument) {
     return this.ordersService.findById(id, user._id.toString(), user.role);
@@ -105,7 +110,7 @@ export class OrdersController {
     return this.ordersService.returnOrder(id, user._id.toString(), user.role);
   }
 
-  @Roles(UserRole.ADMIN, UserRole.SELLER)
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR, UserRole.SELLER)
   @Patch(':id/cancel')
   cancel(@Param('id') id: string, @CurrentUser() user: UserDocument) {
     return this.ordersService.cancel(id, user._id.toString(), user.role);

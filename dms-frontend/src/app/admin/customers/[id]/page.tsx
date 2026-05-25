@@ -68,7 +68,10 @@ const getRelationName = (
   value?: string | { fullName?: string; email?: string; _id: string },
 ) => {
   if (!value) return "-";
-  return typeof value === "string" ? value : value.fullName || value.email || "-";
+  if (typeof value === "string") {
+    return /^[a-f\d]{24}$/i.test(value) ? "-" : value;
+  }
+  return value.fullName || value.email || "-";
 };
 
 export default function CustomerDetailPage() {

@@ -47,16 +47,20 @@ export class VisitsController {
     return this.visitsService.findAll(query);
   }
 
-  @Roles(UserRole.SELLER)
+  @Roles(UserRole.DISTRIBUTOR, UserRole.SELLER)
   @Get('my-visits')
   findMyVisits(
     @CurrentUser() user: UserDocument,
     @Query() query: PaginationQueryDto,
   ) {
-    return this.visitsService.findMyVisits(user._id.toString(), query);
+    return this.visitsService.findMyVisits(
+      user._id.toString(),
+      user.role,
+      query,
+    );
   }
 
-  @Roles(UserRole.ADMIN, UserRole.SELLER)
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR, UserRole.SELLER)
   @Get(':id')
   findById(@Param('id') id: string, @CurrentUser() user: UserDocument) {
     return this.visitsService.findById(id, user._id.toString(), user.role);

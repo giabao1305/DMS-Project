@@ -45,6 +45,7 @@ const { Text } = Typography;
 type UserFormMode = "create" | "edit";
 
 type UserFormValues = {
+  code?: string;
   fullName: string;
   email: string;
   password?: string;
@@ -82,12 +83,13 @@ export default function UserFormPage({ mode }: { mode: UserFormMode }) {
       ),
     [id, users],
   );
-  const needsAsmManager = selectedRole === "dsr" || selectedRole === "seller";
+  const needsAsmManager = selectedRole === "seller";
 
   useEffect(() => {
     if (!user) return;
 
     form.setFieldsValue({
+      code: user.code,
       fullName: user.fullName,
       email: user.email,
       phone: user.phone,
@@ -186,7 +188,7 @@ export default function UserFormPage({ mode }: { mode: UserFormMode }) {
         description={
           isEdit
             ? "Cập nhật hồ sơ, liên hệ và trạng thái hoạt động của nhân viên."
-            : "Tạo tài khoản seller mới trong hệ thống."
+            : "Tạo tài khoản nhân viên bán hàng mới trong hệ thống."
         }
         extra={
           <Button onClick={() => router.push("/admin/users")}>Quay lại</Button>
@@ -223,6 +225,52 @@ export default function UserFormPage({ mode }: { mode: UserFormMode }) {
               </Flex>
 
               <Row gutter={[18, 0]}>
+                <Col xs={24} md={12}>
+                  <Form.Item
+                    label="Mã nhân sự"
+                    name="code"
+                    normalize={(value?: string) => value?.toUpperCase()}
+                    rules={[
+                      {
+                        required: selectedRole === "seller" || selectedRole === "distributor",
+                        message: "Vui lòng nhập mã DSR/NPP",
+                      },
+                      {
+                        validator: (_, value?: string) => {
+                          if (!value) return Promise.resolve();
+
+                          const pattern =
+                            selectedRole === "distributor"
+                              ? /^NPP-[A-Z]{2,4}-\d{3}$/
+                              : selectedRole === "seller"
+                                ? /^DSR-[A-Z]{2,4}-NPP\d{3}-\d{3}$/
+                                : /^(NPP-[A-Z]{2,4}-\d{3}|DSR-[A-Z]{2,4}-NPP\d{3}-\d{3})$/;
+
+                          return pattern.test(value)
+                            ? Promise.resolve()
+                            : Promise.reject(
+                                new Error(
+                                  selectedRole === "distributor"
+                                    ? "Mã NPP có dạng NPP-HCM-001"
+                                    : "Mã DSR có dạng DSR-HCM-NPP001-001",
+                                ),
+                              );
+                        },
+                      },
+                    ]}
+                  >
+                    <Input
+                      size="large"
+                      prefix={<IdcardOutlined />}
+                      placeholder={
+                        selectedRole === "distributor"
+                          ? "Ví dụ: NPP-HCM-001"
+                          : "Ví dụ: DSR-HCM-NPP001-001"
+                      }
+                    />
+                  </Form.Item>
+                </Col>
+
                 <Col xs={24} md={12}>
                   <Form.Item
                     label="Họ tên"
@@ -410,7 +458,7 @@ export default function UserFormPage({ mode }: { mode: UserFormMode }) {
             >
               <Flex align="center" gap={10} className="admin-user-form-note">
                 <UserOutlined />
-                <Text>{isEdit ? "Đang cập nhật hồ sơ" : "Tạo seller mới"}</Text>
+                <Text>{isEdit ? "Đang cập nhật hồ sơ" : "Tạo nhân viên mới"}</Text>
               </Flex>
 
               <Space wrap>

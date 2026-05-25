@@ -140,6 +140,9 @@ export default function UserDetailPage() {
 
             <Row gutter={[16, 16]}>
               <Col xs={24} md={12} xl={8}>
+                <InfoItem icon={<IdcardOutlined />} label="Mã nhân sự" value={user.code || "-"} />
+              </Col>
+              <Col xs={24} md={12} xl={8}>
                 <InfoItem icon={<UserOutlined />} label="Họ tên" value={user.fullName} />
               </Col>
               <Col xs={24} md={12} xl={8}>

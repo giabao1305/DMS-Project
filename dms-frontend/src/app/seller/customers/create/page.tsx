@@ -27,6 +27,8 @@ import SellerBreadcrumb from "@/components/ui/SellerBreadcrumb";
 import SellerPageHeader from "@/components/ui/SellerPageHeader";
 import { useCreateCustomerMutation } from "@/features/customers/customerService";
 import type { CreateCustomerRequest } from "@/features/customers/customerTypes";
+import { useGetSellerUsersQuery } from "@/features/users/userService";
+import { useAppSelector } from "@/store/hooks";
 
 const { Text } = Typography;
 
@@ -44,7 +46,13 @@ export default function SellerCreateCustomerPage() {
   const { message } = App.useApp();
   const router = useRouter();
   const [form] = Form.useForm<CreateCustomerRequest>();
+  const currentUser = useAppSelector((state) => state.auth.user);
+  const isDistributor = currentUser?.role === "distributor";
   const [createCustomer, { isLoading }] = useCreateCustomerMutation();
+  const { data: managedSellers = [], isFetching: loadingManagedSellers } =
+    useGetSellerUsersQuery(undefined, {
+      skip: !isDistributor,
+    });
 
   const handleSubmit = async (values: CreateCustomerRequest) => {
     try {
@@ -184,6 +192,31 @@ export default function SellerCreateCustomerPage() {
                 />
               </Form.Item>
             </Col>
+
+            {isDistributor ? (
+              <Col xs={24} lg={12}>
+                <Form.Item
+                  label="DSR phụ trách"
+                  name="assignedSeller"
+                  rules={[
+                    { required: true, message: "Vui lòng chọn DSR phụ trách" },
+                  ]}
+                >
+                  <Select
+                    showSearch
+                    size="large"
+                    loading={loadingManagedSellers}
+                    placeholder="Chọn DSR trong đội"
+                    optionFilterProp="label"
+                    options={managedSellers.map((seller) => ({
+                      label: `${seller.fullName} - ${seller.email}`,
+                      value: seller._id,
+                    }))}
+                    style={{ width: "100%" }}
+                  />
+                </Form.Item>
+              </Col>
+            ) : null}
           </Row>
 
           <div className="seller-customer-form-coordinate-note">

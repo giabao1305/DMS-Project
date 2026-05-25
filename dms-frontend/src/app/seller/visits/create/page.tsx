@@ -26,6 +26,7 @@ import SellerPageHeader from "@/components/ui/SellerPageHeader";
 import { useGetMyCustomersQuery } from "@/features/customers/customerService";
 import { useCheckInMutation } from "@/features/visits/visitService";
 import type { CheckInRequest } from "@/features/visits/visitTypes";
+import { useAppSelector } from "@/store/hooks";
 
 const { Text } = Typography;
 
@@ -43,6 +44,7 @@ export default function SellerCreateVisitPage() {
   const { message } = App.useApp();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const currentUser = useAppSelector((state) => state.auth.user);
 
   const customerId = searchParams.get("customer") || undefined;
   const routeId = searchParams.get("route") || undefined;
@@ -60,6 +62,12 @@ export default function SellerCreateVisitPage() {
 
   const { data: customers = [] } = useGetMyCustomersQuery();
   const [checkIn, { isLoading }] = useCheckInMutation();
+
+  useEffect(() => {
+    if (currentUser?.role === "distributor") {
+      router.replace("/forbidden?required=DSR&current=distributor");
+    }
+  }, [currentUser?.role, router]);
 
   const approvedCustomers = useMemo(() => {
     return customers.filter(

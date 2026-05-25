@@ -78,6 +78,7 @@ export default function UsersPage() {
     return sellerUsers.filter((user) => {
       const matchesKeyword =
         normalizedKeyword.length === 0 ||
+        user.code?.toLowerCase().includes(normalizedKeyword) ||
         user.fullName.toLowerCase().includes(normalizedKeyword) ||
         user.email.toLowerCase().includes(normalizedKeyword) ||
         user.phone?.toLowerCase().includes(normalizedKeyword) ||
@@ -123,13 +124,19 @@ export default function UsersPage() {
       fixed: "left",
       render: (_, record) => (
         <Flex align="center" gap={12}>
-          <Avatar size={42} src={record.avatar} icon={<UserOutlined />} />
+          <Avatar size={42} src={record.avatar?.trim() || undefined} icon={<UserOutlined />} />
           <div className="admin-users-cell-copy">
             <Text className="admin-users-strong">{record.fullName}</Text>
             <Text className="admin-users-muted">{record.email}</Text>
           </div>
         </Flex>
       ),
+    },
+    {
+      title: "Mã",
+      dataIndex: "code",
+      width: 180,
+      render: (value?: string) => (value ? <Text code>{value}</Text> : "-"),
     },
     {
       title: "Số điện thoại",
@@ -234,7 +241,7 @@ export default function UsersPage() {
 
       <AdminPageHeader
         title="Quản lý nhân viên"
-        description="Quản lý tài khoản seller, thông tin liên hệ, công ty và trạng thái hoạt động."
+        description="Quản lý tài khoản nhân viên bán hàng, thông tin liên hệ, công ty và trạng thái hoạt động."
         extra={
           <Link href="/admin/users/create">
             <Button type="primary" icon={<PlusOutlined />}>
@@ -247,12 +254,12 @@ export default function UsersPage() {
       <section className="admin-users-shell">
         <div className="admin-users-hero">
           <div>
-            <Tag className="admin-users-hero-tag">User Operation</Tag>
+            <Tag className="admin-users-hero-tag">Nhân sự bán hàng</Tag>
             <Title level={2} className="admin-users-hero-title">
               Điều phối nhân sự bán hàng
             </Title>
             <Text className="admin-users-hero-desc">
-              Theo dõi tài khoản seller, trạng thái đăng nhập và hồ sơ công ty
+              Theo dõi tài khoản nhân viên, trạng thái đăng nhập và hồ sơ công ty
               phục vụ vận hành phân phối.
             </Text>
 
@@ -346,9 +353,6 @@ export default function UsersPage() {
                   viên
                 </Text>
               </div>
-              <Tag color="blue" className="admin-users-result-tag">
-                Realtime user monitoring
-              </Tag>
             </Flex>
           }
         >
@@ -357,7 +361,7 @@ export default function UsersPage() {
             loading={isLoading || deleting || togglingStatus}
             dataSource={filteredUsers}
             columns={columns}
-            scroll={{ x: 1410 }}
+            scroll={{ x: 1590 }}
             className="admin-users-table"
             pagination={{
               pageSize: 10,

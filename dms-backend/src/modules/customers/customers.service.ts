@@ -24,14 +24,21 @@ import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../notifications/schemas/notification.schema';
+import { User, UserDocument, UserRole } from '../users/schemas/user.schema';
 
 type QueryFilter = Record<string, any>;
+
+type RelationId = Types.ObjectId | string | { _id: Types.ObjectId | string };
 
 @Injectable()
 export class CustomersService {
   constructor(
     @InjectModel(Customer.name)
     private readonly customerModel: Model<CustomerDocument>,
+
+    @InjectModel(User.name)
+    private readonly userModel: Model<UserDocument>,
+
     private readonly notificationsService: NotificationsService,
   ) {}
 
@@ -42,14 +49,81 @@ export class CustomersService {
     });
   }
 
+  private async getManagedSellerIds(
+    distributorId: string,
+  ): Promise<Types.ObjectId[]> {
+    const sellers = await this.userModel
+      .find({
+        role: UserRole.SELLER,
+        $or: [
+          { manager: new Types.ObjectId(distributorId) },
+          { manager: distributorId },
+        ],
+      })
+      .select('_id')
+      .exec();
+
+    return sellers.map((seller) => seller._id);
+  }
+
+  private async assertManagedSeller(
+    distributorId: string,
+    sellerId: string,
+  ): Promise<void> {
+    const seller = await this.userModel
+      .findOne({
+        _id: new Types.ObjectId(sellerId),
+        role: UserRole.SELLER,
+        $or: [
+          { manager: new Types.ObjectId(distributorId) },
+          { manager: distributorId },
+        ],
+        isActive: true,
+      })
+      .select('_id')
+      .exec();
+
+    if (!seller) {
+      throw new ForbiddenException('Seller is not managed by this distributor');
+    }
+  }
+
+  private getRelationId(value: RelationId): string {
+    if (typeof value === 'string') {
+      return value;
+    }
+
+    if (value instanceof Types.ObjectId) {
+      return value.toHexString();
+    }
+
+    if ('_id' in value) {
+      return value._id.toString();
+    }
+
+    return value;
+  }
+
   async create(
     createCustomerDto: CreateCustomerDto,
     currentUserId: string,
-    currentUserRole: string,
+    currentUserRole: UserRole,
   ): Promise<Customer> {
-    const isAdmin = currentUserRole === 'admin';
+    const isAdmin = currentUserRole === UserRole.ADMIN;
+    const isDistributor = currentUserRole === UserRole.DISTRIBUTOR;
 
-    const assignedSeller = createCustomerDto.assignedSeller || currentUserId;
+    const assignedSeller =
+      isAdmin || isDistributor
+        ? createCustomerDto.assignedSeller
+        : currentUserId;
+
+    if (!assignedSeller) {
+      throw new BadRequestException('Customer must be assigned to a seller');
+    }
+
+    if (isDistributor) {
+      await this.assertManagedSeller(currentUserId, assignedSeller);
+    }
 
     const createdCustomer = new this.customerModel({
       ...createCustomerDto,
@@ -86,6 +160,14 @@ export class CustomersService {
           }),
         ),
       );
+    } else {
+      await this.notificationsService.create({
+        user: assignedSeller,
+        title: 'Khách hàng mới được gán',
+        message: `Admin vừa gán khách hàng ${savedCustomer.name} cho bạn`,
+        type: NotificationType.SYSTEM,
+        relatedId: savedCustomer._id.toString(),
+      });
     }
 
     this.emitCustomerRealtime('created', savedCustomer);
@@ -158,12 +240,23 @@ export class CustomersService {
 
   async findMyCustomers(
     userId: string,
+    role: UserRole,
     query?: PaginationQueryDto,
   ): Promise<Customer[] | PaginatedResult<Customer>> {
+    const assignedSeller =
+      role === UserRole.DISTRIBUTOR
+        ? { $in: await this.getManagedSellerIds(userId) }
+        : new Types.ObjectId(userId);
+
     const filter = this.buildCustomerListFilter(query, {
-      assignedSeller: new Types.ObjectId(userId),
+      assignedSeller,
     });
-    const customerQuery = this.customerModel.find(filter).sort(getSort(query));
+    const customerQuery = this.customerModel
+      .find(filter)
+      .populate('assignedSeller', 'fullName email phone companyName')
+      .populate('createdBy', 'fullName email')
+      .populate('approvedBy', 'fullName email')
+      .sort(getSort(query));
 
     if (!shouldPaginate(query)) {
       return customerQuery.exec();
@@ -178,7 +271,11 @@ export class CustomersService {
     return toPaginatedResult(data, total, page, limit);
   }
 
-  async findById(id: string): Promise<Customer> {
+  async findById(
+    id: string,
+    userId: string,
+    role: UserRole,
+  ): Promise<Customer> {
     const customer = await this.customerModel
       .findById(id)
       .populate('assignedSeller', 'fullName email phone companyName')
@@ -190,6 +287,27 @@ export class CustomersService {
       throw new NotFoundException('Customer not found');
     }
 
+    if (
+      role === UserRole.SELLER &&
+      this.getRelationId(customer.assignedSeller) !== userId
+    ) {
+      throw new ForbiddenException('You can only view your own customers');
+    }
+
+    if (role === UserRole.DISTRIBUTOR) {
+      const managedSellerIds = await this.getManagedSellerIds(userId);
+      const assignedSellerId = this.getRelationId(customer.assignedSeller);
+      const canView = managedSellerIds.some(
+        (sellerId) => sellerId.toString() === assignedSellerId,
+      );
+
+      if (!canView) {
+        throw new ForbiddenException(
+          'You can only view customers assigned to your sellers',
+        );
+      }
+    }
+
     return customer;
   }
 
@@ -197,7 +315,7 @@ export class CustomersService {
     id: string,
     updateCustomerDto: UpdateCustomerDto,
     currentUserId: string,
-    currentUserRole: string,
+    currentUserRole: UserRole,
   ): Promise<Customer> {
     const customer = await this.customerModel.findById(id).exec();
 
@@ -205,15 +323,50 @@ export class CustomersService {
       throw new NotFoundException('Customer not found');
     }
 
-    const isSeller = currentUserRole === 'seller';
+    const isSeller = currentUserRole === UserRole.SELLER;
+    const isDistributor = currentUserRole === UserRole.DISTRIBUTOR;
+    const previousAssignedSeller = customer.assignedSeller.toString();
 
     if (isSeller && customer.assignedSeller.toString() !== currentUserId) {
       throw new ForbiddenException('You can only update your own customers');
     }
 
+    if (isSeller && updateCustomerDto.assignedSeller) {
+      throw new ForbiddenException('Seller cannot reassign customers');
+    }
+
+    if (isDistributor) {
+      await this.assertManagedSeller(
+        currentUserId,
+        customer.assignedSeller.toString(),
+      );
+
+      if (updateCustomerDto.assignedSeller) {
+        await this.assertManagedSeller(
+          currentUserId,
+          updateCustomerDto.assignedSeller,
+        );
+      }
+    }
+
     Object.assign(customer, updateCustomerDto);
 
     const savedCustomer = await customer.save();
+
+    const nextAssignedSeller = savedCustomer.assignedSeller.toString();
+
+    if (
+      updateCustomerDto.assignedSeller &&
+      nextAssignedSeller !== previousAssignedSeller
+    ) {
+      await this.notificationsService.create({
+        user: nextAssignedSeller,
+        title: 'Khách hàng mới được gán',
+        message: `Bạn vừa được gán phụ trách khách hàng ${savedCustomer.name}`,
+        type: NotificationType.SYSTEM,
+        relatedId: savedCustomer._id.toString(),
+      });
+    }
 
     this.emitCustomerRealtime('updated', savedCustomer);
 

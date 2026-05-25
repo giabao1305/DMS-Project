@@ -32,6 +32,7 @@ import SellerPageHeader from "@/components/ui/SellerPageHeader";
 import { useGetMyCustomersQuery } from "@/features/customers/customerService";
 import type { Customer } from "@/features/customers/customerTypes";
 import { useRealtimeRefetch } from "@/hooks/useRealtimeRefetch";
+import { useAppSelector } from "@/store/hooks";
 
 const { Text } = Typography;
 
@@ -68,15 +69,27 @@ const statusMap = {
   },
 };
 
-const getUserName = (user: Customer["assignedSeller"]) => {
+const isMongoId = (value: string) => /^[a-f\d]{24}$/i.test(value);
+
+const getUserName = (
+  user: Customer["assignedSeller"],
+  currentUser?: { _id: string; fullName?: string; email?: string } | null,
+) => {
   if (!user) return "-";
-  if (typeof user === "string") return user;
+  if (typeof user === "string") {
+    if (currentUser?._id === user) {
+      return currentUser.fullName || currentUser.email || "-";
+    }
+
+    return isMongoId(user) ? "-" : user;
+  }
   return user.fullName || user.email || user.companyName || "-";
 };
 
 export default function SellerCustomersPage() {
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState<FilterStatus>("all");
+  const currentUser = useAppSelector((state) => state.auth.user);
 
   const { data: customers = [], isLoading, refetch } = useGetMyCustomersQuery();
 
@@ -174,7 +187,7 @@ export default function SellerCustomersPage() {
       width: 190,
       render: (value: Customer["assignedSeller"]) => (
         <Text className="seller-customers-table-muted">
-          {getUserName(value)}
+          {getUserName(value, currentUser)}
         </Text>
       ),
     },

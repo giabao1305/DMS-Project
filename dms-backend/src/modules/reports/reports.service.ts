@@ -100,6 +100,23 @@ export class ReportsService {
     });
   }
 
+  private async getManagedSellerIds(
+    distributorId: string,
+  ): Promise<Types.ObjectId[]> {
+    const sellers = await this.userModel
+      .find({
+        role: UserRole.SELLER,
+        $or: [
+          { manager: new Types.ObjectId(distributorId) },
+          { manager: distributorId },
+        ],
+      })
+      .select('_id')
+      .exec();
+
+    return sellers.map((seller) => seller._id);
+  }
+
   private getMonthRange(month: number, year: number): MonthRange {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 1);
@@ -427,6 +444,21 @@ export class ReportsService {
     return this.kpiModel
       .find({
         seller: new Types.ObjectId(sellerId),
+      })
+      .populate('seller', 'fullName email phone companyName')
+      .sort({ year: -1, month: -1 })
+      .exec();
+  }
+
+  async findMyKpis(userId: string, role: UserRole): Promise<Kpi[]> {
+    const seller =
+      role === UserRole.DISTRIBUTOR
+        ? { $in: await this.getManagedSellerIds(userId) }
+        : new Types.ObjectId(userId);
+
+    return this.kpiModel
+      .find({
+        seller,
       })
       .populate('seller', 'fullName email phone companyName')
       .sort({ year: -1, month: -1 })

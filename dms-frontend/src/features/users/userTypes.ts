@@ -4,6 +4,7 @@ export type { UserRole };
 
 export interface User {
   _id: string;
+  code?: string;
   fullName: string;
   email: string;
   phone?: string;
@@ -19,6 +20,7 @@ export interface User {
 }
 
 export interface CreateUserRequest {
+  code?: string;
   fullName: string;
   email: string;
   password: string;
@@ -31,6 +33,7 @@ export interface CreateUserRequest {
 }
 
 export interface UpdateUserRequest {
+  code?: string;
   fullName?: string;
   email?: string;
   password?: string;

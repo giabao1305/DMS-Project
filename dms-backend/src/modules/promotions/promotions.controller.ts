@@ -34,13 +34,13 @@ export class PromotionsController {
     return this.promotionsService.findAll();
   }
 
-  @Roles(UserRole.ADMIN, UserRole.SELLER)
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR, UserRole.SELLER)
   @Get('active')
   findActive() {
     return this.promotionsService.findActive();
   }
 
-  @Roles(UserRole.ADMIN, UserRole.SELLER)
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR, UserRole.SELLER)
   @Get(':id')
   findById(@Param('id') id: string) {
     return this.promotionsService.findById(id);
