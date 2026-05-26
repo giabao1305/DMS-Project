@@ -750,20 +750,7 @@ export default function SellerLayout({
             [class*="-card"],
             [class*="-panel"]
           ) {
-          transition:
-            border-color 150ms ease,
-            background-color 150ms ease,
-            color 150ms ease !important;
-        }
-
-        .seller-content
-          :is(
-            .ant-card,
-            [class*="-card"],
-            [class*="-panel"]
-          ):hover {
-          border-color: #b7ddd8 !important;
-          box-shadow: 0 4px 12px rgba(11, 47, 42, 0.035) !important;
+          transition: none !important;
           transform: none !important;
         }
 
