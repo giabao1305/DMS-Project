@@ -43,7 +43,10 @@ export class AuthController {
     @CurrentUser() user: UserDocument,
     @Body() updateProfileDto: UpdateProfileDto,
   ) {
-    return this.authService.updateProfile(user._id.toString(), updateProfileDto);
+    return this.authService.updateProfile(
+      user._id.toString(),
+      updateProfileDto,
+    );
   }
 
   @UseGuards(AuthRateLimitGuard)

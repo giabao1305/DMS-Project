@@ -104,14 +104,59 @@ export class RoutesService {
     return sellers.map((seller) => seller._id);
   }
 
+  private async assertManagedSeller(
+    distributorId: string,
+    sellerId: string,
+  ): Promise<void> {
+    const seller = await this.userModel
+      .findOne({
+        _id: new Types.ObjectId(sellerId),
+        role: UserRole.SELLER,
+        isActive: true,
+        $or: [
+          { manager: new Types.ObjectId(distributorId) },
+          { manager: distributorId },
+        ],
+      })
+      .select('_id')
+      .exec();
+
+    if (!seller) {
+      throw new ForbiddenException('Seller is not managed by this distributor');
+    }
+  }
+
+  private async assertRouteAccess(
+    routeId: string,
+    userId: string,
+    role: UserRole,
+  ): Promise<RouteDocument> {
+    const route = await this.routeModel.findById(routeId);
+
+    if (!route) {
+      throw new NotFoundException('Route not found');
+    }
+
+    if (role === UserRole.DISTRIBUTOR) {
+      await this.assertManagedSeller(userId, route.seller.toString());
+    }
+
+    return route;
+  }
+
   async create(
     createRouteDto: CreateRouteDto,
     adminId: string,
+    role: UserRole,
   ): Promise<Route> {
     const seller = await this.userModel.findById(createRouteDto.seller);
 
     if (!seller || !seller.isActive || seller.role !== UserRole.SELLER) {
       throw new NotFoundException('Seller not found');
+    }
+
+    if (role === UserRole.DISTRIBUTOR) {
+      await this.assertManagedSeller(adminId, createRouteDto.seller);
     }
 
     if (!createRouteDto.customers || createRouteDto.customers.length === 0) {
@@ -404,7 +449,13 @@ export class RoutesService {
     return route;
   }
 
-  async update(id: string, updateRouteDto: UpdateRouteDto): Promise<Route> {
+  async update(
+    id: string,
+    updateRouteDto: UpdateRouteDto,
+    userId: string,
+    role: UserRole,
+  ): Promise<Route> {
+    const existingRoute = await this.assertRouteAccess(id, userId, role);
     const updateData: {
       name?: string;
       seller?: Types.ObjectId;
@@ -428,6 +479,10 @@ export class RoutesService {
         throw new NotFoundException('Seller not found');
       }
 
+      if (role === UserRole.DISTRIBUTOR) {
+        await this.assertManagedSeller(userId, updateRouteDto.seller);
+      }
+
       updateData.seller = new Types.ObjectId(updateRouteDto.seller);
     }
 
@@ -436,19 +491,11 @@ export class RoutesService {
     }
 
     if (updateRouteDto.seller || updateRouteDto.workDate) {
-      const currentRoute = await this.routeModel
-        .findById(id)
-        .select('seller workDate');
-
-      if (!currentRoute) {
-        throw new NotFoundException('Route not found');
-      }
-
       await this.ensureSellerHasNoRouteOnDate(
-        updateRouteDto.seller ?? currentRoute.seller.toString(),
+        updateRouteDto.seller ?? existingRoute.seller.toString(),
         updateRouteDto.workDate
           ? new Date(updateRouteDto.workDate)
-          : currentRoute.workDate,
+          : existingRoute.workDate,
         id,
       );
     }
@@ -459,14 +506,8 @@ export class RoutesService {
       let validSellerId = updateRouteDto.seller;
 
       if (!validSellerId) {
-        const currentRoute = await this.routeModel.findById(id);
-
-        if (!currentRoute) {
-          throw new NotFoundException('Route not found');
-        }
-
-        updateData.seller = currentRoute.seller;
-        validSellerId = currentRoute.seller.toString();
+        updateData.seller = existingRoute.seller;
+        validSellerId = existingRoute.seller.toString();
       }
 
       const routeCustomers: {
@@ -525,7 +566,11 @@ export class RoutesService {
   async updateStatus(
     id: string,
     updateRouteStatusDto: UpdateRouteStatusDto,
+    userId: string,
+    role: UserRole,
   ): Promise<Route> {
+    await this.assertRouteAccess(id, userId, role);
+
     const route = await this.routeModel
       .findByIdAndUpdate(
         id,
@@ -621,7 +666,13 @@ export class RoutesService {
     return savedRoute;
   }
 
-  async remove(id: string): Promise<{ message: string }> {
+  async remove(
+    id: string,
+    userId: string,
+    role: UserRole,
+  ): Promise<{ message: string }> {
+    await this.assertRouteAccess(id, userId, role);
+
     const visitCount = await this.visitModel.countDocuments({
       route: new Types.ObjectId(id),
     });

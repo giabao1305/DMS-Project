@@ -9,7 +9,6 @@ import {
 } from "@ant-design/icons";
 import {
   App,
-  Alert,
   Button,
   Card,
   Col,
@@ -139,8 +138,6 @@ export default function SellerEditCustomerPage() {
     );
   }
 
-  const isApproved = customer.status === "approved";
-
   return (
     <>
       <SellerBreadcrumb />
@@ -152,16 +149,6 @@ export default function SellerEditCustomerPage() {
       />
 
       <Flex vertical gap={16}>
-        {isApproved && (
-          <Alert
-            showIcon
-            type="info"
-            message="Khách hàng đã được duyệt"
-            description="Thông tin của khách hàng đã duyệt hiện không thể chỉnh sửa từ tài khoản seller."
-            className="seller-customer-edit-alert"
-          />
-        )}
-
         <Card
           variant="borderless"
           title={
@@ -180,7 +167,6 @@ export default function SellerEditCustomerPage() {
             form={form}
             layout="vertical"
             onFinish={handleSubmit}
-            disabled={isApproved}
             requiredMark
           >
             <Row gutter={[18, 4]}>

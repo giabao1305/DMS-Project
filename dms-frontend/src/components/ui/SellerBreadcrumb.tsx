@@ -5,13 +5,13 @@ import type { ItemType } from "antd/es/breadcrumb/Breadcrumb";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-type SellerMenuItem = {
+type SalesMenuItem = {
   key: string;
   label: string;
 };
 
-const sellerMenuItems: SellerMenuItem[] = [
-  { key: "/seller/dashboard", label: "Dashboard" },
+const sellerMenuItems: SalesMenuItem[] = [
+  { key: "/seller/dashboard", label: "Tổng quan" },
   { key: "/seller/customers", label: "Khách hàng" },
   { key: "/seller/orders", label: "Đơn hàng" },
   { key: "/seller/routes", label: "Tuyến bán hàng" },
@@ -22,14 +22,32 @@ const sellerMenuItems: SellerMenuItem[] = [
   { key: "/seller/profile", label: "Tài khoản" },
 ];
 
+const distributorMenuItems: SalesMenuItem[] = [
+  { key: "/distributor/dashboard", label: "Tổng quan" },
+  { key: "/distributor/team", label: "Đội DSR" },
+  { key: "/distributor/customers", label: "Khách hàng đội" },
+  { key: "/distributor/orders", label: "Đơn hàng đội" },
+  { key: "/distributor/routes", label: "Tuyến đội" },
+  { key: "/distributor/visits", label: "Ghé thăm" },
+  { key: "/distributor/kpis", label: "KPI đội" },
+  { key: "/distributor/leaves", label: "Nghỉ phép" },
+  { key: "/distributor/notifications", label: "Thông báo" },
+  { key: "/distributor/profile", label: "Tài khoản" },
+];
+
 export default function SellerBreadcrumb() {
   const pathname = usePathname();
   const paths = pathname.split("/").filter(Boolean);
+  const isDistributor = pathname.startsWith("/distributor");
+  const menuItems = isDistributor ? distributorMenuItems : sellerMenuItems;
+  const dashboardPath = isDistributor
+    ? "/distributor/dashboard"
+    : "/seller/dashboard";
 
-  let currentMenu: SellerMenuItem | undefined;
+  let currentMenu: SalesMenuItem | undefined;
   let actionLabel = "";
 
-  for (const item of sellerMenuItems) {
+  for (const item of menuItems) {
     if (pathname.startsWith(item.key)) {
       currentMenu = item;
     }
@@ -46,14 +64,14 @@ export default function SellerBreadcrumb() {
   const items: ItemType[] = [
     {
       title: (
-        <Link href="/seller/dashboard" className="seller-breadcrumb-link">
+        <Link href={dashboardPath} className="seller-breadcrumb-link">
           Tổng quan
         </Link>
       ),
     },
   ];
 
-  if (currentMenu && currentMenu.key !== "/seller/dashboard") {
+  if (currentMenu && currentMenu.key !== dashboardPath) {
     items.push({
       title: actionLabel ? (
         <Link href={currentMenu.key} className="seller-breadcrumb-link">

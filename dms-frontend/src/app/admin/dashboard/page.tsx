@@ -502,7 +502,7 @@ export default function AdminDashboardPage() {
       <AdminBreadcrumb />
 
       <AdminPageHeader
-        title="Dashboard điều hành"
+        title="Tổng quan điều hành"
         description="Một màn hình tập trung cho doanh thu, đơn hàng, tồn kho và hiệu suất đội bán hàng."
         extra={
           <Flex gap={10} wrap="wrap">
@@ -521,7 +521,7 @@ export default function AdminDashboardPage() {
       <section className="admin-dash-shell">
         <div className="admin-dash-hero">
           <div className="admin-dash-hero-copy">
-            <Tag className="admin-dash-hero-tag">Live Operation</Tag>
+            <Tag className="admin-dash-hero-tag">Vận hành trực tiếp</Tag>
             <Title level={2} className="admin-dash-hero-title">
               Tổng quan tháng {reportParams.month}/{reportParams.year}
             </Title>
@@ -836,7 +836,7 @@ export default function AdminDashboardPage() {
                 <PanelTitle
                   title="Việc cần xử lý"
                   description="Các hàng đợi quan trọng trong ngày"
-                  extra={<Tag color="orange">Action</Tag>}
+                  extra={<Tag color="orange">Cần xử lý</Tag>}
                 />
               }
             >
@@ -904,7 +904,7 @@ export default function AdminDashboardPage() {
                 <PanelTitle
                   title="Top seller theo doanh thu"
                   description="Hiệu suất bán hàng nổi bật trong tháng"
-                  extra={<Tag color="cyan">Top 7</Tag>}
+                  extra={<Tag color="cyan">7 cao nhất</Tag>}
                 />
               }
             >
@@ -1007,7 +1007,7 @@ export default function AdminDashboardPage() {
                 <PanelTitle
                   title="Tóm tắt xử lý đơn"
                   description="Tình trạng vận hành hiện tại"
-                  extra={<Tag color="green">Status</Tag>}
+                  extra={<Tag color="green">Trạng thái</Tag>}
                 />
               }
             >

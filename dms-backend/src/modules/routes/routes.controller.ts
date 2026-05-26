@@ -27,13 +27,17 @@ import { RoutesService } from './routes.service';
 export class RoutesController {
   constructor(private readonly routesService: RoutesService) {}
 
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR)
   @Post()
   create(
     @Body() createRouteDto: CreateRouteDto,
     @CurrentUser() user: UserDocument,
   ) {
-    return this.routesService.create(createRouteDto, user._id.toString());
+    return this.routesService.create(
+      createRouteDto,
+      user._id.toString(),
+      user.role,
+    );
   }
 
   @Roles(UserRole.ADMIN)
@@ -67,24 +71,39 @@ export class RoutesController {
     return this.routesService.findById(id, user._id.toString(), user.role);
   }
 
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR)
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateRouteDto: UpdateRouteDto) {
-    return this.routesService.update(id, updateRouteDto);
+  update(
+    @Param('id') id: string,
+    @Body() updateRouteDto: UpdateRouteDto,
+    @CurrentUser() user: UserDocument,
+  ) {
+    return this.routesService.update(
+      id,
+      updateRouteDto,
+      user._id.toString(),
+      user.role,
+    );
   }
 
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR)
   @Patch(':id/status')
   updateStatus(
     @Param('id') id: string,
     @Body() updateRouteStatusDto: UpdateRouteStatusDto,
+    @CurrentUser() user: UserDocument,
   ) {
-    return this.routesService.updateStatus(id, updateRouteStatusDto);
+    return this.routesService.updateStatus(
+      id,
+      updateRouteStatusDto,
+      user._id.toString(),
+      user.role,
+    );
   }
 
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR)
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.routesService.remove(id);
+  remove(@Param('id') id: string, @CurrentUser() user: UserDocument) {
+    return this.routesService.remove(id, user._id.toString(), user.role);
   }
 }

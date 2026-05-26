@@ -31,6 +31,8 @@ import type { ColumnsType } from "antd/es/table";
 import Link from "next/link";
 import { useMemo } from "react";
 
+import SellerBreadcrumb from "@/components/ui/SellerBreadcrumb";
+import SellerPageHeader from "@/components/ui/SellerPageHeader";
 import { useGetMyCustomersQuery } from "@/features/customers/customerService";
 import { useGetMyOrdersQuery } from "@/features/orders/orderService";
 import type { Order } from "@/features/orders/orderTypes";
@@ -361,7 +363,14 @@ export default function DistributorDashboardPage() {
   ];
 
   return (
-    <Flex vertical gap={22} className="distributor-page-stack distributor-dashboard-stack">
+    <>
+      <SellerBreadcrumb />
+      <SellerPageHeader
+        title="Tổng quan nhà phân phối"
+        description="Theo dõi nhanh hoạt động bán hàng, đội DSR, đơn hàng và tuyến ghé thăm hôm nay."
+      />
+
+      <Flex vertical gap={22} className="distributor-page-stack distributor-dashboard-stack">
       <Card className="distributor-dashboard-hero-card" styles={{ body: { padding: 0 } }}>
         <Row gutter={0}>
           <Col xs={24} lg={9}>
@@ -856,6 +865,7 @@ export default function DistributorDashboardPage() {
           padding-inline: 18px;
         }
       `}</style>
-    </Flex>
+      </Flex>
+    </>
   );
 }

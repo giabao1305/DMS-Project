@@ -465,6 +465,14 @@ export default function AdminRouteDetailPage() {
           border: 1px solid #dbe4f0;
           border-radius: 8px;
           background: #ffffff;
+          transition: none !important;
+        }
+
+        .admin-route-detail-panel:hover {
+          border-color: #dbe4f0 !important;
+          background: #ffffff !important;
+          box-shadow: none !important;
+          transform: none !important;
         }
 
         .admin-route-detail-panel.is-loading {
@@ -668,10 +676,6 @@ export default function AdminRouteDetailPage() {
           background: #ffffff !important;
           border-bottom-color: #edf2f7 !important;
           vertical-align: middle !important;
-        }
-
-        .admin-route-detail-table .ant-table-tbody > tr:hover > td {
-          background: #f8fbff !important;
         }
 
         .admin-route-detail-order-tag,

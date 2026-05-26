@@ -4,6 +4,8 @@ import {
   CheckOutlined,
   CloseOutlined,
   EditOutlined,
+  FileExcelOutlined,
+  FilePdfOutlined,
   RollbackOutlined,
   ShopOutlined,
   TruckOutlined,
@@ -15,6 +17,7 @@ import {
   Divider,
   Empty,
   Flex,
+  Modal,
   Row,
   Space,
   Table,
@@ -22,10 +25,16 @@ import {
   Typography,
 } from "antd";
 import { useParams, useRouter } from "next/navigation";
+import { useState } from "react";
 
 import AdminBreadcrumb from "@/components/ui/AdminBreadcrumb";
 import AdminPageHeader from "@/components/ui/AdminPageHeader";
 import type { Customer } from "@/features/customers/customerTypes";
+import { getOrderAmounts } from "@/features/orders/orderAmounts";
+import {
+  exportOrderInvoiceExcel,
+  exportOrderInvoicePdf,
+} from "@/features/orders/orderInvoiceExport";
 import {
   useApproveOrderMutation,
   useCancelOrderMutation,
@@ -34,6 +43,7 @@ import {
   useReturnOrderMutation,
 } from "@/features/orders/orderService";
 import type { OrderItem, OrderStatus } from "@/features/orders/orderTypes";
+import { useGetPromotionByIdQuery } from "@/features/promotions/promotionService";
 import type { User } from "@/features/users/userTypes";
 
 const { Text, Title } = Typography;
@@ -59,10 +69,16 @@ const formatDateTime = (value?: string) => {
 export default function AdminOrderDetailPage() {
   const { message } = App.useApp();
   const router = useRouter();
+  const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
   const params = useParams<{ id: string }>();
   const id = params.id;
 
   const { data: order, isLoading } = useGetOrderByIdQuery(id);
+  const promotionId =
+    order && typeof order.promotion === "string" ? order.promotion : "";
+  const { data: resolvedPromotion } = useGetPromotionByIdQuery(promotionId, {
+    skip: !promotionId,
+  });
   const [approveOrder, { isLoading: approving }] = useApproveOrderMutation();
   const [deliverOrder, { isLoading: delivering }] = useDeliverOrderMutation();
   const [returnOrder, { isLoading: returning }] = useReturnOrderMutation();
@@ -98,6 +114,7 @@ export default function AdminOrderDetailPage() {
   const handleReturn = async () => {
     try {
       await returnOrder(id).unwrap();
+      setIsReturnModalOpen(false);
       message.success("Trả hàng thành công, tồn kho đã được cập nhật");
     } catch {
       message.error("Trả hàng thất bại");
@@ -154,6 +171,29 @@ export default function AdminOrderDetailPage() {
   const sellerName =
     seller?.fullName || (typeof order.seller === "string" ? order.seller : "-");
   const currentStatus = statusMap[order.status];
+  const amounts = getOrderAmounts(order, resolvedPromotion);
+  const invoiceExportOptions = {
+    order,
+    amounts,
+    sellerName,
+    customerName,
+    customerPhone,
+    customerAddress,
+    issuedBy: "Admin",
+  };
+
+  const handleExportExcel = () => {
+    exportOrderInvoiceExcel(invoiceExportOptions);
+    message.success("Đã xuất hóa đơn Excel");
+  };
+
+  const handleExportPdf = () => {
+    try {
+      exportOrderInvoicePdf(invoiceExportOptions);
+    } catch {
+      message.error("Trình duyệt đang chặn cửa sổ in PDF");
+    }
+  };
 
   return (
     <>
@@ -166,6 +206,12 @@ export default function AdminOrderDetailPage() {
           <Space wrap>
             <Button onClick={() => router.push("/admin/orders")}>
               Quay lại
+            </Button>
+            <Button icon={<FileExcelOutlined />} onClick={handleExportExcel}>
+              Xuất Excel
+            </Button>
+            <Button icon={<FilePdfOutlined />} onClick={handleExportPdf}>
+              Xuất PDF
             </Button>
 
             {order.status === "pending" ? (
@@ -215,7 +261,7 @@ export default function AdminOrderDetailPage() {
                 variant="solid"
                 icon={<RollbackOutlined />}
                 loading={returning}
-                onClick={handleReturn}
+                onClick={() => setIsReturnModalOpen(true)}
               >
                 Trả hàng
               </Button>
@@ -249,17 +295,17 @@ export default function AdminOrderDetailPage() {
 
               <div className="admin-order-money-list">
                 <Flex justify="space-between" align="center">
-                  <Text>Tổng tiền</Text>
-                  <strong>{money(order.totalAmount)}</strong>
+                  <Text>Tổng tiền hàng</Text>
+                  <strong>{money(amounts.totalAmount)}</strong>
                 </Flex>
                 <Flex justify="space-between" align="center">
                   <Text>Giảm giá</Text>
-                  <strong>{money(order.discountAmount)}</strong>
+                  <strong>{money(amounts.discountAmount)}</strong>
                 </Flex>
                 <Divider className="admin-order-detail-divider" />
                 <Flex justify="space-between" align="center">
                   <Text>Thanh toán</Text>
-                  <strong className="is-final">{money(order.finalAmount)}</strong>
+                  <strong className="is-final">{money(amounts.finalAmount)}</strong>
                 </Flex>
               </div>
             </section>
@@ -288,6 +334,10 @@ export default function AdminOrderDetailPage() {
                   <Tag color={currentStatus?.color} className="admin-order-detail-status">
                     {currentStatus?.label || order.status}
                   </Tag>
+                </div>
+                <div className="admin-order-info-row">
+                  <Text>Khuyến mãi</Text>
+                  <strong>{amounts.promotion?.name || "-"}</strong>
                 </div>
                 <div className="admin-order-info-row">
                   <Text>Khách hàng</Text>
@@ -381,6 +431,81 @@ export default function AdminOrderDetailPage() {
           </Col>
         </Row>
       </section>
+
+      <Modal
+        title="Xác nhận trả hàng"
+        open={isReturnModalOpen}
+        okText="Xác nhận trả hàng"
+        cancelText="Hủy"
+        confirmLoading={returning}
+        className="admin-return-modal"
+        onOk={handleReturn}
+        onCancel={() => setIsReturnModalOpen(false)}
+        width={760}
+      >
+        <div className="admin-return-modal-summary">
+          <div>
+            <span>Mã đơn</span>
+            <strong>{order.orderCode}</strong>
+          </div>
+          <div>
+            <span>Khách hàng</span>
+            <strong>{customerName}</strong>
+          </div>
+          <div>
+            <span>Nhân viên</span>
+            <strong>{sellerName}</strong>
+          </div>
+          <div>
+            <span>Thanh toán</span>
+            <strong>{money(amounts.finalAmount)}</strong>
+          </div>
+        </div>
+
+        <div className="admin-return-reason-box">
+          <Text>Lý do trả hàng</Text>
+          <strong>{order.returnReason || "Chưa có lý do trả hàng"}</strong>
+        </div>
+
+        <Table<OrderItem>
+          size="small"
+          pagination={false}
+          rowKey={(record) =>
+            typeof record.product === "string"
+              ? record.product
+              : record.product._id
+          }
+          dataSource={order.items}
+          className="admin-return-modal-table"
+          columns={[
+            {
+              title: "Sản phẩm",
+              dataIndex: "productName",
+              render: (value: string) => <Text strong>{value}</Text>,
+            },
+            {
+              title: "Đơn giá",
+              dataIndex: "price",
+              width: 130,
+              align: "right",
+              render: (value: number) => money(value),
+            },
+            {
+              title: "SL",
+              dataIndex: "quantity",
+              width: 80,
+              align: "center",
+            },
+            {
+              title: "Thành tiền",
+              dataIndex: "subtotal",
+              width: 140,
+              align: "right",
+              render: (value: number) => <Text strong>{money(value)}</Text>,
+            },
+          ]}
+        />
+      </Modal>
 
       <style jsx global>{`
         .admin-order-detail-shell {
@@ -549,8 +674,93 @@ export default function AdminOrderDetailPage() {
           border-bottom-color: #edf2f7 !important;
         }
 
+        .admin-return-modal .ant-modal-content {
+          overflow: hidden;
+          border: 1px solid #dbe4f0;
+          border-radius: 8px;
+        }
+
+        .admin-return-modal .ant-modal-header {
+          margin: 0;
+          padding: 18px 20px;
+          border-bottom: 1px solid #e7edf5;
+          background: #fbfdff;
+        }
+
+        .admin-return-modal .ant-modal-body {
+          padding: 18px 20px;
+        }
+
+        .admin-return-modal-summary {
+          margin-bottom: 14px;
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 10px;
+        }
+
+        .admin-return-modal-summary > div,
+        .admin-return-reason-box {
+          min-width: 0;
+          padding: 12px;
+          border: 1px solid #dbe4f0;
+          border-radius: 8px;
+          background: #ffffff;
+        }
+
+        .admin-return-modal-summary span,
+        .admin-return-reason-box .ant-typography {
+          display: block;
+          color: #64748b !important;
+          font-size: 12px;
+          font-weight: 800;
+        }
+
+        .admin-return-modal-summary strong,
+        .admin-return-reason-box strong {
+          display: block;
+          margin-top: 4px;
+          overflow: hidden;
+          color: #0f172a;
+          font-size: 13px;
+          font-weight: 900;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .admin-return-reason-box {
+          margin-bottom: 14px;
+        }
+
+        .admin-return-reason-box strong {
+          white-space: normal;
+          line-height: 1.55;
+        }
+
+        .admin-return-modal-table .ant-table-container {
+          overflow: hidden;
+          border: 1px solid #dbe4f0;
+          border-radius: 8px;
+        }
+
+        .admin-return-modal-table .ant-table-thead > tr > th {
+          color: #64748b !important;
+          font-size: 12px;
+          font-weight: 900;
+          text-transform: uppercase;
+          background: #f8fafc !important;
+        }
+
+        .admin-return-modal-table .ant-table-tbody > tr > td {
+          background: #ffffff !important;
+          border-bottom-color: #edf2f7 !important;
+        }
+
         @media (max-width: 767px) {
           .admin-order-info-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .admin-return-modal-summary {
             grid-template-columns: 1fr;
           }
 

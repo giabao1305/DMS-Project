@@ -396,7 +396,7 @@ export default function SellerDashboardPage() {
       <SellerBreadcrumb />
 
       <SellerPageHeader
-        title={isDistributor ? "Dashboard nhà phân phối" : "Dashboard Seller"}
+        title={isDistributor ? "Tổng quan nhà phân phối" : "Tổng quan bán hàng"}
         description={
           isDistributor
             ? "Tổng quan nhanh hoạt động bán hàng, đơn hàng và tuyến ghé thăm của đội DSR."

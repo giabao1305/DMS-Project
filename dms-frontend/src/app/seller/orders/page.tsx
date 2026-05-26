@@ -29,6 +29,7 @@ import { useMemo } from "react";
 
 import SellerBreadcrumb from "@/components/ui/SellerBreadcrumb";
 import SellerPageHeader from "@/components/ui/SellerPageHeader";
+import { getOrderAmounts } from "@/features/orders/orderAmounts";
 import { useGetMyOrdersQuery } from "@/features/orders/orderService";
 import type { Order } from "@/features/orders/orderTypes";
 import { useRealtimeHighlight } from "@/hooks/useRealtimeHighlight";
@@ -105,7 +106,7 @@ export default function SellerOrdersPage() {
 
   const stats = useMemo(() => {
     const totalRevenue = orders.reduce(
-      (total, item) => total + item.finalAmount,
+      (total, item) => total + getOrderAmounts(item).finalAmount,
       0,
     );
 
@@ -168,12 +169,12 @@ export default function SellerOrdersPage() {
     },
     {
       title: "Tổng tiền",
-      dataIndex: "finalAmount",
+      key: "finalAmount",
       width: 180,
       align: "right",
-      render: (value: number) => (
+      render: (_, record) => (
         <Text strong className="seller-orders-money">
-          {currencyFormatter.format(value)} đ
+          {currencyFormatter.format(getOrderAmounts(record).finalAmount)} đ
         </Text>
       ),
     },
@@ -329,7 +330,7 @@ export default function SellerOrdersPage() {
                         <div className="seller-orders-latest-meta">
                           <span>{getCustomerName(latestOrder.customer)}</span>
                           <span>
-                            {currencyFormatter.format(latestOrder.finalAmount)} đ
+                            {currencyFormatter.format(getOrderAmounts(latestOrder).finalAmount)} đ
                           </span>
                         </div>
 

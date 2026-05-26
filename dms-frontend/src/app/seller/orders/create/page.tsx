@@ -8,6 +8,7 @@ import {
 } from "@ant-design/icons";
 import {
   App,
+  Alert,
   Button,
   Card,
   Col,
@@ -39,6 +40,9 @@ import { useGetProductsQuery } from "@/features/products/productService";
 import type { Product } from "@/features/products/productTypes";
 import { useGetActivePromotionsQuery } from "@/features/promotions/promotionService";
 import type { Promotion } from "@/features/promotions/promotionTypes";
+import { useGetMyVisitsQuery } from "@/features/visits/visitService";
+import type { Visit } from "@/features/visits/visitTypes";
+import { useRealtimeRefetch } from "@/hooks/useRealtimeRefetch";
 
 const { Text } = Typography;
 
@@ -107,6 +111,9 @@ const findBestPromotion = (promotions: Promotion[], total: number) => {
   }, eligiblePromotions[0]);
 };
 
+const getVisitCustomerId = (customer: Visit["customer"]) =>
+  typeof customer === "string" ? customer : customer._id;
+
 export default function SellerCreateOrderPage() {
   const router = useRouter();
   const { message } = App.useApp();
@@ -115,15 +122,36 @@ export default function SellerCreateOrderPage() {
   const [selectedPromotionId, setSelectedPromotionId] = useState<string>();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
-  const { data: customers = [] } = useGetMyCustomersQuery();
+  const { data: customers = [], isLoading: isCustomersLoading } =
+    useGetMyCustomersQuery();
+  const {
+    data: visits = [],
+    isLoading: isVisitsLoading,
+    refetch: refetchVisits,
+  } = useGetMyVisitsQuery(undefined, { refetchOnMountOrArgChange: true });
   const { data: products = [] } = useGetProductsQuery();
   const { data: promotions = [] } = useGetActivePromotionsQuery();
   const [createOrder, { isLoading }] = useCreateOrderMutation();
+
+  useRealtimeRefetch(["visit-updated"], refetchVisits);
 
   const approvedCustomers = useMemo(
     () => customers.filter((item) => item.status === "approved" && item.isActive),
     [customers],
   );
+
+  const activeVisit = useMemo(
+    () => visits.find((item) => item.status === "checked_in"),
+    [visits],
+  );
+
+  const checkedInCustomer = useMemo(() => {
+    if (!activeVisit) return undefined;
+    const customerId = getVisitCustomerId(activeVisit.customer);
+    return approvedCustomers.find((customer) => customer._id === customerId);
+  }, [activeVisit, approvedCustomers]);
+  const isCheckInLoading = isVisitsLoading || isCustomersLoading;
+  const canCreateOrder = Boolean(checkedInCustomer) && !isCheckInLoading;
 
   const activeProducts = useMemo(
     () => products.filter((item) => item.isActive && item.stock > 0),
@@ -171,7 +199,16 @@ export default function SellerCreateOrderPage() {
     }
   }, [promotions, selectedPromotionId, totalAmount]);
 
+  useEffect(() => {
+    form.setFieldValue("customer", checkedInCustomer?._id);
+  }, [checkedInCustomer, form]);
+
   const addProduct = () => {
+    if (!canCreateOrder) {
+      message.warning("Bạn cần check-in khách hàng trước khi thao tác đơn hàng");
+      return;
+    }
+
     if (!selectedProductId) {
       message.warning("Vui lòng chọn sản phẩm");
       return;
@@ -204,6 +241,8 @@ export default function SellerCreateOrderPage() {
   };
 
   const updateQuantity = (productId: string, quantity: number | null) => {
+    if (!canCreateOrder) return;
+
     const safeQuantity = quantity || 1;
     setCartItems((prev) =>
       prev.map((item) =>
@@ -219,10 +258,17 @@ export default function SellerCreateOrderPage() {
   };
 
   const removeItem = (productId: string) => {
+    if (!canCreateOrder) return;
+
     setCartItems((prev) => prev.filter((item) => item.productId !== productId));
   };
 
   const handleSubmit = async (values: CreateOrderRequest) => {
+    if (!checkedInCustomer || values.customer !== checkedInCustomer._id) {
+      message.error("Bạn cần check-in tại khách hàng trước khi tạo đơn hàng");
+      return;
+    }
+
     if (cartItems.length === 0) {
       message.error("Vui lòng chọn sản phẩm");
       return;
@@ -295,6 +341,7 @@ export default function SellerCreateOrderPage() {
           min={1}
           max={record.stock}
           value={value}
+          disabled={!canCreateOrder}
           onChange={(newValue) => updateQuantity(record.productId, newValue)}
           className="seller-order-form-quantity"
         />
@@ -319,6 +366,7 @@ export default function SellerCreateOrderPage() {
         <Button
           danger
           icon={<DeleteOutlined />}
+          disabled={!canCreateOrder}
           onClick={() => removeItem(record.productId)}
           className="seller-order-form-icon-button"
         />
@@ -332,9 +380,24 @@ export default function SellerCreateOrderPage() {
 
       <SellerPageHeader
         title="Tạo đơn hàng"
-        description="Tạo đơn hàng mới cho khách hàng đã được duyệt."
+        description="Tạo đơn hàng cho khách hàng bạn đang check-in."
         extra={<Button onClick={() => router.push("/seller/orders")}>Quay lại</Button>}
       />
+
+      {!isCheckInLoading && !checkedInCustomer && (
+        <Alert
+          type="warning"
+          showIcon
+          message="Bạn chưa check-in khách hàng"
+          description="Hãy check-in tại điểm bán trước. Đơn hàng chỉ được tạo cho khách hàng đang được ghé thăm."
+          action={
+            <Link href="/seller/visits/create">
+              <Button>Check-in ngay</Button>
+            </Link>
+          }
+          className="seller-order-form-checkin-alert"
+        />
+      )}
 
       <Card
         variant="borderless"
@@ -344,7 +407,7 @@ export default function SellerCreateOrderPage() {
               Thông tin đơn hàng
             </Text>
             <Text className="seller-order-form-section-description">
-              Chọn khách hàng, khuyến mãi và sản phẩm trước khi tạo đơn.
+              Khách hàng được xác định theo lượt check-in đang hoạt động.
             </Text>
           </Flex>
         }
@@ -361,12 +424,24 @@ export default function SellerCreateOrderPage() {
                 <Select
                   showSearch
                   size="large"
-                  placeholder="Chọn khách hàng"
+                  placeholder={
+                    isCheckInLoading
+                      ? "Đang kiểm tra lượt check-in"
+                      : "Chưa có khách hàng đang check-in"
+                  }
                   optionFilterProp="label"
-                  options={approvedCustomers.map((customer) => ({
-                    label: `${customer.name} - ${customer.phone}`,
-                    value: customer._id,
-                  }))}
+                  loading={isCheckInLoading}
+                  disabled
+                  options={
+                    checkedInCustomer
+                      ? [
+                          {
+                            label: `${checkedInCustomer.name} - ${checkedInCustomer.phone}`,
+                            value: checkedInCustomer._id,
+                          },
+                        ]
+                      : []
+                  }
                 />
               </Form.Item>
             </Col>
@@ -381,6 +456,7 @@ export default function SellerCreateOrderPage() {
                   optionFilterProp="label"
                   value={selectedPromotionId}
                   onChange={setSelectedPromotionId}
+                  disabled={!canCreateOrder}
                   options={promotions.map((promotion) => ({
                     label: getPromotionLabel(promotion),
                     value: promotion._id,
@@ -395,6 +471,7 @@ export default function SellerCreateOrderPage() {
                 <Input.TextArea
                   rows={3}
                   placeholder="Nhập ghi chú cho đơn hàng"
+                  disabled={!canCreateOrder}
                   className="seller-order-form-textarea"
                 />
               </Form.Item>
@@ -418,6 +495,7 @@ export default function SellerCreateOrderPage() {
               value={selectedProductId}
               optionFilterProp="label"
               onChange={setSelectedProductId}
+              disabled={!canCreateOrder}
               className="seller-order-form-product-select"
               options={activeProducts.map((product: Product) => ({
                 label: `${product.name} - ${product.price.toLocaleString(
@@ -432,6 +510,7 @@ export default function SellerCreateOrderPage() {
               size="large"
               icon={<PlusOutlined />}
               onClick={addProduct}
+              disabled={!canCreateOrder}
               className="seller-order-form-add-button"
             >
               Thêm sản phẩm
@@ -481,6 +560,7 @@ export default function SellerCreateOrderPage() {
                   htmlType="submit"
                   icon={<ShoppingCartOutlined />}
                   loading={isLoading}
+                  disabled={!canCreateOrder}
                   className="seller-order-form-primary-button"
                 >
                   Tạo đơn hàng
@@ -498,6 +578,13 @@ export default function SellerCreateOrderPage() {
           border-radius: 16px;
           background: ${COLORS.card};
           box-shadow: 0 16px 34px rgba(11, 47, 42, 0.06);
+        }
+
+        .seller-order-form-checkin-alert.ant-alert {
+          margin-bottom: 16px;
+          border: 1px solid #fcd34d;
+          border-radius: 14px;
+          background: #fffbeb;
         }
 
         .seller-order-form-section-card .ant-card-head {

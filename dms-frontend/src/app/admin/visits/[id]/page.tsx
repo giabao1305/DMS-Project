@@ -245,7 +245,7 @@ export default function AdminVisitDetailPage() {
       <main className="visit-detail-page">
         <section className="visit-detail-cover">
           <div className="visit-detail-cover-main">
-            <Tag className="visit-detail-cover-tag">Visit Detail</Tag>
+            <Tag className="visit-detail-cover-tag">Chi tiết ghé thăm</Tag>
             <Title level={1} className="visit-detail-cover-title">
               {customerName}
             </Title>

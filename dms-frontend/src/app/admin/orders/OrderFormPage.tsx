@@ -154,6 +154,8 @@ export default function OrderFormPage({ mode }: { mode: OrderFormMode }) {
     if (!selectedSellerId) return [];
 
     return customers.filter((customer) => {
+      if (!customer.isActive || customer.status !== "approved") return false;
+
       const assignedSellerId =
         typeof customer.assignedSeller === "string"
           ? customer.assignedSeller

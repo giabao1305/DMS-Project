@@ -8,7 +8,6 @@ import {
   EditOutlined,
   EyeOutlined,
   PlusOutlined,
-  ReloadOutlined,
   SearchOutlined,
   ShoppingOutlined,
   TagsOutlined,
@@ -43,6 +42,7 @@ import {
   useToggleProductStatusMutation,
 } from "@/features/products/productService";
 import type { Product } from "@/features/products/productTypes";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useRealtimeHighlight } from "@/hooks/useRealtimeHighlight";
 import { useRealtimeRefetch } from "@/hooks/useRealtimeRefetch";
 
@@ -71,11 +71,12 @@ export default function ProductsPage() {
   const [viewMode, setViewMode] = useState<ProductViewMode>("table");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const searchKeyword = useDebouncedValue(keyword);
 
   const { data, isLoading, refetch } = useGetProductsPageQuery({
     page,
     limit: pageSize,
-    search: keyword.trim() || undefined,
+    search: searchKeyword.trim() || undefined,
     sortBy: "createdAt",
     sortOrder: "desc",
   });
@@ -111,8 +112,6 @@ export default function ProductsPage() {
       stock: products.reduce((sum, product) => sum + product.stock, 0),
     };
   }, [products]);
-
-  const hasFilter = keyword.trim().length > 0;
 
   const handleDelete = async (id: string) => {
     try {
@@ -207,6 +206,13 @@ export default function ProductsPage() {
       ),
     },
     {
+      title: "Trạng thái",
+      dataIndex: "isActive",
+      width: 150,
+      align: "center",
+      render: (_, record) => renderStatusDropdown(record),
+    },
+    {
       title: "Danh mục",
       dataIndex: "category",
       width: 190,
@@ -248,13 +254,6 @@ export default function ProductsPage() {
       dataIndex: "minStock",
       width: 150,
       align: "center",
-    },
-    {
-      title: "Trạng thái",
-      dataIndex: "isActive",
-      width: 150,
-      align: "center",
-      render: (_, record) => renderStatusDropdown(record),
     },
     {
       title: "Hành động",
@@ -324,7 +323,7 @@ export default function ProductsPage() {
       <section className="admin-products-shell">
         <div className="admin-products-hero">
           <div>
-            <Tag className="admin-products-hero-tag">Product Operation</Tag>
+            <Tag className="admin-products-hero-tag">Quản lý sản phẩm</Tag>
             <Title level={2} className="admin-products-hero-title">
               Điều phối danh mục sản phẩm
             </Title>
@@ -391,16 +390,6 @@ export default function ProductsPage() {
                 onChange={(event) => { setKeyword(event.target.value); setPage(1); }}
               />
 
-              {hasFilter ? (
-                <Button
-                  size="large"
-                  icon={<ReloadOutlined />}
-                  onClick={() => { setKeyword(""); setPage(1); }}
-                  className="admin-products-action-button"
-                >
-                  Xóa bộ lọc
-                </Button>
-              ) : null}
             </Flex>
           </Flex>
         </Card>
@@ -437,9 +426,6 @@ export default function ProductsPage() {
                   ]}
                   className="admin-products-view-switch"
                 />
-                <Tag color="blue" className="admin-products-result-tag">
-                  Realtime product monitoring
-                </Tag>
               </Flex>
             </Flex>
           }

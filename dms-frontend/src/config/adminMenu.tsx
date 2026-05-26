@@ -36,7 +36,7 @@ export type AdminRouteGroup = {
 export const adminSidebarRoutes: AdminSidebarRoute[] = [
   {
     key: "/admin/dashboard",
-    label: "Dashboard",
+    label: "Tổng quan",
     icon: <DashboardOutlined />,
     title: "Tổng quan hệ thống",
     description: "Theo dõi vận hành, hiệu suất và dữ liệu mới nhất.",
@@ -204,7 +204,7 @@ export const adminMenuItems = adminSidebarRoutes.map(
 );
 
 export const adminNameMap: Record<string, string> = {
-  dashboard: "Dashboard",
+  dashboard: "Tổng quan",
   visits: "Ghé thăm",
   users: "Nhân viên",
   customers: "Khách hàng",

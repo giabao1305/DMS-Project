@@ -16,7 +16,7 @@ import {
   Empty,
   Flex,
   Input,
-  Select,
+  Segmented,
   Table,
   Tag,
   Typography,
@@ -32,6 +32,7 @@ import type { Customer } from "@/features/customers/customerTypes";
 import { useGetVisitsPageQuery } from "@/features/visits/visitService";
 import type { Visit, VisitStatus } from "@/features/visits/visitTypes";
 import type { User } from "@/features/users/userTypes";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useRealtimeRefetch } from "@/hooks/useRealtimeRefetch";
 
 const { Text, Title } = Typography;
@@ -76,17 +77,18 @@ export default function AdminVisitsPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(8);
+  const searchKeyword = useDebouncedValue(keyword);
 
   const queryArgs = useMemo(
     () => ({
       page,
       limit,
-      search: keyword.trim() || undefined,
+      search: searchKeyword.trim() || undefined,
       status: statusFilter === "all" ? undefined : statusFilter,
       sortBy: "createdAt",
       sortOrder: "desc" as const,
     }),
-    [keyword, limit, page, statusFilter],
+    [limit, page, searchKeyword, statusFilter],
   );
 
   const {
@@ -157,6 +159,17 @@ export default function AdminVisitsPage() {
               <Text className="admin-visits-muted">Nhân viên phụ trách</Text>
             </div>
           </Flex>
+        ),
+      },
+      {
+        title: "Trạng thái",
+        dataIndex: "status",
+        width: 160,
+        align: "center",
+        render: (status: VisitStatus) => (
+          <Tag color={statusMap[status]?.color} className="admin-visits-status">
+            {statusMap[status]?.label}
+          </Tag>
         ),
       },
       {
@@ -236,17 +249,6 @@ export default function AdminVisitsPage() {
         },
       },
       {
-        title: "Trạng thái",
-        dataIndex: "status",
-        width: 160,
-        align: "center",
-        render: (status: VisitStatus) => (
-          <Tag color={statusMap[status]?.color} className="admin-visits-status">
-            {statusMap[status]?.label}
-          </Tag>
-        ),
-      },
-      {
         title: "Ghi chú",
         dataIndex: "note",
         width: 260,
@@ -286,7 +288,7 @@ export default function AdminVisitsPage() {
       <section className="admin-visits-shell">
         <div className="admin-visits-hero">
           <div>
-            <Tag className="admin-visits-hero-tag">Field Operation</Tag>
+            <Tag className="admin-visits-hero-tag">Hoạt động thị trường</Tag>
             <Title level={2} className="admin-visits-hero-title">
               Giám sát hoạt động ghé thăm
             </Title>
@@ -350,7 +352,7 @@ export default function AdminVisitsPage() {
                 }}
                 className="admin-visits-search"
               />
-              <Select<StatusFilter>
+              <Segmented<StatusFilter>
                 size="large"
                 value={statusFilter}
                 onChange={handleStatusChange}

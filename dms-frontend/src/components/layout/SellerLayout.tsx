@@ -94,7 +94,7 @@ export default function SellerLayout({
       {
         key: "/seller/dashboard",
         icon: <DashboardOutlined />,
-        label: "Dashboard",
+        label: "Tổng quan",
       },
       {
         key: "/seller/customers",
@@ -204,7 +204,7 @@ export default function SellerLayout({
 
               {!sidebarCollapsed && (
                 <div className="seller-brand-copy">
-                  <div className="seller-brand-title">DMS Seller</div>
+                  <div className="seller-brand-title">DMS Bán hàng</div>
                   <div className="seller-brand-subtitle">
                     {workspaceSubtitle}
                   </div>
@@ -264,7 +264,7 @@ export default function SellerLayout({
           <Header className="seller-header">
             <div className="seller-header-title-group">
               <Typography.Text className="seller-header-eyebrow">
-                Sales Workspace
+                Khu vực bán hàng
               </Typography.Text>
               <Typography.Title level={4} className="seller-header-title">
                 {workspaceTitle}
@@ -276,7 +276,7 @@ export default function SellerLayout({
                 className="seller-realtime-tag"
                 color={isSocketConnected ? "success" : "error"}
               >
-                Realtime {isSocketConnected ? "online" : "offline"}
+                {isSocketConnected ? "Đang kết nối" : "Mất kết nối"}
               </Tag>
 
               <div className="seller-user-chip">

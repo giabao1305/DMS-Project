@@ -5,10 +5,12 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   EnvironmentOutlined,
+  EyeOutlined,
   ShopOutlined,
 } from "@ant-design/icons";
-import { Empty, Flex, Table, Tag, Typography } from "antd";
+import { Button, Empty, Flex, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 
@@ -121,6 +123,18 @@ export default function DistributorVisitsPage() {
         );
       },
     },
+    {
+      title: "Thao tác",
+      align: "center",
+      width: 140,
+      render: (_, record) => (
+        <Link href={`/distributor/visits/${record._id}`}>
+          <Button size="small" icon={<EyeOutlined />} className="distributor-row-action">
+            Chi tiết
+          </Button>
+        </Link>
+      ),
+    },
   ];
 
   return (
@@ -186,7 +200,7 @@ export default function DistributorVisitsPage() {
           loading={isLoading}
           columns={columns}
           dataSource={data}
-          scroll={{ x: 980 }}
+          scroll={{ x: 1120 }}
           pagination={{
             pageSize: 8,
             showSizeChanger: false,

@@ -64,6 +64,19 @@ export default function InventoryAlertsPage() {
       ),
     },
     {
+      title: "Trạng thái",
+      width: 160,
+      align: "center",
+      render: (_, record) => (
+        <Tag
+          color={record.stock === 0 ? "volcano" : "orange"}
+          className="admin-stock-alert-tag"
+        >
+          {record.stock === 0 ? "Hết hàng" : "Sắp hết hàng"}
+        </Tag>
+      ),
+    },
+    {
       title: "Tồn kho",
       dataIndex: "stock",
       width: 130,
@@ -87,27 +100,22 @@ export default function InventoryAlertsPage() {
       render: (_, record) => Math.max(record.minStock - record.stock, 0),
     },
     {
-      title: "Trạng thái",
-      width: 160,
-      align: "center",
-      render: (_, record) => (
-        <Tag
-          color={record.stock === 0 ? "volcano" : "orange"}
-          className="admin-stock-alert-tag"
-        >
-          {record.stock === 0 ? "Hết hàng" : "Sắp hết hàng"}
-        </Tag>
-      ),
-    },
-    {
       title: "Thao tác",
       width: 160,
       align: "center",
-      render: (_, record) => (
-        <Link href={`/admin/products/${record._id}/edit`}>
-          <Button size="small">Cập nhật</Button>
+      render: (_, record) => {
+        const quantityToImport = Math.max(record.minStock - record.stock, 1);
+
+        return (
+        <Link
+          href={`/admin/inventory/create?product=${record._id}&type=import&quantity=${quantityToImport}`}
+        >
+          <Button size="small" type="primary">
+            Nhập kho
+          </Button>
         </Link>
-      ),
+        );
+      },
     },
   ];
 

@@ -15,15 +15,27 @@ import { useParams, useRouter } from "next/navigation";
 
 import AdminBreadcrumb from "@/components/ui/AdminBreadcrumb";
 import AdminPageHeader from "@/components/ui/AdminPageHeader";
-import { useGetUserByIdQuery } from "@/features/users/userService";
+import { useGetUserByIdQuery, useGetUsersQuery } from "@/features/users/userService";
+import type { User } from "@/features/users/userTypes";
 
 const { Text, Title } = Typography;
+
+const getManagerName = (manager: User["manager"], users: User[]) => {
+  if (!manager) return "-";
+  if (typeof manager !== "string") {
+    return manager.fullName || manager.email || "-";
+  }
+
+  const distributor = users.find((user) => user._id === manager);
+  return distributor?.fullName || distributor?.email || manager;
+};
 
 export default function UserDetailPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const id = params.id;
   const { data: user, isLoading } = useGetUserByIdQuery(id);
+  const { data: users = [] } = useGetUsersQuery();
 
   if (isLoading) {
     return (
@@ -155,6 +167,15 @@ export default function UserDetailPage() {
                   value={user.phone || "-"}
                 />
               </Col>
+              {user.role === "seller" ? (
+                <Col xs={24} md={12} xl={8}>
+                  <InfoItem
+                    icon={<ShopOutlined />}
+                    label="Nhà phân phối quản lý"
+                    value={getManagerName(user.manager, users)}
+                  />
+                </Col>
+              ) : null}
             </Row>
           </section>
 

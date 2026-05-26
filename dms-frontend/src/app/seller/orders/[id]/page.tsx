@@ -5,6 +5,8 @@ import {
   ClockCircleOutlined,
   CloseCircleOutlined,
   EditOutlined,
+  FileExcelOutlined,
+  FilePdfOutlined,
   RollbackOutlined,
   ShoppingCartOutlined,
   ShopOutlined,
@@ -31,11 +33,17 @@ import { useState, type ReactNode } from "react";
 
 import SellerBreadcrumb from "@/components/ui/SellerBreadcrumb";
 import SellerPageHeader from "@/components/ui/SellerPageHeader";
+import { getOrderAmounts } from "@/features/orders/orderAmounts";
+import {
+  exportOrderInvoiceExcel,
+  exportOrderInvoicePdf,
+} from "@/features/orders/orderInvoiceExport";
 import {
   useGetOrderByIdQuery,
   useRequestReturnOrderMutation,
 } from "@/features/orders/orderService";
 import type { Order, OrderItem, OrderStatus } from "@/features/orders/orderTypes";
+import { useGetPromotionByIdQuery } from "@/features/promotions/promotionService";
 
 const { Text } = Typography;
 const { TextArea } = Input;
@@ -98,6 +106,11 @@ export default function SellerOrderDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
   const { data: order, isLoading } = useGetOrderByIdQuery(id);
+  const promotionId =
+    order && typeof order.promotion === "string" ? order.promotion : "";
+  const { data: resolvedPromotion } = useGetPromotionByIdQuery(promotionId, {
+    skip: !promotionId,
+  });
   const [requestReturnOrder, { isLoading: requestingReturn }] =
     useRequestReturnOrderMutation();
 
@@ -111,15 +124,11 @@ export default function SellerOrderDetailPage() {
       setIsReturnModalOpen(false);
       returnForm.resetFields();
       message.success("Đã gửi yêu cầu trả hàng, vui lòng chờ admin duyệt");
-      return;
-      message.success("Trả hàng thành công, tồn kho đã được cập nhật");
     } catch (error: unknown) {
       if (typeof error === "object" && error && "errorFields" in error) {
         return;
       }
       message.error("Gửi yêu cầu trả hàng thất bại");
-      return;
-      message.error("Trả hàng thất bại");
     }
   };
 
@@ -158,6 +167,27 @@ export default function SellerOrderDetailPage() {
   }
 
   const currentStatus = statusMap[order.status] ?? statusMap.pending;
+  const amounts = getOrderAmounts(order, resolvedPromotion);
+  const customerName = getCustomerName(order.customer);
+  const invoiceExportOptions = {
+    order,
+    amounts,
+    customerName,
+    issuedBy: "Seller",
+  };
+
+  const handleExportExcel = () => {
+    exportOrderInvoiceExcel(invoiceExportOptions);
+    message.success("Đã xuất hóa đơn Excel");
+  };
+
+  const handleExportPdf = () => {
+    try {
+      exportOrderInvoicePdf(invoiceExportOptions);
+    } catch {
+      message.error("Trình duyệt đang chặn cửa sổ in PDF");
+    }
+  };
 
   const columns: ColumnsType<OrderItem> = [
     {
@@ -222,6 +252,12 @@ export default function SellerOrderDetailPage() {
             <Link href="/seller/orders">
               <Button>Quay lại</Button>
             </Link>
+            <Button icon={<FileExcelOutlined />} onClick={handleExportExcel}>
+              Xuất Excel
+            </Button>
+            <Button icon={<FilePdfOutlined />} onClick={handleExportPdf}>
+              Xuất PDF
+            </Button>
 
             {order.status === "pending" && (
               <Link href={`/seller/orders/${order._id}/edit`}>
@@ -276,16 +312,16 @@ export default function SellerOrderDetailPage() {
         >
           <div className="seller-order-detail-summary-grid">
             <div>
-              <span>Tổng tiền</span>
-              <strong>{order.totalAmount.toLocaleString("vi-VN")} đ</strong>
+              <span>Tổng tiền hàng</span>
+              <strong>{amounts.totalAmount.toLocaleString("vi-VN")} đ</strong>
             </div>
             <div>
               <span>Giảm giá</span>
-              <strong>{order.discountAmount.toLocaleString("vi-VN")} đ</strong>
+              <strong>{amounts.discountAmount.toLocaleString("vi-VN")} đ</strong>
             </div>
             <div>
               <span>Thanh toán</span>
-              <strong>{order.finalAmount.toLocaleString("vi-VN")} đ</strong>
+              <strong>{amounts.finalAmount.toLocaleString("vi-VN")} đ</strong>
             </div>
           </div>
 
@@ -310,7 +346,7 @@ export default function SellerOrderDetailPage() {
               <Text strong>{order.orderCode}</Text>
             </Descriptions.Item>
             <Descriptions.Item label="Khách hàng">
-              {getCustomerName(order.customer)}
+              {customerName}
             </Descriptions.Item>
             <Descriptions.Item label="Trạng thái">
               <Tag
@@ -320,6 +356,9 @@ export default function SellerOrderDetailPage() {
               >
                 {currentStatus.text}
               </Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="Khuyến mãi">
+              {amounts.promotion?.name || "-"}
             </Descriptions.Item>
             <Descriptions.Item label="Ngày tạo">
               {new Date(order.createdAt).toLocaleString("vi-VN")}
@@ -399,6 +438,53 @@ export default function SellerOrderDetailPage() {
         }}
         forceRender
       >
+        <div className="seller-return-modal-summary">
+          <div>
+            <span>Mã đơn</span>
+            <strong>{order.orderCode}</strong>
+          </div>
+          <div>
+            <span>Khách hàng</span>
+            <strong>{customerName}</strong>
+          </div>
+          <div>
+            <span>Thanh toán</span>
+            <strong>{amounts.finalAmount.toLocaleString("vi-VN")} đ</strong>
+          </div>
+        </div>
+
+        <Table<OrderItem>
+          size="small"
+          pagination={false}
+          rowKey={(record) =>
+            typeof record.product === "string"
+              ? record.product
+              : record.product._id
+          }
+          className="seller-return-modal-table"
+          dataSource={order.items}
+          columns={[
+            {
+              title: "Sản phẩm",
+              dataIndex: "productName",
+              render: (value: string) => <Text strong>{value}</Text>,
+            },
+            {
+              title: "SL",
+              dataIndex: "quantity",
+              width: 72,
+              align: "center",
+            },
+            {
+              title: "Thành tiền",
+              dataIndex: "subtotal",
+              width: 132,
+              align: "right",
+              render: (value: number) => `${value.toLocaleString("vi-VN")} đ`,
+            },
+          ]}
+        />
+
         <Form form={returnForm} layout="vertical" requiredMark={false}>
           <Form.Item
             label="Lý do trả hàng"
@@ -619,6 +705,61 @@ export default function SellerOrderDetailPage() {
           font-weight: 800;
         }
 
+        .seller-return-modal-summary {
+          margin-bottom: 14px;
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 10px;
+        }
+
+        .seller-return-modal-summary > div {
+          min-width: 0;
+          padding: 12px;
+          border: 1px solid ${COLORS.border};
+          border-radius: 12px;
+          background: ${COLORS.surface};
+        }
+
+        .seller-return-modal-summary span {
+          display: block;
+          color: ${COLORS.secondary};
+          font-size: 12px;
+          font-weight: 750;
+        }
+
+        .seller-return-modal-summary strong {
+          display: block;
+          margin-top: 4px;
+          overflow: hidden;
+          color: ${COLORS.text};
+          font-size: 13px;
+          font-weight: 850;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .seller-return-modal-table {
+          margin-bottom: 16px;
+        }
+
+        .seller-return-modal-table .ant-table-container {
+          overflow: hidden;
+          border: 1px solid ${COLORS.border};
+          border-radius: 12px;
+        }
+
+        .seller-return-modal-table .ant-table-thead > tr > th {
+          background: ${COLORS.surface} !important;
+          color: ${COLORS.text} !important;
+          font-size: 12px !important;
+          font-weight: 850 !important;
+        }
+
+        .seller-return-modal-table .ant-table-tbody > tr > td {
+          background: #ffffff !important;
+          border-bottom-color: #ecf6f3 !important;
+        }
+
         .seller-return-modal .ant-input {
           border-color: ${COLORS.border};
           border-radius: 12px;
@@ -669,6 +810,10 @@ export default function SellerOrderDetailPage() {
 
         @media (max-width: 900px) {
           .seller-order-detail-summary-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .seller-return-modal-summary {
             grid-template-columns: 1fr;
           }
         }

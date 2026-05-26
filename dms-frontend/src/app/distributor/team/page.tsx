@@ -2,13 +2,15 @@
 
 import {
   CheckCircleOutlined,
+  EyeOutlined,
   PhoneOutlined,
   StopOutlined,
   TeamOutlined,
   UserOutlined,
 } from "@ant-design/icons";
-import { Empty, Flex, Table, Tag, Typography } from "antd";
+import { Button, Empty, Flex, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
+import Link from "next/link";
 import { useMemo } from "react";
 
 import {
@@ -99,6 +101,22 @@ export default function DistributorTeamPage() {
         </Tag>
       ),
     },
+    {
+      title: "Thao tác",
+      align: "center",
+      width: 140,
+      render: (_, record) => (
+        <Link href={`/distributor/team/${record._id}`}>
+          <Button
+            size="small"
+            icon={<EyeOutlined />}
+            className="distributor-row-action"
+          >
+            Chi tiết
+          </Button>
+        </Link>
+      ),
+    },
   ];
 
   return (
@@ -169,7 +187,7 @@ export default function DistributorTeamPage() {
           loading={isLoading}
           columns={columns}
           dataSource={data}
-          scroll={{ x: 960 }}
+          scroll={{ x: 1080 }}
           pagination={{
             pageSize: 8,
             showSizeChanger: false,

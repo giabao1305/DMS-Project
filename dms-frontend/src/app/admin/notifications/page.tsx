@@ -9,7 +9,6 @@ import {
   EyeOutlined,
   GiftOutlined,
   NotificationOutlined,
-  ReloadOutlined,
   SearchOutlined,
   ShoppingCartOutlined,
   TeamOutlined,
@@ -22,7 +21,7 @@ import {
   Flex,
   Input,
   Pagination,
-  Select,
+  Segmented,
   Spin,
   Tag,
   Typography,
@@ -42,6 +41,7 @@ import type {
   Notification,
   NotificationType,
 } from "@/features/notifications/notificationTypes";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { getSocket } from "@/lib/socket";
 
 const { Text, Title } = Typography;
@@ -149,18 +149,19 @@ export default function AdminNotificationsPage() {
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
+  const searchKeyword = useDebouncedValue(keyword);
 
   const queryArgs = useMemo(
     () => ({
       page,
       limit,
-      search: keyword.trim() || undefined,
+      search: searchKeyword.trim() || undefined,
       status: statusFilter === "all" ? undefined : statusFilter,
       type: typeFilter === "all" ? undefined : typeFilter,
       sortBy: "createdAt",
       sortOrder: "desc" as const,
     }),
-    [keyword, limit, page, statusFilter, typeFilter],
+    [limit, page, searchKeyword, statusFilter, typeFilter],
   );
 
   const {
@@ -207,11 +208,6 @@ export default function AdminNotificationsPage() {
   }, [notifications]);
 
 
-  const hasFilter =
-    keyword.trim().length > 0 ||
-    statusFilter !== "all" ||
-    typeFilter !== "all";
-
   const handleRead = async (id: string) => {
     try {
       await markAsRead(id).unwrap();
@@ -228,13 +224,6 @@ export default function AdminNotificationsPage() {
     } catch {
       message.error("Cập nhật thất bại");
     }
-  };
-
-  const handleResetFilters = () => {
-    setKeyword("");
-    setStatusFilter("all");
-    setTypeFilter("all");
-    setPage(1);
   };
 
   return (
@@ -265,7 +254,7 @@ export default function AdminNotificationsPage() {
       <section className="admin-notifications-shell">
         <div className="admin-notifications-hero">
           <div>
-            <Tag className="admin-notifications-hero-tag">Notification Center</Tag>
+            <Tag className="admin-notifications-hero-tag">Trung tâm thông báo</Tag>
             <Title level={2} className="admin-notifications-hero-title">
               Trung tâm thông báo
             </Title>
@@ -331,7 +320,7 @@ export default function AdminNotificationsPage() {
               }}
             />
 
-            <Select<StatusFilter>
+            <Segmented<StatusFilter>
               size="large"
               value={statusFilter}
               onChange={(value) => {
@@ -346,7 +335,7 @@ export default function AdminNotificationsPage() {
               ]}
             />
 
-            <Select<TypeFilter>
+            <Segmented<TypeFilter>
               size="large"
               value={typeFilter}
               onChange={(value) => {
@@ -363,16 +352,6 @@ export default function AdminNotificationsPage() {
               ]}
             />
 
-            {hasFilter ? (
-              <Button
-                size="large"
-                icon={<ReloadOutlined />}
-                onClick={handleResetFilters}
-                className="admin-notifications-reset-button"
-              >
-                Xóa bộ lọc
-              </Button>
-            ) : null}
           </Flex>
         </div>
 
@@ -387,9 +366,6 @@ export default function AdminNotificationsPage() {
                 {(meta?.total ?? notifications.length).toLocaleString("vi-VN")} thông báo
               </Text>
             </div>
-            <Tag color="blue" className="admin-notifications-result-tag">
-              Realtime notification monitoring
-            </Tag>
           </Flex>
 
           <div className="admin-notifications-list">

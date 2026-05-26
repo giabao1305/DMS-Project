@@ -175,6 +175,20 @@ export default function AdminRoutesPage() {
         ),
       },
       {
+        title: "Trạng thái",
+        dataIndex: "status",
+        width: 190,
+        align: "center",
+        render: (routeStatus: RouteStatus) => (
+          <Tag
+            color={statusMap[routeStatus]?.color}
+            className="admin-routes-status-tag"
+          >
+            {statusMap[routeStatus]?.label}
+          </Tag>
+        ),
+      },
+      {
         title: "Nhân viên",
         dataIndex: "seller",
         width: 250,
@@ -248,20 +262,6 @@ export default function AdminRoutesPage() {
             </Flex>
           );
         },
-      },
-      {
-        title: "Trạng thái",
-        dataIndex: "status",
-        width: 190,
-        align: "center",
-        render: (routeStatus: RouteStatus) => (
-          <Tag
-            color={statusMap[routeStatus]?.color}
-            className="admin-routes-status-tag"
-          >
-            {statusMap[routeStatus]?.label}
-          </Tag>
-        ),
       },
       {
         title: "Hành động",
@@ -629,17 +629,14 @@ export default function AdminRoutesPage() {
           border-radius: 8px !important;
           background: #ffffff !important;
           box-shadow: 0 10px 24px rgba(15, 23, 42, 0.055) !important;
-          transition:
-            border-color 180ms ease,
-            box-shadow 180ms ease,
-            transform 180ms ease;
+          transition: none !important;
         }
 
         .admin-routes-filter-card:hover,
         .admin-routes-table-card:hover {
-          border-color: #b9cce5 !important;
-          box-shadow: 0 16px 32px rgba(15, 23, 42, 0.08) !important;
-          transform: translateY(-1px);
+          border-color: #dbe4f0 !important;
+          box-shadow: 0 10px 24px rgba(15, 23, 42, 0.055) !important;
+          transform: none !important;
         }
 
         .admin-routes-filter-card {
@@ -749,10 +746,6 @@ export default function AdminRoutesPage() {
           background: #ffffff !important;
           border-bottom-color: #edf2f7 !important;
           vertical-align: middle !important;
-        }
-
-        .admin-routes-table .ant-table-tbody > tr:hover > td {
-          background: #f8fbff !important;
         }
 
         .admin-routes-table .ant-table-cell-fix-left,

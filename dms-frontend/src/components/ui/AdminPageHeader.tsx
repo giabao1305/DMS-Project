@@ -11,7 +11,6 @@ type Props = {
   title: string;
   description?: string;
   extra?: ReactNode;
-  eyebrow?: string;
   breadcrumb?: BreadcrumbItem[];
 };
 
@@ -19,7 +18,6 @@ export default function AdminPageHeader({
   title,
   description,
   extra,
-  eyebrow = "Admin Console",
   breadcrumb,
 }: Props) {
   return (
@@ -41,10 +39,6 @@ export default function AdminPageHeader({
           className="admin-page-header-inner"
         >
           <div className="admin-page-header-copy">
-            <Typography.Text className="admin-page-header-eyebrow">
-              {eyebrow}
-            </Typography.Text>
-
             <Typography.Title level={3} className="admin-page-header-title">
               {title}
             </Typography.Title>
@@ -68,6 +62,13 @@ export default function AdminPageHeader({
             linear-gradient(180deg, rgba(248, 250, 252, 0.88), #ffffff),
             #ffffff !important;
           box-shadow: var(--admin-shadow-sm, 0 8px 20px rgba(17, 24, 39, 0.05)) !important;
+          transition: none !important;
+        }
+
+        .admin-page-header-card.ant-card:hover {
+          border-color: var(--admin-border, #dbe4f0) !important;
+          box-shadow: var(--admin-shadow-sm, 0 8px 20px rgba(17, 24, 39, 0.05)) !important;
+          transform: none !important;
         }
 
         .admin-page-header-card .ant-card-body {
@@ -77,17 +78,6 @@ export default function AdminPageHeader({
         .admin-page-header-copy {
           min-width: 240px;
           flex: 1;
-        }
-
-        .admin-page-header-eyebrow.ant-typography {
-          display: block;
-          margin-bottom: 5px;
-          color: var(--admin-primary, #2563eb) !important;
-          font-size: 11px;
-          font-weight: 900;
-          line-height: 1.2;
-          letter-spacing: 0;
-          text-transform: uppercase;
         }
 
         .admin-page-header-title.ant-typography {

@@ -66,6 +66,8 @@ export default function UserFormPage({ mode }: { mode: UserFormMode }) {
   const { message } = App.useApp();
   const [form] = Form.useForm<UserFormValues>();
   const selectedRole = Form.useWatch("role", form);
+  const selectedManagerId = Form.useWatch("manager", form);
+  const selectedCompanyName = Form.useWatch("companyName", form);
 
   const { data: users = [] } = useGetUsersQuery();
   const { data: user, isLoading: loadingUser } = useGetUserByIdQuery(id || "", {
@@ -84,6 +86,16 @@ export default function UserFormPage({ mode }: { mode: UserFormMode }) {
     [id, users],
   );
   const needsAsmManager = selectedRole === "seller";
+  const selectedDistributor = useMemo(
+    () =>
+      users.find(
+        (distributor) =>
+          distributor.role === "distributor" &&
+          distributor._id === selectedManagerId,
+      ),
+    [selectedManagerId, users],
+  );
+  const distributorCompanyName = selectedDistributor?.companyName || "";
 
   useEffect(() => {
     if (!user) return;
@@ -103,11 +115,28 @@ export default function UserFormPage({ mode }: { mode: UserFormMode }) {
     });
   }, [form, user]);
 
+  const resolveCompanyName = (values: UserFormValues) => {
+    if (values.role !== "seller") return values.companyName || undefined;
+
+    const managerCompanyName =
+      users.find(
+        (distributor) =>
+          distributor.role === "distributor" &&
+          distributor._id === values.manager,
+      )?.companyName || "";
+
+    return managerCompanyName || values.companyName || undefined;
+  };
+
   const handleSubmit = async (values: UserFormValues) => {
     try {
       if (isEdit && id) {
+        const bodyValues = {
+          ...values,
+          companyName: resolveCompanyName(values),
+        };
         const body = Object.fromEntries(
-          Object.entries(values).filter(
+          Object.entries(bodyValues).filter(
             ([, value]) => value !== undefined && value !== "",
           ),
         ) as UpdateUserRequest;
@@ -118,7 +147,20 @@ export default function UserFormPage({ mode }: { mode: UserFormMode }) {
         return;
       }
 
-      await createUser(values as CreateUserRequest).unwrap();
+      const createValues: CreateUserRequest = {
+        code: values.code || undefined,
+        fullName: values.fullName,
+        email: values.email,
+        password: values.password as string,
+        phone: values.phone || undefined,
+        role: values.role,
+        manager: values.role === "seller" ? values.manager : undefined,
+        companyName: resolveCompanyName(values),
+        address: values.address || undefined,
+        taxCode: values.taxCode || undefined,
+      };
+
+      await createUser(createValues).unwrap();
       message.success("Thêm nhân viên thành công");
       router.push("/admin/users");
     } catch (error: unknown) {
@@ -422,13 +464,25 @@ export default function UserFormPage({ mode }: { mode: UserFormMode }) {
                 </Col>
 
                 <Col xs={24} md={12}>
-                  <Form.Item label="Công ty" name="companyName">
-                    <Input
-                      size="large"
-                      prefix={<ShopOutlined />}
-                      placeholder="Nhập tên công ty"
-                    />
-                  </Form.Item>
+                  {needsAsmManager ? (
+                    <Form.Item label="Công ty">
+                      <Input
+                        size="large"
+                        prefix={<ShopOutlined />}
+                        readOnly
+                        value={distributorCompanyName || selectedCompanyName || ""}
+                        placeholder="Chọn nhà phân phối để hiển thị công ty"
+                      />
+                    </Form.Item>
+                  ) : (
+                    <Form.Item label="Công ty" name="companyName">
+                      <Input
+                        size="large"
+                        prefix={<ShopOutlined />}
+                        placeholder="Nhập tên công ty"
+                      />
+                    </Form.Item>
+                  )}
                 </Col>
 
                 <Col xs={24} md={12}>

@@ -7,7 +7,6 @@ import {
   EditOutlined,
   EyeOutlined,
   PlusOutlined,
-  ReloadOutlined,
   SearchOutlined,
   ShopOutlined,
   TeamOutlined,
@@ -20,7 +19,7 @@ import {
   Flex,
   Input,
   Popconfirm,
-  Select,
+  Segmented,
   Space,
   Table,
   Tag,
@@ -40,6 +39,7 @@ import type {
   Customer,
   CustomerStatus,
 } from "@/features/customers/customerTypes";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useRealtimeRefetch } from "@/hooks/useRealtimeRefetch";
 
 const { Text, Title } = Typography;
@@ -69,11 +69,12 @@ export default function CustomersPage() {
   const [status, setStatus] = useState<CustomerStatusFilter>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const searchKeyword = useDebouncedValue(keyword);
 
   const { data, isLoading, refetch } = useGetCustomersPageQuery({
     page,
     limit: pageSize,
-    search: keyword.trim() || undefined,
+    search: searchKeyword.trim() || undefined,
     status: status === "all" ? undefined : status,
     sortBy: "createdAt",
     sortOrder: "desc",
@@ -97,8 +98,6 @@ export default function CustomersPage() {
     };
   }, [customers]);
 
-  const hasFilter = keyword.trim().length > 0 || status !== "all";
-
   const handleDelete = async (id: string) => {
     try {
       await deleteCustomer(id).unwrap();
@@ -106,12 +105,6 @@ export default function CustomersPage() {
     } catch {
       message.error("Xóa khách hàng thất bại");
     }
-  };
-
-  const handleResetFilters = () => {
-    setKeyword("");
-    setStatus("all");
-    setPage(1);
   };
 
   const columns: ColumnsType<Customer> = [
@@ -128,6 +121,23 @@ export default function CustomersPage() {
           </Text>
         </div>
       ),
+    },
+    {
+      title: "Trạng thái duyệt",
+      dataIndex: "status",
+      width: 170,
+      align: "center",
+      render: (customerStatus: Customer["status"]) => {
+        const current = customerStatus
+          ? statusMap[customerStatus]
+          : { color: "default", text: "-" };
+
+        return (
+          <Tag color={current.color} className="admin-customers-status-tag">
+            {current.text}
+          </Tag>
+        );
+      },
     },
     {
       title: "Số điện thoại",
@@ -153,23 +163,6 @@ export default function CustomersPage() {
       width: 210,
       ellipsis: true,
       render: (_, record) => getSellerName(record),
-    },
-    {
-      title: "Trạng thái duyệt",
-      dataIndex: "status",
-      width: 170,
-      align: "center",
-      render: (customerStatus: Customer["status"]) => {
-        const current = customerStatus
-          ? statusMap[customerStatus]
-          : { color: "default", text: "-" };
-
-        return (
-          <Tag color={current.color} className="admin-customers-status-tag">
-            {current.text}
-          </Tag>
-        );
-      },
     },
     {
       title: "Lý do từ chối",
@@ -249,7 +242,7 @@ export default function CustomersPage() {
       <section className="admin-customers-shell">
         <div className="admin-customers-hero">
           <div>
-            <Tag className="admin-customers-hero-tag">Customer Operation</Tag>
+            <Tag className="admin-customers-hero-tag">Quản lý khách hàng</Tag>
             <Title level={2} className="admin-customers-hero-title">
               Điều phối điểm bán
             </Title>
@@ -313,7 +306,7 @@ export default function CustomersPage() {
                 onChange={(event) => { setKeyword(event.target.value); setPage(1); }}
               />
 
-              <Select<CustomerStatusFilter>
+              <Segmented<CustomerStatusFilter>
                 size="large"
                 value={status}
                 onChange={(value) => { setStatus(value); setPage(1); }}
@@ -326,16 +319,6 @@ export default function CustomersPage() {
                 ]}
               />
 
-              {hasFilter ? (
-                <Button
-                  size="large"
-                  icon={<ReloadOutlined />}
-                  onClick={handleResetFilters}
-                  className="admin-customers-action-button"
-                >
-                  Xóa bộ lọc
-                </Button>
-              ) : null}
             </Flex>
           </Flex>
         </Card>
@@ -354,9 +337,6 @@ export default function CustomersPage() {
                   khách hàng
                 </Text>
               </div>
-              <Tag color="blue" className="admin-customers-result-tag">
-                Realtime customer monitoring
-              </Tag>
             </Flex>
           }
         >

@@ -1,6 +1,7 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import type { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface';
 
 import { AppModule } from './app.module';
 
@@ -21,28 +22,34 @@ async function bootstrap() {
     }),
   );
 
-  const configuredCorsOrigins = (process.env.CORS_ORIGIN || defaultCorsOrigins.join(
-    ',',
-  ))
+  const configuredCorsOrigins = (
+    process.env.CORS_ORIGIN || defaultCorsOrigins.join(',')
+  )
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
 
-  app.enableCors({
-    origin(origin, callback) {
+  const corsOptions: CorsOptions = {
+    origin(origin: string | undefined, callback) {
       if (!origin) {
         callback(null, true);
         return;
       }
 
       const isConfiguredOrigin = configuredCorsOrigins.includes(origin);
-      const isLocalDevOrigin = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
-      const isLanDevOrigin = /^https?:\/\/((10)|(172\.(1[6-9]|2\d|3[0-1]))|(192\.168))\.\d+\.\d+(?::\d+)?$/.test(origin);
+      const isLocalDevOrigin =
+        /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+      const isLanDevOrigin =
+        /^https?:\/\/((10)|(172\.(1[6-9]|2\d|3[0-1]))|(192\.168))\.\d+\.\d+(?::\d+)?$/.test(
+          origin,
+        );
 
       callback(null, isConfiguredOrigin || isLocalDevOrigin || isLanDevOrigin);
     },
     credentials: true,
-  });
+  };
+
+  app.enableCors(corsOptions);
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('DMS API')

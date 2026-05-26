@@ -5,7 +5,6 @@ import {
   EditOutlined,
   EyeOutlined,
   PlusOutlined,
-  ReloadOutlined,
   SearchOutlined,
   TeamOutlined,
   UserOutlined,
@@ -19,7 +18,7 @@ import {
   Flex,
   Input,
   Popconfirm,
-  Select,
+  Segmented,
   Space,
   Table,
   Tag,
@@ -27,7 +26,7 @@ import {
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 
 import AdminBreadcrumb from "@/components/ui/AdminBreadcrumb";
 import AdminPageHeader from "@/components/ui/AdminPageHeader";
@@ -44,10 +43,21 @@ const { Text, Title } = Typography;
 
 type UserStatusFilter = "all" | "active" | "inactive";
 
+const getManagerName = (manager: User["manager"], users: User[]) => {
+  if (!manager) return "-";
+  if (typeof manager !== "string") {
+    return manager.fullName || manager.email || "-";
+  }
+
+  const distributor = users.find((user) => user._id === manager);
+  return distributor?.fullName || distributor?.email || manager;
+};
+
 export default function UsersPage() {
   const { message } = App.useApp();
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState<UserStatusFilter>("all");
+  const searchKeyword = useDeferredValue(keyword);
 
   const { data: users = [], isLoading, refetch } = useGetUsersQuery();
   const [deleteUser, { isLoading: deleting }] = useDeleteUserMutation();
@@ -73,7 +83,7 @@ export default function UsersPage() {
   }, [sellerUsers]);
 
   const filteredUsers = useMemo(() => {
-    const normalizedKeyword = keyword.trim().toLowerCase();
+    const normalizedKeyword = searchKeyword.trim().toLowerCase();
 
     return sellerUsers.filter((user) => {
       const matchesKeyword =
@@ -82,21 +92,15 @@ export default function UsersPage() {
         user.fullName.toLowerCase().includes(normalizedKeyword) ||
         user.email.toLowerCase().includes(normalizedKeyword) ||
         user.phone?.toLowerCase().includes(normalizedKeyword) ||
-        user.companyName?.toLowerCase().includes(normalizedKeyword);
+        user.companyName?.toLowerCase().includes(normalizedKeyword) ||
+        getManagerName(user.manager, users).toLowerCase().includes(normalizedKeyword);
       const matchesStatus =
         status === "all" ||
         (status === "active" ? user.isActive : !user.isActive);
 
       return matchesKeyword && matchesStatus;
     });
-  }, [keyword, sellerUsers, status]);
-
-  const hasFilter = keyword.trim().length > 0 || status !== "all";
-
-  const handleResetFilters = () => {
-    setKeyword("");
-    setStatus("all");
-  };
+  }, [searchKeyword, sellerUsers, status, users]);
 
   const handleDelete = async (id: string) => {
     try {
@@ -133,6 +137,21 @@ export default function UsersPage() {
       ),
     },
     {
+      title: "Trạng thái",
+      dataIndex: "isActive",
+      width: 150,
+      align: "center",
+      render: (isActive: boolean, record) => (
+        <Tag
+          color={isActive ? "green" : "default"}
+          className="admin-users-status-tag is-clickable"
+          onClick={() => handleToggleStatus(record._id)}
+        >
+          {isActive ? "Hoạt động" : "Khóa"}
+        </Tag>
+      ),
+    },
+    {
       title: "Mã",
       dataIndex: "code",
       width: 180,
@@ -156,6 +175,14 @@ export default function UsersPage() {
       ),
     },
     {
+      title: "Nhà phân phối quản lý",
+      dataIndex: "manager",
+      width: 230,
+      ellipsis: true,
+      render: (manager: User["manager"], record) =>
+        record.role === "seller" ? getManagerName(manager, users) : "-",
+    },
+    {
       title: "Công ty",
       dataIndex: "companyName",
       width: 220,
@@ -167,21 +194,6 @@ export default function UsersPage() {
       dataIndex: "taxCode",
       width: 160,
       render: (value?: string) => value || "-",
-    },
-    {
-      title: "Trạng thái",
-      dataIndex: "isActive",
-      width: 150,
-      align: "center",
-      render: (isActive: boolean, record) => (
-        <Tag
-          color={isActive ? "green" : "default"}
-          className="admin-users-status-tag is-clickable"
-          onClick={() => handleToggleStatus(record._id)}
-        >
-          {isActive ? "Hoạt động" : "Khóa"}
-        </Tag>
-      ),
     },
     {
       title: "Hành động",
@@ -313,7 +325,7 @@ export default function UsersPage() {
                 onChange={(event) => setKeyword(event.target.value)}
               />
 
-              <Select<UserStatusFilter>
+              <Segmented<UserStatusFilter>
                 size="large"
                 value={status}
                 onChange={setStatus}
@@ -325,16 +337,6 @@ export default function UsersPage() {
                 ]}
               />
 
-              {hasFilter ? (
-                <Button
-                  size="large"
-                  icon={<ReloadOutlined />}
-                  onClick={handleResetFilters}
-                  className="admin-users-action-button"
-                >
-                  Xóa bộ lọc
-                </Button>
-              ) : null}
             </Flex>
           </Flex>
         </Card>
@@ -361,7 +363,7 @@ export default function UsersPage() {
             loading={isLoading || deleting || togglingStatus}
             dataSource={filteredUsers}
             columns={columns}
-            scroll={{ x: 1590 }}
+            scroll={{ x: 1820 }}
             className="admin-users-table"
             pagination={{
               pageSize: 10,

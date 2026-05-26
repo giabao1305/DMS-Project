@@ -19,7 +19,8 @@ import {
   Tag,
   Typography,
 } from "antd";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 
 import AdminBreadcrumb from "@/components/ui/AdminBreadcrumb";
 import AdminPageHeader from "@/components/ui/AdminPageHeader";
@@ -66,6 +67,7 @@ const transactionGuides = [
 export default function CreateInventoryPage() {
   const { message } = App.useApp();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [form] = Form.useForm<CreateInventoryRequest>();
 
   const { data: products = [] } = useGetProductsQuery();
@@ -74,6 +76,19 @@ export default function CreateInventoryPage() {
   const [adjustStock, { isLoading: isAdjusting }] = useAdjustStockMutation();
 
   const isLoading = isImporting || isExporting || isAdjusting;
+
+  useEffect(() => {
+    const product = searchParams.get("product");
+    const type = searchParams.get("type");
+    const quantity = Number(searchParams.get("quantity"));
+
+    form.setFieldsValue({
+      product: product || undefined,
+      type:
+        type === "export" || type === "adjustment" ? type : "import",
+      quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1,
+    });
+  }, [form, searchParams]);
 
   const handleSubmit = async (values: CreateInventoryRequest) => {
     try {

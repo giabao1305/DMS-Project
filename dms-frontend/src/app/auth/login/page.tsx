@@ -92,7 +92,7 @@ export default function LoginPage() {
           <div className="login-preview-board">
             <div className="login-preview-header">
               <div>
-                <span>Dashboard</span>
+                <span>Tổng quan</span>
                 <strong>Hiệu suất hôm nay</strong>
               </div>
               <BarChartOutlined />

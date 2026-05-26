@@ -106,7 +106,7 @@ export default function PromotionFormPage({ mode }: { mode: PromotionFormMode })
 
   const handleSubmit = async (values: PromotionFormValues) => {
     try {
-      const body: CreatePromotionRequest | UpdatePromotionRequest = {
+      const baseBody: CreatePromotionRequest = {
         name: values.name,
         description: values.description,
         type: values.type,
@@ -119,19 +119,22 @@ export default function PromotionFormPage({ mode }: { mode: PromotionFormMode })
         giftQuantity:
           values.type === "product_gift" ? values.giftQuantity : undefined,
         minOrderValue: values.minOrderValue,
-        isActive: values.isActive,
         startDate: values.dateRange[0].format("YYYY-MM-DD"),
         endDate: values.dateRange[1].format("YYYY-MM-DD"),
       };
 
       if (isEdit && id) {
+        const body: UpdatePromotionRequest = {
+          ...baseBody,
+          isActive: values.isActive,
+        };
         await updatePromotion({ id, body }).unwrap();
         message.success("Cập nhật khuyến mãi thành công");
         router.push("/admin/promotions");
         return;
       }
 
-      await createPromotion(body as CreatePromotionRequest).unwrap();
+      await createPromotion(baseBody).unwrap();
       message.success("Thêm khuyến mãi thành công");
       router.push("/admin/promotions");
     } catch (error: unknown) {

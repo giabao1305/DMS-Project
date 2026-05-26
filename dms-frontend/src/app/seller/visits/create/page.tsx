@@ -24,6 +24,9 @@ import { useEffect, useMemo, useState } from "react";
 import SellerBreadcrumb from "@/components/ui/SellerBreadcrumb";
 import SellerPageHeader from "@/components/ui/SellerPageHeader";
 import { useGetMyCustomersQuery } from "@/features/customers/customerService";
+import type { Customer } from "@/features/customers/customerTypes";
+import { useGetMyRoutesQuery } from "@/features/routes/routeService";
+import type { Route } from "@/features/routes/routeTypes";
 import { useCheckInMutation } from "@/features/visits/visitService";
 import type { CheckInRequest } from "@/features/visits/visitTypes";
 import { useAppSelector } from "@/store/hooks";
@@ -40,6 +43,15 @@ const COLORS = {
   border: "#D7EBE7",
 };
 
+const getRouteCustomerId = (customer: string | Customer) =>
+  typeof customer === "string" ? customer : customer._id;
+
+const getRouteCustomerName = (customer: string | Customer) =>
+  typeof customer === "string" ? customer : customer.name;
+
+const getRouteCustomerPhone = (customer: string | Customer) =>
+  typeof customer === "string" ? "" : customer.phone;
+
 export default function SellerCreateVisitPage() {
   const { message } = App.useApp();
   const router = useRouter();
@@ -54,6 +66,7 @@ export default function SellerCreateVisitPage() {
 
   const checkInLatitude = Form.useWatch("checkInLatitude", form);
   const checkInLongitude = Form.useWatch("checkInLongitude", form);
+  const selectedRouteId = Form.useWatch("route", form);
   const hasLocation =
     checkInLatitude !== undefined &&
     checkInLatitude !== null &&
@@ -61,6 +74,7 @@ export default function SellerCreateVisitPage() {
     checkInLongitude !== null;
 
   const { data: customers = [] } = useGetMyCustomersQuery();
+  const { data: routes = [] } = useGetMyRoutesQuery();
   const [checkIn, { isLoading }] = useCheckInMutation();
 
   useEffect(() => {
@@ -75,12 +89,57 @@ export default function SellerCreateVisitPage() {
     );
   }, [customers]);
 
+  const visitableRoutes = useMemo(
+    () =>
+      routes.filter(
+        (route) => route.status === "planned" || route.status === "in_progress",
+      ),
+    [routes],
+  );
+
+  const selectedRoute = useMemo(
+    () => routes.find((route) => route._id === selectedRouteId),
+    [routes, selectedRouteId],
+  );
+
+  const selectableCustomers = useMemo(() => {
+    if (!selectedRoute) return approvedCustomers;
+
+    return selectedRoute.customers
+      .map((item) => {
+        const id = getRouteCustomerId(item.customer);
+        const fallbackCustomer = approvedCustomers.find(
+          (customer) => customer._id === id,
+        );
+
+        return {
+          _id: id,
+          name: getRouteCustomerName(item.customer) || fallbackCustomer?.name || id,
+          phone: getRouteCustomerPhone(item.customer) || fallbackCustomer?.phone || "",
+        };
+      })
+      .filter((customer) => !/^[a-f\d]{24}$/i.test(customer.name));
+  }, [approvedCustomers, selectedRoute]);
+
   useEffect(() => {
     form.setFieldsValue({
       customer: customerId,
       route: routeId,
     });
   }, [customerId, routeId, form]);
+
+  useEffect(() => {
+    if (!selectedRouteId || !form.getFieldValue("customer")) return;
+
+    const currentCustomerId = form.getFieldValue("customer");
+    const existsInRoute = selectableCustomers.some(
+      (customer) => customer._id === currentCustomerId,
+    );
+
+    if (!existsInRoute && !customerId) {
+      form.setFieldValue("customer", undefined);
+    }
+  }, [customerId, form, selectableCustomers, selectedRouteId]);
 
   const goBack = () => {
     if (routeId) {
@@ -123,10 +182,7 @@ export default function SellerCreateVisitPage() {
 
   const handleSubmit = async (values: CheckInRequest) => {
     try {
-      await checkIn({
-        ...values,
-        route: routeId,
-      }).unwrap();
+      await checkIn(values).unwrap();
 
       message.success("Check-in thành công");
       goBack();
@@ -163,6 +219,34 @@ export default function SellerCreateVisitPage() {
           <Row gutter={[18, 4]}>
             <Col xs={24}>
               <Form.Item
+                label="Tuyến ghé thăm"
+                name="route"
+                rules={[
+                  {
+                    required: true,
+                    message: "Vui lòng chọn tuyến",
+                  },
+                ]}
+              >
+                <Select
+                  showSearch
+                  size="large"
+                  placeholder="Chọn tuyến đã phân công"
+                  optionFilterProp="label"
+                  disabled={Boolean(routeId)}
+                  options={visitableRoutes.map((route: Route) => ({
+                    label: `${route.name} - ${new Date(
+                      route.workDate,
+                    ).toLocaleDateString("vi-VN")}`,
+                    value: route._id,
+                  }))}
+                  style={{ width: "100%" }}
+                />
+              </Form.Item>
+            </Col>
+
+            <Col xs={24}>
+              <Form.Item
                 label="Khách hàng"
                 name="customer"
                 rules={[
@@ -175,10 +259,14 @@ export default function SellerCreateVisitPage() {
                 <Select
                   showSearch
                   size="large"
-                  placeholder="Chọn khách hàng đã duyệt"
+                  placeholder={
+                    selectedRouteId
+                      ? "Chọn khách hàng trong tuyến"
+                      : "Chọn tuyến trước"
+                  }
                   optionFilterProp="label"
-                  disabled={Boolean(customerId)}
-                  options={approvedCustomers.map((customer) => ({
+                  disabled={Boolean(customerId) || !selectedRouteId}
+                  options={selectableCustomers.map((customer) => ({
                     label: `${customer.name} - ${customer.phone}`,
                     value: customer._id,
                   }))}
@@ -188,10 +276,6 @@ export default function SellerCreateVisitPage() {
               </Form.Item>
             </Col>
           </Row>
-
-          <Form.Item name="route" hidden>
-            <Input />
-          </Form.Item>
 
           <div className="seller-visit-create-location-box">
             <Flex align="center" justify="space-between" gap={14} wrap="wrap">

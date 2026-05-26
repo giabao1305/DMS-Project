@@ -50,18 +50,226 @@ select {
   transition-duration: 120ms !important;
 }
 
-.admin-content-frame :is(.ant-card, [class*="-card"], [class*="-panel"]):hover,
-.seller-content :is(.ant-card, [class*="-card"], [class*="-panel"]):hover,
-.distributor-content :is(.ant-card, [class*="-card"], [class*="-panel"]):hover {
-  box-shadow: var(--dms-hover-shadow) !important;
-  transform: none !important;
-}
-
 .admin-content-frame :is(.ant-table-wrapper, [class*="-table-card"]):hover,
 .seller-content :is(.ant-table-wrapper, [class*="-table-card"]):hover,
 .distributor-content :is(.ant-table-wrapper, [class*="-table-card"]):hover {
+  transform: none !important;
+}
+
+/* Keep dense work screens quick to scan and inexpensive to repaint. */
+.admin-content-frame :is(.ant-card, [class*="-card"], [class*="-panel"]),
+.seller-content :is(.ant-card, [class*="-card"], [class*="-panel"]),
+.distributor-content :is(.ant-card, [class*="-card"], [class*="-panel"]) {
+  transition: border-color var(--dms-motion-fast), background-color var(--dms-motion-fast) !important;
+}
+
+.admin-content-frame :is(.ant-card, [class*="-card"], [class*="-panel"]):hover,
+.seller-content :is(.ant-card, [class*="-card"], [class*="-panel"]):hover,
+.distributor-content :is(.ant-card, [class*="-card"], [class*="-panel"]):hover {
+  transform: none !important;
+}
+
+.admin-content-frame *:hover,
+.seller-content *:hover,
+.distributor-content *:hover {
+  transform: none !important;
+}
+
+.admin-content-frame :is(
+    .admin-users-hero,
+    .admin-customers-hero,
+    .admin-categories-hero,
+    .admin-products-hero,
+    .admin-orders-hero,
+    .admin-routes-hero,
+    .admin-inventory-hero,
+    .admin-promotions-hero,
+    .admin-leaves-hero,
+    .admin-kpis-hero,
+    .admin-visits-hero,
+    .admin-notifications-hero,
+    .admin-audit-hero,
+    .admin-reports-hero,
+    .account-settings-hero,
+    .account-settings-summary
+  ) {
+  display: none !important;
+}
+
+.seller-content :is(
+    [class*="-command-card"],
+    .account-settings-hero,
+    .account-settings-summary
+  ),
+.distributor-content :is(
+    .distributor-page-hero,
+    .distributor-command-card,
+    .distributor-stat-card,
+    .account-settings-hero,
+    .account-settings-summary
+  ) {
+  display: none !important;
+}
+
+.seller-content [class*="-command-summary"],
+.distributor-content [class*="-command-summary"] {
+  display: none !important;
+}
+
+.admin-content-frame .ant-segmented {
+  width: auto !important;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 3px;
+  border: 1px solid #dbeafe;
+  border-radius: 9px;
+  background: #eff6ff;
+}
+
+.admin-content-frame .ant-segmented-item {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 7px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.admin-content-frame .ant-segmented-item-label {
+  min-height: 30px;
+  padding: 5px 10px;
+  line-height: 20px;
+}
+
+.admin-content-frame .ant-segmented-item-selected {
+  color: #ffffff;
+  background: #2563eb;
+  box-shadow: none !important;
+}
+
+.admin-content-frame .ant-segmented-item:not(.ant-segmented-item-selected):hover {
+  color: #1d4ed8;
+  background: #dbeafe;
+}
+
+.admin-layout-root .admin-content-frame :is(
+    [class*="-filter-card"],
+    [class*="-table-card"],
+    .admin-dash-stat-card,
+    .admin-dash-panel
+  ),
+.admin-layout-root .admin-content-frame :is(
+    [class*="-filter-card"],
+    [class*="-table-card"],
+    .admin-dash-stat-card,
+    .admin-dash-panel
+  ):hover {
+  border-color: #dbe4f0 !important;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.055) !important;
+  transform: none !important;
+}
+
+.admin-layout-root .admin-content-frame .admin-page-header-card.ant-card,
+.admin-layout-root .admin-content-frame .admin-page-header-card.ant-card:hover {
+  border-color: #dbe4f0 !important;
+  box-shadow: 0 4px 14px rgba(17, 24, 39, 0.045) !important;
+  transform: none !important;
+  transition: none !important;
+}
+
+/* List screens should remain visually stable while the page is scrolling. */
+.admin-layout-root .admin-content-frame :is(
+    [class*="-filter-card"],
+    [class*="-table-card"],
+    .admin-visits-filter
+  ).ant-card,
+.admin-layout-root .admin-content-frame :is(
+    [class*="-filter-card"],
+    [class*="-table-card"],
+    .admin-visits-filter
+  ).ant-card:hover {
+  border-color: #dbe4f0 !important;
+  box-shadow: 0 4px 14px rgba(17, 24, 39, 0.045) !important;
+  transform: none !important;
+  transition: none !important;
+}
+
+.admin-layout-root .admin-content-frame .ant-table-wrapper,
+.admin-layout-root .admin-content-frame .ant-table-wrapper:hover {
+  border-color: #dbe4f0 !important;
   box-shadow: none !important;
   transform: none !important;
+  transition: none !important;
+}
+
+.admin-layout-root
+  .admin-content-frame
+  .ant-table-tbody
+  > tr
+  > td,
+.admin-layout-root
+  .admin-content-frame
+  .ant-table-tbody
+  > tr:hover
+  > td,
+.admin-layout-root
+  .admin-content-frame
+  .ant-table-tbody
+  > tr:hover
+  > td.ant-table-cell-fix-left,
+.admin-layout-root
+  .admin-content-frame
+  .ant-table-tbody
+  > tr:hover
+  > td.ant-table-cell-fix-right {
+  background: #ffffff !important;
+  transition: none !important;
+}
+
+.admin-layout-root
+  .admin-content-frame
+  .ant-table-tbody
+  > tr.realtime-highlight-row
+  > td,
+.admin-layout-root
+  .admin-content-frame
+  .ant-table-tbody
+  > tr.realtime-highlight-row:hover
+  > td {
+  background: #fffbeb !important;
+}
+
+.admin-layout-root .admin-content-frame .ant-table-cell-fix-left-last::after,
+.admin-layout-root .admin-content-frame .ant-table-cell-fix-right-first::after {
+  box-shadow: none !important;
+}
+
+.admin-layout-root .admin-content-frame .admin-dash-queue-item:hover {
+  border-color: var(--queue-border) !important;
+  background: inherit !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.admin-layout-root .admin-content-frame .admin-dash-management-row:hover {
+  border-color: #e4ebf5 !important;
+  background: #fbfdff !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.admin-layout-root
+  .admin-content-frame
+  .admin-dash-table
+  .ant-table-tbody
+  > tr:hover
+  > td {
+  background: #ffffff !important;
+}
+
+.admin-content-frame :is(.ant-table-tbody > tr > td, .ant-table-thead > tr > th) {
+  transition: background-color var(--dms-motion-fast) !important;
 }
 
 .realtime-highlight-row > td {

@@ -105,12 +105,6 @@ export default function AdminKpisPage() {
     }
   };
 
-  const handleResetFilter = () => {
-    setKeyword("");
-  };
-
-  const hasFilter = keyword.trim().length > 0;
-
   const columns: ColumnsType<Kpi> = [
     {
       title: "Seller",
@@ -122,6 +116,28 @@ export default function AdminKpisPage() {
             {record.seller?.fullName || "-"}
           </Text>
           <Text className="admin-kpis-muted">{record.seller?.email || "-"}</Text>
+        </div>
+      ),
+    },
+    {
+      title: "Hiệu suất",
+      dataIndex: "performanceRate",
+      width: 190,
+      align: "center",
+      render: (value: number) => (
+        <div className="admin-kpis-performance">
+          <Progress
+            percent={value}
+            size="small"
+            strokeColor={
+              value >= 100 ? "#10b981" : value >= 70 ? "#2563eb" : "#f59e0b"
+            }
+            trailColor="#e5e7eb"
+            showInfo={false}
+          />
+          <Tag color={getPerformanceColor(value)} className="admin-kpis-status-tag">
+            {value}%
+          </Tag>
         </div>
       ),
     },
@@ -167,28 +183,6 @@ export default function AdminKpisPage() {
           {record.actualVisits.toLocaleString("vi-VN")} /{" "}
           {record.targetVisits.toLocaleString("vi-VN")}
         </Text>
-      ),
-    },
-    {
-      title: "Hiệu suất",
-      dataIndex: "performanceRate",
-      width: 190,
-      align: "center",
-      render: (value: number) => (
-        <div className="admin-kpis-performance">
-          <Progress
-            percent={value}
-            size="small"
-            strokeColor={
-              value >= 100 ? "#10b981" : value >= 70 ? "#2563eb" : "#f59e0b"
-            }
-            trailColor="#e5e7eb"
-            showInfo={false}
-          />
-          <Tag color={getPerformanceColor(value)} className="admin-kpis-status-tag">
-            {value}%
-          </Tag>
-        </div>
       ),
     },
     {
@@ -243,7 +237,7 @@ export default function AdminKpisPage() {
       <section className="admin-kpis-shell">
         <div className="admin-kpis-hero">
           <div>
-            <Tag className="admin-kpis-hero-tag">KPI Control</Tag>
+            <Tag className="admin-kpis-hero-tag">Theo dõi chỉ tiêu</Tag>
             <Title level={2} className="admin-kpis-hero-title">
               Hiệu suất đội bán hàng
             </Title>
@@ -301,16 +295,6 @@ export default function AdminKpisPage() {
                 onChange={(event) => setKeyword(event.target.value)}
               />
 
-              {hasFilter ? (
-                <Button
-                  size="large"
-                  icon={<ReloadOutlined />}
-                  onClick={handleResetFilter}
-                  className="admin-kpis-reset-button"
-                >
-                  Xóa bộ lọc
-                </Button>
-              ) : null}
             </Flex>
           </Flex>
         </Card>
@@ -326,9 +310,6 @@ export default function AdminKpisPage() {
                   Hiển thị {filteredKpis.length.toLocaleString("vi-VN")} KPI
                 </Text>
               </div>
-              <Tag color="blue" className="admin-kpis-result-tag">
-                Realtime KPI monitoring
-              </Tag>
             </Flex>
           }
         >

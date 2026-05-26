@@ -17,7 +17,7 @@ import {
   Empty,
   Flex,
   Input,
-  Select,
+  Segmented,
   Table,
   Tag,
   Typography,
@@ -30,6 +30,7 @@ import AdminPageHeader from "@/components/ui/AdminPageHeader";
 import { useGetAuditLogsPageQuery } from "@/features/audit/auditService";
 import type { AuditLog } from "@/features/audit/auditTypes";
 import type { User } from "@/features/users/userTypes";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 
 const { Text, Title } = Typography;
 
@@ -98,11 +99,12 @@ export default function AdminAuditLogsPage() {
   const [moduleFilter, setModuleFilter] = useState<FilterValue>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const searchKeyword = useDebouncedValue(keyword);
 
   const { data, isLoading, refetch } = useGetAuditLogsPageQuery({
     page,
     limit: pageSize,
-    search: keyword.trim() || undefined,
+    search: searchKeyword.trim() || undefined,
     status: actionFilter === "all" ? undefined : actionFilter,
     module: moduleFilter === "all" ? undefined : moduleFilter,
     sortBy: "createdAt",
@@ -156,18 +158,6 @@ export default function AdminAuditLogsPage() {
       })),
     ];
   }, [logs]);
-
-  const hasFilter =
-    keyword.trim().length > 0 ||
-    actionFilter !== "all" ||
-    moduleFilter !== "all";
-
-  const handleResetFilters = () => {
-    setKeyword("");
-    setActionFilter("all");
-    setModuleFilter("all");
-    setPage(1);
-  };
 
   const columns: ColumnsType<AuditLog> = [
     {
@@ -266,7 +256,7 @@ export default function AdminAuditLogsPage() {
       <section className="admin-audit-shell">
         <div className="admin-audit-hero">
           <div>
-            <Tag className="admin-audit-hero-tag">Audit Trail</Tag>
+            <Tag className="admin-audit-hero-tag">Lịch sử thao tác</Tag>
             <Title level={2} className="admin-audit-hero-title">
               Dòng sự kiện hệ thống
             </Title>
@@ -331,7 +321,7 @@ export default function AdminAuditLogsPage() {
               className="admin-audit-search"
             />
 
-            <Select<FilterValue>
+            <Segmented<FilterValue>
               size="large"
               value={actionFilter}
               onChange={(value) => { setActionFilter(value); setPage(1); }}
@@ -339,7 +329,7 @@ export default function AdminAuditLogsPage() {
               className="admin-audit-select"
             />
 
-            <Select<FilterValue>
+            <Segmented<FilterValue>
               size="large"
               value={moduleFilter}
               onChange={(value) => { setModuleFilter(value); setPage(1); }}
@@ -347,16 +337,6 @@ export default function AdminAuditLogsPage() {
               className="admin-audit-select"
             />
 
-            {hasFilter ? (
-              <Button
-                size="large"
-                icon={<ReloadOutlined />}
-                onClick={handleResetFilters}
-                className="admin-audit-reset-button"
-              >
-                Xóa bộ lọc
-              </Button>
-            ) : null}
           </Flex>
         </div>
 

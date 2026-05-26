@@ -4,7 +4,6 @@ import {
   DeleteOutlined,
   EditOutlined,
   PlusOutlined,
-  ReloadOutlined,
   SearchOutlined,
   TagsOutlined,
 } from "@ant-design/icons";
@@ -114,7 +113,6 @@ export default function CategoriesPage() {
     });
   }, [categories, keyword]);
 
-  const hasFilter = keyword.trim().length > 0;
 
   const handleOpenCreate = () => {
     setEditingCategory(null);
@@ -137,10 +135,6 @@ export default function CategoriesPage() {
     setOpen(false);
     setEditingCategory(null);
     form.resetFields();
-  };
-
-  const handleResetFilter = () => {
-    setKeyword("");
   };
 
   const handleSubmit = async (values: CreateCategoryRequest) => {
@@ -218,13 +212,6 @@ export default function CategoriesPage() {
       ),
     },
     {
-      title: "Mô tả",
-      dataIndex: "description",
-      width: 420,
-      ellipsis: true,
-      render: (value?: string) => value || "-",
-    },
-    {
       title: "Trạng thái",
       dataIndex: "isActive",
       width: 150,
@@ -237,6 +224,13 @@ export default function CategoriesPage() {
           {isActive ? "Đang dùng" : "Khóa"}
         </Tag>
       ),
+    },
+    {
+      title: "Mô tả",
+      dataIndex: "description",
+      width: 420,
+      ellipsis: true,
+      render: (value?: string) => value || "-",
     },
     {
       title: "Hành động",
@@ -295,7 +289,7 @@ export default function CategoriesPage() {
       <section className="admin-categories-shell">
         <div className="admin-categories-hero">
           <div>
-            <Tag className="admin-categories-hero-tag">Catalog Operation</Tag>
+            <Tag className="admin-categories-hero-tag">Quản lý danh mục</Tag>
             <Title level={2} className="admin-categories-hero-title">
               Điều phối danh mục hàng hóa
             </Title>
@@ -353,16 +347,6 @@ export default function CategoriesPage() {
                 onChange={(event) => setKeyword(event.target.value)}
               />
 
-              {hasFilter ? (
-                <Button
-                  size="large"
-                  icon={<ReloadOutlined />}
-                  onClick={handleResetFilter}
-                  className="admin-categories-action-button"
-                >
-                  Xóa bộ lọc
-                </Button>
-              ) : null}
             </Flex>
           </Flex>
         </Card>
@@ -381,9 +365,6 @@ export default function CategoriesPage() {
                   danh mục
                 </Text>
               </div>
-              <Tag color="blue" className="admin-categories-result-tag">
-                Realtime catalog monitoring
-              </Tag>
             </Flex>
           }
         >

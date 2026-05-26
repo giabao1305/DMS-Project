@@ -156,10 +156,10 @@ export default function AccountSettingsPage({
             <div className="account-settings-copy">
               <Text className="account-settings-eyebrow">
                 {accent === "distributor"
-                  ? "Distributor workspace"
+                  ? "Khu vực nhà phân phối"
                   : accent === "seller"
-                    ? "Seller workspace"
-                    : "Admin console"}
+                    ? "Khu vực bán hàng"
+                    : "Khu vực quản trị"}
               </Text>
               <Title level={3}>{displayName}</Title>
               <Text className="account-settings-email">

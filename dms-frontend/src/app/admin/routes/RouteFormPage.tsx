@@ -21,6 +21,7 @@ import {
   Row,
   Select,
   Space,
+  Steps,
   Table,
   Tag,
   Typography,
@@ -33,7 +34,10 @@ import { useEffect, useMemo, useState } from "react";
 import AdminBreadcrumb from "@/components/ui/AdminBreadcrumb";
 import AdminPageHeader from "@/components/ui/AdminPageHeader";
 import { isSalesRepRole } from "@/features/auth/roleUtils";
-import { useGetCustomersQuery } from "@/features/customers/customerService";
+import {
+  useGetCustomersQuery,
+  useGetMyCustomersQuery,
+} from "@/features/customers/customerService";
 import type { Customer } from "@/features/customers/customerTypes";
 import {
   useCreateRouteMutation,
@@ -45,7 +49,10 @@ import type {
   RouteCustomer,
   UpdateRouteRequest,
 } from "@/features/routes/routeTypes";
-import { useGetUsersQuery } from "@/features/users/userService";
+import {
+  useGetSellerUsersQuery,
+  useGetUsersQuery,
+} from "@/features/users/userService";
 import type { User } from "@/features/users/userTypes";
 
 const { Text } = Typography;
@@ -56,6 +63,7 @@ type RepeatMode = "none" | "weekly" | "even_weeks" | "odd_weeks";
 type RouteFormPageProps = {
   mode: RouteFormMode;
   routeId?: string;
+  scope?: "admin" | "distributor";
 };
 
 type RouteFormValues = {
@@ -134,8 +142,14 @@ const buildRouteWorkDates = (
   return dates;
 };
 
-export default function RouteFormPage({ mode, routeId }: RouteFormPageProps) {
+export default function RouteFormPage({
+  mode,
+  routeId,
+  scope = "admin",
+}: RouteFormPageProps) {
   const isEdit = mode === "edit";
+  const isDistributorScope = scope === "distributor";
+  const routesPath = isDistributorScope ? "/distributor/routes" : "/admin/routes";
   const router = useRouter();
   const { message } = App.useApp();
   const [form] = Form.useForm<RouteFormValues>();
@@ -146,8 +160,18 @@ export default function RouteFormPage({ mode, routeId }: RouteFormPageProps) {
     [],
   );
 
-  const { data: users = [] } = useGetUsersQuery();
-  const { data: customers = [] } = useGetCustomersQuery();
+  const { data: adminUsers = [] } = useGetUsersQuery(undefined, {
+    skip: isDistributorScope,
+  });
+  const { data: distributorSellers = [] } = useGetSellerUsersQuery(undefined, {
+    skip: !isDistributorScope,
+  });
+  const { data: adminCustomers = [] } = useGetCustomersQuery(undefined, {
+    skip: isDistributorScope,
+  });
+  const { data: distributorCustomers = [] } = useGetMyCustomersQuery(undefined, {
+    skip: !isDistributorScope,
+  });
   const { data: route, isLoading: loadingRoute } = useGetRouteByIdQuery(
     routeId || "",
     { skip: !isEdit || !routeId },
@@ -168,27 +192,42 @@ export default function RouteFormPage({ mode, routeId }: RouteFormPageProps) {
   );
 
   const sellers = useMemo(
-    () => users.filter((user) => isSalesRepRole(user.role) && user.isActive),
-    [users],
+    () =>
+      (isDistributorScope ? distributorSellers : adminUsers).filter(
+        (user) => isSalesRepRole(user.role) && user.isActive,
+      ),
+    [adminUsers, distributorSellers, isDistributorScope],
   );
+  const customers = isDistributorScope ? distributorCustomers : adminCustomers;
 
   const routeSelectableCustomers = useMemo(() => {
+    if (!selectedSellerId) return [];
+
     return customers.filter((customer) => {
       if (!customer.isActive || customer.status !== "approved") return false;
-      if (!selectedSellerId) return true;
 
       return getAssignedSellerId(customer) === selectedSellerId;
     });
   }, [customers, selectedSellerId]);
 
+  const availableRouteCustomers = useMemo(() => {
+    const selectedIds = new Set(
+      customersInRoute.map((item) => item.customer._id),
+    );
+
+    return routeSelectableCustomers.filter(
+      (customer) => !selectedIds.has(customer._id),
+    );
+  }, [customersInRoute, routeSelectableCustomers]);
+
   useEffect(() => {
     if (
       selectedCustomerId &&
-      !routeSelectableCustomers.some((customer) => customer._id === selectedCustomerId)
+      !availableRouteCustomers.some((customer) => customer._id === selectedCustomerId)
     ) {
       setSelectedCustomerId(undefined);
     }
-  }, [routeSelectableCustomers, selectedCustomerId]);
+  }, [availableRouteCustomers, selectedCustomerId]);
 
   useEffect(() => {
     if (!isEdit || !route || customers.length === 0) return;
@@ -218,12 +257,17 @@ export default function RouteFormPage({ mode, routeId }: RouteFormPageProps) {
   }, [customers, form, isEdit, route]);
 
   const handleAddCustomer = () => {
+    if (!selectedSellerId) {
+      message.warning("Vui lòng chọn DSR trước khi thêm khách hàng");
+      return;
+    }
+
     if (!selectedCustomerId) {
       message.warning("Vui lòng chọn khách hàng");
       return;
     }
 
-    const customer = routeSelectableCustomers.find(
+    const customer = availableRouteCustomers.find(
       (item) => item._id === selectedCustomerId,
     );
 
@@ -252,6 +296,29 @@ export default function RouteFormPage({ mode, routeId }: RouteFormPageProps) {
 
     setSelectedCustomerId(undefined);
     setNote("");
+  };
+
+  const handleAddAllCustomers = () => {
+    if (!selectedSellerId) {
+      message.warning("Vui lòng chọn DSR trước khi thêm khách hàng");
+      return;
+    }
+
+    if (availableRouteCustomers.length === 0) {
+      message.info("DSR này không còn khách hàng nào để thêm");
+      return;
+    }
+
+    setCustomersInRoute((previous) => [
+      ...previous,
+      ...availableRouteCustomers.map((customer, index) => ({
+        customer,
+        orderIndex: previous.length + index + 1,
+      })),
+    ]);
+    setSelectedCustomerId(undefined);
+    setNote("");
+    message.success(`Đã thêm ${availableRouteCustomers.length} khách của DSR`);
   };
 
   const handleRemoveCustomer = (customerId: string) => {
@@ -299,7 +366,11 @@ export default function RouteFormPage({ mode, routeId }: RouteFormPageProps) {
       if (isEdit && routeId) {
         await updateRoute({ id: routeId, body }).unwrap();
         message.success("Cập nhật tuyến thành công");
-        router.push(`/admin/routes/${routeId}`);
+        router.push(
+          isDistributorScope
+            ? `/distributor/routes`
+            : `/admin/routes/${routeId}`,
+        );
         return;
       }
 
@@ -330,7 +401,7 @@ export default function RouteFormPage({ mode, routeId }: RouteFormPageProps) {
           ? `Đã tạo ${workDates.length} tuyến theo lịch lặp`
           : "Tạo tuyến thành công",
       );
-      router.push("/admin/routes");
+      router.push(routesPath);
     } catch (error: unknown) {
 
       const err = error as {
@@ -433,7 +504,7 @@ export default function RouteFormPage({ mode, routeId }: RouteFormPageProps) {
           description="Cập nhật nhân viên, ngày làm việc và danh sách khách hàng."
           extra={
             <Button
-              onClick={() => router.push("/admin/routes")}
+              onClick={() => router.push(routesPath)}
               className="admin-route-form-action"
             >
               Quay lại
@@ -455,7 +526,7 @@ export default function RouteFormPage({ mode, routeId }: RouteFormPageProps) {
           description="Cập nhật nhân viên, ngày làm việc và danh sách khách hàng."
           extra={
             <Button
-              onClick={() => router.push("/admin/routes")}
+              onClick={() => router.push(routesPath)}
               className="admin-route-form-action"
             >
               Quay lại
@@ -483,7 +554,7 @@ export default function RouteFormPage({ mode, routeId }: RouteFormPageProps) {
         }
         extra={
           <Button
-            onClick={() => router.push("/admin/routes")}
+            onClick={() => router.push(routesPath)}
             className="admin-route-form-action"
           >
             Quay lại
@@ -491,7 +562,11 @@ export default function RouteFormPage({ mode, routeId }: RouteFormPageProps) {
         }
       />
 
-      <section className="admin-route-form-shell">
+      <section
+        className={`admin-route-form-shell ${
+          isDistributorScope ? "is-distributor-route-form" : ""
+        }`}
+      >
         <div className="admin-route-form-panel">
           <Form<RouteFormValues>
             form={form}
@@ -502,6 +577,26 @@ export default function RouteFormPage({ mode, routeId }: RouteFormPageProps) {
             }}
             onFinish={handleSubmit}
           >
+            <Steps
+              responsive
+              current={customersInRoute.length > 0 ? 2 : selectedSellerId ? 1 : 0}
+              className="admin-route-form-steps"
+              items={[
+                {
+                  title: "Chọn DSR",
+                  description: "Chọn người đi tuyến và ngày làm việc",
+                },
+                {
+                  title: "Chọn khách",
+                  description: "Chỉ lấy khách thuộc DSR đã chọn",
+                },
+                {
+                  title: "Tạo tuyến",
+                  description: "Kiểm tra thứ tự và lưu kế hoạch",
+                },
+              ]}
+            />
+
             <div className="admin-route-form-section">
               <Flex
                 align="flex-start"
@@ -667,12 +762,17 @@ export default function RouteFormPage({ mode, routeId }: RouteFormPageProps) {
                     size="large"
                     showSearch
                     allowClear
-                    placeholder="Chọn khách hàng"
+                    disabled={!selectedSellerId}
+                    placeholder={
+                      selectedSellerId
+                        ? "Chọn khách hàng thuộc DSR"
+                        : "Chọn DSR trước"
+                    }
                     style={{ width: "100%" }}
                     value={selectedCustomerId}
                     optionFilterProp="label"
                     onChange={setSelectedCustomerId}
-                    options={routeSelectableCustomers.map((customer) => ({
+                    options={availableRouteCustomers.map((customer) => ({
                       label: `${customer.name} - ${customer.phone}`,
                       value: customer._id,
                     }))}
@@ -689,17 +789,38 @@ export default function RouteFormPage({ mode, routeId }: RouteFormPageProps) {
                 </Col>
 
                 <Col xs={24} xl={5}>
-                  <Button
-                    type="primary"
-                    size="large"
-                    icon={<PlusOutlined />}
-                    className="admin-route-form-add-button"
-                    onClick={handleAddCustomer}
-                  >
-                    Thêm khách hàng
-                  </Button>
+                  <Flex gap={10} wrap="wrap" className="admin-route-form-add-actions">
+                    <Button
+                      type="primary"
+                      size="large"
+                      icon={<PlusOutlined />}
+                      className="admin-route-form-add-button"
+                      onClick={handleAddCustomer}
+                    >
+                      Thêm
+                    </Button>
+                    <Button
+                      size="large"
+                      className="admin-route-form-add-button"
+                      disabled={!selectedSellerId}
+                      onClick={handleAddAllCustomers}
+                    >
+                      Thêm tất cả
+                    </Button>
+                  </Flex>
                 </Col>
               </Row>
+
+              <Flex gap={8} wrap="wrap" className="admin-route-form-customer-hint">
+                <Tag color={selectedSellerId ? "blue" : "default"}>
+                  {selectedSellerId
+                    ? `${routeSelectableCustomers.length} khách thuộc DSR`
+                    : "Chưa chọn DSR"}
+                </Tag>
+                <Tag color="cyan">
+                  Còn {availableRouteCustomers.length} khách có thể thêm
+                </Tag>
+              </Flex>
 
               <Table<SelectedCustomer>
                 rowKey={(record) => record.customer._id}
@@ -724,7 +845,7 @@ export default function RouteFormPage({ mode, routeId }: RouteFormPageProps) {
               <Space wrap>
                 <Button
                   size="large"
-                  onClick={() => router.push("/admin/routes")}
+                  onClick={() => router.push(routesPath)}
                   className="admin-route-form-action"
                 >
                   Hủy
@@ -769,6 +890,42 @@ export default function RouteFormPage({ mode, routeId }: RouteFormPageProps) {
           border: 1px solid #dbe4f0;
           border-radius: 8px;
           background: #ffffff;
+          transition: none !important;
+        }
+
+        .admin-route-form-steps {
+          margin-bottom: 22px;
+          padding: 16px;
+          border: 1px solid #dbe4f0;
+          border-radius: 8px;
+          background: #f8fafc;
+        }
+
+        .admin-route-form-steps .ant-steps-item-title {
+          color: #0f172a !important;
+          font-weight: 900;
+        }
+
+        .admin-route-form-steps .ant-steps-item-description {
+          color: #64748b !important;
+          font-size: 12px;
+          font-weight: 700;
+        }
+
+        .admin-route-form-panel:hover {
+          border-color: #dbe4f0 !important;
+          background: #ffffff !important;
+          box-shadow: none !important;
+          transform: none !important;
+        }
+
+        .admin-layout-root .admin-content-frame .admin-route-form-panel,
+        .admin-layout-root .admin-content-frame .admin-route-form-panel:hover {
+          border-color: #dbe4f0 !important;
+          background: #ffffff !important;
+          box-shadow: none !important;
+          transform: none !important;
+          transition: none !important;
         }
 
         .admin-route-form-panel.is-loading {
@@ -823,11 +980,25 @@ export default function RouteFormPage({ mode, routeId }: RouteFormPageProps) {
         }
 
         .admin-route-form-add-row {
-          margin-bottom: 18px;
+          margin-bottom: 10px;
         }
 
         .admin-route-form-add-button {
+          flex: 1 1 132px;
+        }
+
+        .admin-route-form-add-actions {
           width: 100%;
+        }
+
+        .admin-route-form-customer-hint {
+          margin-bottom: 18px;
+        }
+
+        .admin-route-form-customer-hint .ant-tag {
+          margin-inline-end: 0;
+          border-radius: 999px !important;
+          font-weight: 800;
         }
 
         .admin-route-form-table .ant-table,
@@ -856,10 +1027,6 @@ export default function RouteFormPage({ mode, routeId }: RouteFormPageProps) {
           padding-block: 14px !important;
           background: #ffffff !important;
           border-bottom-color: #edf2f7 !important;
-        }
-
-        .admin-route-form-table .ant-table-tbody > tr:hover > td {
-          background: #f8fbff !important;
         }
 
         .admin-route-form-customer,
@@ -938,6 +1105,110 @@ export default function RouteFormPage({ mode, routeId }: RouteFormPageProps) {
           font-weight: 900;
         }
 
+        .admin-route-form-shell.is-distributor-route-form
+          .admin-route-form-panel {
+          border-color: #d7ebe7 !important;
+          border-radius: 16px;
+          box-shadow: 0 16px 34px rgba(11, 47, 42, 0.06) !important;
+        }
+
+        .admin-route-form-shell.is-distributor-route-form
+          .admin-route-form-steps {
+          border-color: #d7ebe7;
+          border-radius: 14px;
+          background: #f3fbf9;
+        }
+
+        .admin-route-form-shell.is-distributor-route-form
+          .admin-route-form-section
+          + .admin-route-form-section,
+        .admin-route-form-shell.is-distributor-route-form
+          .admin-route-form-footer {
+          border-top-color: #d7ebe7;
+        }
+
+        .admin-route-form-shell.is-distributor-route-form
+          .admin-route-form-add-row {
+          align-items: flex-end;
+        }
+
+        .admin-route-form-shell.is-distributor-route-form
+          .admin-route-form-add-actions {
+          padding: 6px;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+          border: 1px solid #d7ebe7;
+          border-radius: 14px;
+          background: #f3fbf9;
+        }
+
+        .admin-route-form-shell.is-distributor-route-form
+          .admin-route-form-add-button.ant-btn {
+          width: 100%;
+          height: 44px !important;
+          flex: none;
+          border-radius: 12px !important;
+          font-weight: 850 !important;
+        }
+
+        .admin-route-form-shell.is-distributor-route-form
+          .admin-route-form-add-button.ant-btn-primary {
+          border-color: #0d9488 !important;
+          background: #0d9488 !important;
+          box-shadow: 0 12px 24px rgba(13, 148, 136, 0.18);
+        }
+
+        .admin-route-form-shell.is-distributor-route-form
+          .admin-route-form-add-button.ant-btn-primary:hover {
+          border-color: #0f766e !important;
+          background: #0f766e !important;
+        }
+
+        .admin-route-form-shell.is-distributor-route-form
+          .admin-route-form-add-button.ant-btn-default {
+          border-color: #a7d8d0 !important;
+          color: #0b2f2a !important;
+          background: #ffffff !important;
+        }
+
+        .admin-route-form-shell.is-distributor-route-form
+          .admin-route-form-add-button.ant-btn-default:hover {
+          border-color: #0d9488 !important;
+          color: #0f766e !important;
+          background: #e8f7f4 !important;
+        }
+
+        .admin-route-form-shell.is-distributor-route-form
+          .admin-route-form-customer-hint {
+          margin-top: 2px;
+        }
+
+        .admin-route-form-shell.is-distributor-route-form
+          .admin-route-form-total {
+          border-color: #d7ebe7;
+          border-radius: 12px;
+          background: #f3fbf9;
+        }
+
+        .admin-route-form-shell.is-distributor-route-form
+          .admin-route-form-total
+          .anticon {
+          color: #0d9488;
+        }
+
+        .admin-route-form-shell.is-distributor-route-form
+          .admin-route-form-action.ant-btn-primary {
+          border-color: #0d9488 !important;
+          background: #0d9488 !important;
+        }
+
+        .admin-route-form-shell.is-distributor-route-form
+          .admin-route-form-action.ant-btn-primary:hover {
+          border-color: #0f766e !important;
+          background: #0f766e !important;
+        }
+
         @media (max-width: 767px) {
           .admin-route-form-panel {
             padding: 14px;
@@ -945,6 +1216,11 @@ export default function RouteFormPage({ mode, routeId }: RouteFormPageProps) {
 
           .admin-route-form-section {
             padding: 0;
+          }
+
+          .admin-route-form-shell.is-distributor-route-form
+            .admin-route-form-add-actions {
+            grid-template-columns: 1fr;
           }
         }
       `}</style>

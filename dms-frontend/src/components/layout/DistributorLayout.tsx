@@ -163,7 +163,7 @@ export default function DistributorLayout({
 
             {!collapsed && (
               <div className="distributor-brand-copy">
-                <div className="distributor-brand-title">DMS Distributor</div>
+                <div className="distributor-brand-title">DMS Phân phối</div>
                 <div className="distributor-brand-subtitle">
                   Điều phối đội DSR và chăm sóc điểm bán
                 </div>
@@ -186,7 +186,7 @@ export default function DistributorLayout({
             <div className="distributor-team-card">
               <TeamOutlined />
               <div>
-                <span>Workspace</span>
+                <span>Khu vực làm việc</span>
               <strong>Nhà phân phối</strong>
               </div>
             </div>
@@ -210,7 +210,7 @@ export default function DistributorLayout({
         <Header className="distributor-header">
           <div className="distributor-header-copy">
             <Typography.Text className="distributor-header-eyebrow">
-              Distributor Workspace
+              Khu vực nhà phân phối
             </Typography.Text>
             <Typography.Title level={4} className="distributor-header-title">
               Quản lý đội DSR
@@ -219,7 +219,7 @@ export default function DistributorLayout({
 
           <div className="distributor-header-actions">
             <Tag color={isSocketConnected ? "success" : "error"}>
-              Realtime {isSocketConnected ? "online" : "offline"}
+              {isSocketConnected ? "Đang kết nối" : "Mất kết nối"}
             </Tag>
             <Button
               icon={
@@ -231,7 +231,7 @@ export default function DistributorLayout({
             />
             <div className="distributor-user-chip">
               <Avatar icon={<UserOutlined />} />
-              <span>{currentUser?.fullName || "Distributor"}</span>
+              <span>{currentUser?.fullName || "Nhà phân phối"}</span>
             </div>
             <Button danger icon={<LogoutOutlined />} onClick={handleLogout}>
               Đăng xuất
@@ -488,9 +488,13 @@ export default function DistributorLayout({
         }
 
         .distributor-content {
-          height: calc(100vh - 70px);
-          padding: 22px;
+          height: calc(100vh - 102px);
+          margin: 16px;
+          padding: 24px;
           overflow-y: auto;
+          border: 1px solid #d7ebe7;
+          border-radius: 16px;
+          background: #f8fcfb;
           overscroll-behavior: contain;
           scrollbar-gutter: stable;
         }
@@ -576,50 +580,6 @@ export default function DistributorLayout({
           z-index: 1;
         }
 
-        .distributor-page-hero {
-          position: relative;
-          min-height: 58px;
-          padding: 8px 14px;
-          overflow: hidden;
-          display: flex;
-          align-items: center;
-          border: 1px solid #d7ebe7;
-          border-radius: 16px;
-          background:
-            linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 252, 251, 0.95)),
-            radial-gradient(circle at 88% 12%, rgba(20, 184, 166, 0.22), transparent 30%),
-            linear-gradient(90deg, rgba(13, 148, 136, 0.08), transparent 55%);
-          box-shadow: 0 16px 34px rgba(11, 47, 42, 0.06);
-        }
-
-        .distributor-page-hero-copy {
-          position: relative;
-          z-index: 1;
-          max-width: 760px;
-        }
-
-        .distributor-page-eyebrow {
-          color: #0d9488;
-          font-size: 10px;
-          font-weight: 900;
-          letter-spacing: 0;
-          text-transform: uppercase;
-        }
-
-        .distributor-page-title.ant-typography {
-          margin: 2px 0 2px;
-          color: #0b2f2a;
-          font-size: 17px;
-          font-weight: 900;
-          letter-spacing: 0;
-        }
-
-        .distributor-page-description {
-          color: #5d7471 !important;
-          font-size: 11.5px;
-          font-weight: 600;
-        }
-
         .distributor-stat-card.ant-card {
           min-height: 116px;
           border: 1px solid #d7ebe7;
@@ -668,8 +628,8 @@ export default function DistributorLayout({
         .distributor-metric-card,
         .distributor-panel-card {
           border: 1px solid #d7ebe7;
-          border-radius: 8px;
-          box-shadow: 0 12px 28px rgba(11, 47, 42, 0.05);
+          border-radius: 16px;
+          box-shadow: 0 16px 34px rgba(11, 47, 42, 0.06);
         }
 
         .distributor-metric-card.ant-card,
@@ -688,8 +648,10 @@ export default function DistributorLayout({
         }
 
         .distributor-panel-card .ant-card-head {
-          min-height: 52px;
+          min-height: 82px;
+          padding: 18px 22px;
           border-bottom: 1px solid #d7ebe7;
+          background: #f3fbf9;
         }
 
         .distributor-panel-card .ant-card-head-title {
@@ -698,11 +660,11 @@ export default function DistributorLayout({
         }
 
         .distributor-table-card .ant-card-head {
-          padding-inline: 18px;
+          padding-inline: 22px;
         }
 
         .distributor-table-card .ant-card-body {
-          padding: 0;
+          padding: 18px;
         }
 
         .distributor-table-card-title {
@@ -712,21 +674,32 @@ export default function DistributorLayout({
         }
 
         .distributor-table-card-description {
-          color: #6b827f;
-          font-size: 12px;
-          font-weight: 650;
+          color: #5d7471;
+          font-size: 13px;
+          line-height: 1.5;
+        }
+
+        .distributor-panel-card .ant-table-container {
+          overflow: hidden;
+          border: 1px solid #d7ebe7;
+          border-radius: 14px;
         }
 
         .distributor-panel-card .ant-table-thead > tr > th {
           background: #f3fbf9 !important;
-          color: #123c36 !important;
-          font-size: 12px;
-          font-weight: 900 !important;
-          text-transform: uppercase;
+          color: #0b2f2a !important;
+          font-size: 13px !important;
+          font-weight: 850 !important;
+          border-bottom: 1px solid #d7ebe7 !important;
+        }
+
+        .distributor-panel-card .ant-table-tbody > tr > td {
+          background: #ffffff !important;
+          border-bottom: 1px solid #ecf6f3 !important;
         }
 
         .distributor-panel-card .ant-table-tbody > tr:hover > td {
-          background: #f5fbfa !important;
+          background: #f3fbf9 !important;
         }
 
         .distributor-insight-card .anticon {
@@ -1009,6 +982,20 @@ export default function DistributorLayout({
           text-align: center;
         }
 
+        .distributor-row-action.ant-btn {
+          height: 34px;
+          border-color: #d7ebe7;
+          border-radius: 10px;
+          color: #0b2f2a;
+          font-weight: 750;
+        }
+
+        .distributor-row-action.ant-btn:hover {
+          border-color: #0d9488 !important;
+          color: #0d9488 !important;
+          background: #e7f8f5 !important;
+        }
+
         .distributor-profile-card {
           padding: 0;
         }
@@ -1027,8 +1014,10 @@ export default function DistributorLayout({
           }
 
           .distributor-content {
-            height: calc(100vh - 130px);
-            padding: 14px;
+            height: calc(100vh - 148px);
+            margin: 12px;
+            padding: 16px;
+            border-radius: 14px;
           }
 
           .distributor-command-content {

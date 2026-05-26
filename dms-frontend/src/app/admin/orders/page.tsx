@@ -7,7 +7,6 @@ import {
   EditOutlined,
   EyeOutlined,
   PlusOutlined,
-  ReloadOutlined,
   SearchOutlined,
   ShoppingCartOutlined,
 } from "@ant-design/icons";
@@ -17,7 +16,7 @@ import {
   Empty,
   Flex,
   Input,
-  Select,
+  Segmented,
   Space,
   Table,
   Tag,
@@ -30,9 +29,11 @@ import { useMemo, useState } from "react";
 import AdminBreadcrumb from "@/components/ui/AdminBreadcrumb";
 import AdminPageHeader from "@/components/ui/AdminPageHeader";
 import type { Customer } from "@/features/customers/customerTypes";
+import { getOrderAmounts } from "@/features/orders/orderAmounts";
 import { useGetOrdersPageQuery } from "@/features/orders/orderService";
 import type { Order, OrderStatus } from "@/features/orders/orderTypes";
 import type { User } from "@/features/users/userTypes";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useRealtimeHighlight } from "@/hooks/useRealtimeHighlight";
 import { useRealtimeRefetch } from "@/hooks/useRealtimeRefetch";
 
@@ -74,11 +75,12 @@ export default function AdminOrdersPage() {
   const [status, setStatus] = useState<OrderStatusFilter>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const searchKeyword = useDebouncedValue(keyword);
 
   const { data, isLoading, refetch } = useGetOrdersPageQuery({
     page,
     limit: pageSize,
-    search: keyword.trim() || undefined,
+    search: searchKeyword.trim() || undefined,
     status: status === "all" ? undefined : status,
     sortBy: "createdAt",
     sortOrder: "desc",
@@ -96,7 +98,7 @@ export default function AdminOrdersPage() {
 
   const overview = useMemo(() => {
     const totalRevenue = orders.reduce(
-      (sum, order) => sum + order.finalAmount,
+      (sum, order) => sum + getOrderAmounts(order).finalAmount,
       0,
     );
     const pending = orders.filter((order) => order.status === "pending").length;
@@ -116,14 +118,6 @@ export default function AdminOrdersPage() {
     };
   }, [orders]);
 
-  const hasFilter = keyword.trim().length > 0 || status !== "all";
-
-  const handleResetFilters = () => {
-    setKeyword("");
-    setStatus("all");
-    setPage(1);
-  };
-
   const columns: ColumnsType<Order> = useMemo(
     () => [
       {
@@ -132,6 +126,20 @@ export default function AdminOrdersPage() {
         width: 160,
         render: (value: string) => (
           <Text className="admin-orders-code">{value}</Text>
+        ),
+      },
+      {
+        title: "Trạng thái",
+        dataIndex: "status",
+        width: 180,
+        align: "center",
+        render: (orderStatus: OrderStatus) => (
+          <Tag
+            color={statusMap[orderStatus]?.color}
+            className="admin-orders-status-tag"
+          >
+            {statusMap[orderStatus]?.label}
+          </Tag>
         ),
       },
       {
@@ -162,25 +170,13 @@ export default function AdminOrdersPage() {
       },
       {
         title: "Tổng tiền",
-        dataIndex: "finalAmount",
+        key: "finalAmount",
         width: 170,
         align: "right",
-        render: (value: number) => (
-          <Text className="admin-orders-money">{money(value)}</Text>
-        ),
-      },
-      {
-        title: "Trạng thái",
-        dataIndex: "status",
-        width: 180,
-        align: "center",
-        render: (orderStatus: OrderStatus) => (
-          <Tag
-            color={statusMap[orderStatus]?.color}
-            className="admin-orders-status-tag"
-          >
-            {statusMap[orderStatus]?.label}
-          </Tag>
+        render: (_, record) => (
+          <Text className="admin-orders-money">
+            {money(getOrderAmounts(record).finalAmount)}
+          </Text>
         ),
       },
       {
@@ -247,7 +243,7 @@ export default function AdminOrdersPage() {
       <section className="admin-orders-shell">
         <div className="admin-orders-hero">
           <div>
-            <Tag className="admin-orders-hero-tag">Order Operation</Tag>
+            <Tag className="admin-orders-hero-tag">Vận hành đơn hàng</Tag>
             <Title level={2} className="admin-orders-hero-title">
               Điều phối đơn hàng
             </Title>
@@ -313,7 +309,7 @@ export default function AdminOrdersPage() {
                 }}
               />
 
-              <Select<OrderStatusFilter>
+              <Segmented<OrderStatusFilter>
                 size="large"
                 value={status}
                 onChange={(value) => {
@@ -332,16 +328,6 @@ export default function AdminOrdersPage() {
                 ]}
               />
 
-              {hasFilter ? (
-                <Button
-                  size="large"
-                  icon={<ReloadOutlined />}
-                  onClick={handleResetFilters}
-                  className="admin-orders-reset-button"
-                >
-                  Xóa bộ lọc
-                </Button>
-              ) : null}
             </Flex>
           </Flex>
         </Card>
@@ -359,9 +345,6 @@ export default function AdminOrdersPage() {
                   Hiển thị {totalOrders.toLocaleString("vi-VN")} đơn
                 </Text>
               </div>
-              <Tag color="blue" className="admin-orders-result-tag">
-                Realtime order monitoring
-              </Tag>
             </Flex>
           }
         >

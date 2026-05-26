@@ -29,6 +29,11 @@ import {
   PromotionType,
 } from '../promotions/schemas/promotion.schema';
 import { User, UserDocument, UserRole } from '../users/schemas/user.schema';
+import {
+  Visit,
+  VisitDocument,
+  VisitStatus,
+} from '../visits/schemas/visit.schema';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { RequestReturnDto } from './dto/request-return.dto';
 import { Order, OrderDocument, OrderStatus } from './schemas/order.schema';
@@ -70,6 +75,9 @@ export class OrdersService {
 
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
+
+    @InjectModel(Visit.name)
+    private readonly visitModel: Model<VisitDocument>,
 
     @InjectConnection()
     private readonly connection: Connection,
@@ -151,6 +159,26 @@ export class OrdersService {
     }
   }
 
+  private async assertSellerCheckedInCustomer(
+    sellerId: string,
+    customerId: string,
+  ): Promise<void> {
+    const activeVisit = await this.visitModel
+      .findOne({
+        seller: new Types.ObjectId(sellerId),
+        customer: new Types.ObjectId(customerId),
+        status: VisitStatus.CHECKED_IN,
+      })
+      .select('_id')
+      .exec();
+
+    if (!activeVisit) {
+      throw new ForbiddenException(
+        'Seller must check in at this customer before creating an order',
+      );
+    }
+  }
+
   async create(
     createOrderDto: CreateOrderDto,
     currentUserId: string,
@@ -196,6 +224,13 @@ export class OrdersService {
     if (customer.assignedSeller.toString() !== orderSellerId) {
       throw new ForbiddenException(
         'This customer is not assigned to selected seller',
+      );
+    }
+
+    if (currentUserRole === UserRole.SELLER) {
+      await this.assertSellerCheckedInCustomer(
+        currentUserId,
+        createOrderDto.customer,
       );
     }
 
@@ -362,6 +397,13 @@ export class OrdersService {
       throw new ForbiddenException(
         'This customer is not assigned to selected seller',
       );
+    }
+
+    if (
+      currentUserRole === UserRole.SELLER &&
+      customerId !== order.customer.toString()
+    ) {
+      await this.assertSellerCheckedInCustomer(currentUserId, customerId);
     }
 
     const items: {

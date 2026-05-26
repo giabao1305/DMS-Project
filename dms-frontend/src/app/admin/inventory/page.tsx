@@ -5,7 +5,6 @@ import {
   DownloadOutlined,
   InboxOutlined,
   PlusOutlined,
-  ReloadOutlined,
   SearchOutlined,
   SwapOutlined,
 } from "@ant-design/icons";
@@ -156,12 +155,6 @@ export default function AdminInventoryPage() {
     });
   }, [keyword, transactions]);
 
-  const hasFilter = keyword.trim().length > 0;
-
-  const handleResetFilter = () => {
-    setKeyword("");
-  };
-
   const handleExportProducts = () => {
     exportCsv(
       `ton-kho-${new Date().toISOString().slice(0, 10)}.csv`,
@@ -225,6 +218,19 @@ export default function AdminInventoryPage() {
       ),
     },
     {
+      title: "Trạng thái",
+      width: 170,
+      align: "center",
+      render: (_, record) => (
+        <Tag
+          color={record.stock <= record.minStock ? "red" : "green"}
+          className="admin-inventory-status-tag"
+        >
+          {record.stock <= record.minStock ? "Sắp hết hàng" : "Còn hàng"}
+        </Tag>
+      ),
+    },
+    {
       title: "Đơn vị",
       dataIndex: "unit",
       width: 120,
@@ -250,19 +256,6 @@ export default function AdminInventoryPage() {
       dataIndex: "minStock",
       width: 150,
       align: "center",
-    },
-    {
-      title: "Trạng thái",
-      width: 170,
-      align: "center",
-      render: (_, record) => (
-        <Tag
-          color={record.stock <= record.minStock ? "red" : "green"}
-          className="admin-inventory-status-tag"
-        >
-          {record.stock <= record.minStock ? "Sắp hết hàng" : "Còn hàng"}
-        </Tag>
-      ),
     },
   ];
 
@@ -356,7 +349,7 @@ export default function AdminInventoryPage() {
       <section className="admin-inventory-shell">
         <div className="admin-inventory-hero">
           <div>
-            <Tag className="admin-inventory-hero-tag">Stock Operation</Tag>
+            <Tag className="admin-inventory-hero-tag">Quản lý kho</Tag>
             <Title level={2} className="admin-inventory-hero-title">
               Điều phối tồn kho
             </Title>
@@ -419,17 +412,6 @@ export default function AdminInventoryPage() {
                 onChange={(event) => setKeyword(event.target.value)}
               />
 
-              {hasFilter ? (
-                <Button
-                  size="large"
-                  icon={<ReloadOutlined />}
-                  onClick={handleResetFilter}
-                  className="admin-inventory-action-button"
-                >
-                  Xóa bộ lọc
-                </Button>
-              ) : null}
-
               <Button
                 size="large"
                 icon={<DownloadOutlined />}
@@ -465,9 +447,6 @@ export default function AdminInventoryPage() {
                   phẩm
                 </Text>
               </div>
-              <Tag color="blue" className="admin-inventory-result-tag">
-                Realtime stock monitoring
-              </Tag>
             </Flex>
           }
         >
@@ -507,9 +486,6 @@ export default function AdminInventoryPage() {
                   giao dịch
                 </Text>
               </div>
-              <Tag color="cyan" className="admin-inventory-result-tag">
-                Inventory timeline
-              </Tag>
             </Flex>
           }
         >

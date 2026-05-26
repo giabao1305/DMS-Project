@@ -3,7 +3,10 @@
 import { Card, Col, Flex, Progress, Row, Statistic, Typography } from "antd";
 import type { ReactNode } from "react";
 
-const { Text, Title } = Typography;
+import SellerBreadcrumb from "@/components/ui/SellerBreadcrumb";
+import SellerPageHeader from "@/components/ui/SellerPageHeader";
+
+const { Text } = Typography;
 
 export type DistributorStat = {
   title: string;
@@ -24,54 +27,52 @@ export type DistributorStatusItem = {
 };
 
 export function DistributorPageShell({
-  eyebrow,
   title,
   description,
   stats = [],
+  extra,
   children,
 }: {
   eyebrow: string;
   title: string;
   description: string;
   stats?: DistributorStat[];
+  extra?: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <Flex vertical gap={18} className="distributor-page-stack">
-      <section className="distributor-page-hero">
-        <div className="distributor-page-hero-copy">
-          <Text className="distributor-page-eyebrow">{eyebrow}</Text>
-          <Title level={2} className="distributor-page-title">
-            {title}
-          </Title>
-          <Text type="secondary" className="distributor-page-description">
-            {description}
-          </Text>
-        </div>
-      </section>
+    <>
+      <SellerBreadcrumb />
+      <SellerPageHeader
+        title={title}
+        description={description}
+        extra={extra}
+      />
 
-      {stats.length > 0 && (
-        <Row gutter={[14, 14]}>
-          {stats.map((item) => (
-            <Col xs={24} sm={12} xl={6} key={item.title}>
-              <Card className="distributor-stat-card">
-                <Flex align="center" gap={13}>
-                  <span className="distributor-stat-icon">{item.icon}</span>
-                  <Statistic title={item.title} value={item.value} />
-                </Flex>
-                {item.description && (
-                  <Text className="distributor-stat-description">
-                    {item.description}
-                  </Text>
-                )}
-              </Card>
-            </Col>
-          ))}
-        </Row>
-      )}
+      <Flex vertical gap={20} className="distributor-page-stack">
+        {stats.length > 0 && (
+          <Row gutter={[14, 14]}>
+            {stats.map((item) => (
+              <Col xs={24} sm={12} xl={6} key={item.title}>
+                <Card className="distributor-stat-card">
+                  <Flex align="center" gap={13}>
+                    <span className="distributor-stat-icon">{item.icon}</span>
+                    <Statistic title={item.title} value={item.value} />
+                  </Flex>
+                  {item.description && (
+                    <Text className="distributor-stat-description">
+                      {item.description}
+                    </Text>
+                  )}
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        )}
 
-      {children}
-    </Flex>
+        {children}
+      </Flex>
+    </>
   );
 }
 

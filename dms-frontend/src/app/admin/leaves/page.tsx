@@ -6,7 +6,6 @@ import {
   ClockCircleOutlined,
   CloseCircleOutlined,
   EyeOutlined,
-  ReloadOutlined,
   SearchOutlined,
   UserSwitchOutlined,
 } from "@ant-design/icons";
@@ -16,7 +15,7 @@ import {
   Empty,
   Flex,
   Input,
-  Select,
+  Segmented,
   Table,
   Tag,
   Typography,
@@ -31,6 +30,7 @@ import AdminPageHeader from "@/components/ui/AdminPageHeader";
 import { useGetLeavesPageQuery } from "@/features/leaves/leaveService";
 import type { LeaveRequest, LeaveStatus } from "@/features/leaves/leaveTypes";
 import type { User } from "@/features/users/userTypes";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useRealtimeHighlight } from "@/hooks/useRealtimeHighlight";
 import { useRealtimeRefetch } from "@/hooks/useRealtimeRefetch";
 
@@ -97,17 +97,18 @@ export default function AdminLeavesPage() {
   const [status, setStatus] = useState<LeaveStatusFilter>("all");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
+  const searchKeyword = useDebouncedValue(keyword);
 
   const queryArgs = useMemo(
     () => ({
       page,
       limit,
-      search: keyword.trim() || undefined,
+      search: searchKeyword.trim() || undefined,
       status: status === "all" ? undefined : status,
       sortBy: "createdAt",
       sortOrder: "desc" as const,
     }),
-    [keyword, limit, page, status],
+    [limit, page, searchKeyword, status],
   );
 
   const {
@@ -145,14 +146,6 @@ export default function AdminLeavesPage() {
     };
   }, [leaves]);
 
-  const hasFilter = keyword.trim().length > 0 || status !== "all";
-
-  const handleResetFilters = () => {
-    setKeyword("");
-    setStatus("all");
-    setPage(1);
-  };
-
   const handleStatusChange = (value: LeaveStatusFilter) => {
     setStatus(value);
     setPage(1);
@@ -175,6 +168,20 @@ export default function AdminLeavesPage() {
             <Text className="admin-leaves-strong">{getSellerName(seller)}</Text>
             <Text className="admin-leaves-muted">Người gửi yêu cầu</Text>
           </div>
+        ),
+      },
+      {
+        title: "Trạng thái",
+        dataIndex: "status",
+        width: 170,
+        align: "center",
+        render: (leaveStatus: LeaveStatus) => (
+          <Tag
+            color={statusMap[leaveStatus]?.color}
+            className="admin-leaves-status-tag"
+          >
+            {statusMap[leaveStatus]?.label}
+          </Tag>
         ),
       },
       {
@@ -206,20 +213,6 @@ export default function AdminLeavesPage() {
           <Text className="admin-leaves-muted" ellipsis>
             {value || "-"}
           </Text>
-        ),
-      },
-      {
-        title: "Trạng thái",
-        dataIndex: "status",
-        width: 170,
-        align: "center",
-        render: (leaveStatus: LeaveStatus) => (
-          <Tag
-            color={statusMap[leaveStatus]?.color}
-            className="admin-leaves-status-tag"
-          >
-            {statusMap[leaveStatus]?.label}
-          </Tag>
         ),
       },
       {
@@ -264,7 +257,7 @@ export default function AdminLeavesPage() {
       <section className="admin-leaves-shell">
         <div className="admin-leaves-hero">
           <div>
-            <Tag className="admin-leaves-hero-tag">Leave Operation</Tag>
+            <Tag className="admin-leaves-hero-tag">Quản lý nghỉ phép</Tag>
             <Title level={2} className="admin-leaves-hero-title">
               Điều phối nghỉ phép
             </Title>
@@ -330,7 +323,7 @@ export default function AdminLeavesPage() {
                 }}
               />
 
-              <Select<LeaveStatusFilter>
+              <Segmented<LeaveStatusFilter>
                 size="large"
                 value={status}
                 onChange={handleStatusChange}
@@ -343,16 +336,6 @@ export default function AdminLeavesPage() {
                 ]}
               />
 
-              {hasFilter ? (
-                <Button
-                  size="large"
-                  icon={<ReloadOutlined />}
-                  onClick={handleResetFilters}
-                  className="admin-leaves-reset-button"
-                >
-                  Xóa bộ lọc
-                </Button>
-              ) : null}
             </Flex>
           </Flex>
         </Card>
@@ -371,9 +354,6 @@ export default function AdminLeavesPage() {
                   {(meta?.total ?? leaves.length).toLocaleString("vi-VN")} đơn
                 </Text>
               </div>
-              <Tag color="blue" className="admin-leaves-result-tag">
-                Realtime leave monitoring
-              </Tag>
             </Flex>
           }
         >

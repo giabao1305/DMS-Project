@@ -4,11 +4,15 @@ import {
   CalendarOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
+  EditOutlined,
   EnvironmentOutlined,
+  EyeOutlined,
+  PlusOutlined,
   StopOutlined,
 } from "@ant-design/icons";
-import { Empty, Flex, Table, Tag, Typography } from "antd";
+import { Button, Empty, Flex, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 
@@ -128,6 +132,25 @@ export default function DistributorRoutesPage() {
         );
       },
     },
+    {
+      title: "Thao tác",
+      width: 224,
+      align: "center",
+      render: (_, record) => (
+        <Flex gap={10} justify="center" className="distributor-route-actions">
+          <Link href={`/distributor/routes/${record._id}`}>
+            <Button size="small" icon={<EyeOutlined />} className="distributor-row-action">
+              Chi tiết
+            </Button>
+          </Link>
+          <Link href={`/distributor/routes/${record._id}/edit`}>
+            <Button size="small" icon={<EditOutlined />} className="distributor-row-action">
+              Sửa
+            </Button>
+          </Link>
+        </Flex>
+      ),
+    },
   ];
 
   return (
@@ -135,6 +158,17 @@ export default function DistributorRoutesPage() {
       eyebrow="Tuyến bán hàng"
       title="Tuyến của đội DSR"
       description="Theo dõi lịch đi tuyến, trạng thái thực thi và độ phủ điểm bán của từng DSR."
+      extra={
+        <Link href="/distributor/routes/create">
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            className="distributor-routes-create-button"
+          >
+            Tạo tuyến
+          </Button>
+        </Link>
+      }
     >
       <DistributorCommandCenter
         eyebrow="Route execution"
@@ -189,7 +223,7 @@ export default function DistributorRoutesPage() {
           loading={isLoading}
           columns={columns}
           dataSource={data}
-          scroll={{ x: 960 }}
+          scroll={{ x: 1176 }}
           pagination={{
             pageSize: 8,
             showSizeChanger: false,
@@ -198,6 +232,26 @@ export default function DistributorRoutesPage() {
           locale={{ emptyText: <Empty description="Chưa có tuyến bán hàng" /> }}
         />
       </DistributorTableCard>
+
+      <style jsx global>{`
+        .distributor-routes-create-button.ant-btn {
+          height: 42px;
+          border-color: #0d9488 !important;
+          border-radius: 12px;
+          background: #0d9488 !important;
+          font-weight: 850;
+          box-shadow: 0 14px 30px rgba(13, 148, 136, 0.22);
+        }
+
+        .distributor-routes-create-button.ant-btn:hover {
+          border-color: #0f766e !important;
+          background: #0f766e !important;
+        }
+
+        .distributor-route-actions {
+          padding-inline: 6px;
+        }
+      `}</style>
     </DistributorPageShell>
   );
 }

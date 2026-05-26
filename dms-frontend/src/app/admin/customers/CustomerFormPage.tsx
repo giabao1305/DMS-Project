@@ -90,11 +90,16 @@ export default function CustomerFormPage({ mode }: { mode: CustomerFormMode }) {
 
   const handleSubmit = async (values: CustomerFormValues) => {
     try {
-      const body = Object.fromEntries(
-        Object.entries(values).filter(
-          ([, value]) => value !== undefined && value !== "",
-        ),
-      );
+      const body: CreateCustomerRequest = {
+        name: values.name,
+        phone: values.phone,
+        address: values.address,
+        latitude: values.latitude,
+        longitude: values.longitude,
+        ownerName: values.ownerName || undefined,
+        customerType: values.customerType || undefined,
+        assignedSeller: values.assignedSeller,
+      };
 
       if (isEdit && id) {
         await updateCustomer({
@@ -106,7 +111,7 @@ export default function CustomerFormPage({ mode }: { mode: CustomerFormMode }) {
         return;
       }
 
-      await createCustomer(body as CreateCustomerRequest).unwrap();
+      await createCustomer(body).unwrap();
       message.success("Thêm khách hàng thành công");
       router.push("/admin/customers");
     } catch {
@@ -231,20 +236,6 @@ export default function CustomerFormPage({ mode }: { mode: CustomerFormMode }) {
                   </Form.Item>
                 </Col>
 
-                {isEdit ? (
-                  <Col xs={24} lg={12}>
-                    <Form.Item label="Trạng thái hoạt động" name="isActive">
-                      <Select
-                        size="large"
-                        placeholder="Chọn trạng thái"
-                        options={[
-                          { label: "Hoạt động", value: true },
-                          { label: "Tạm khóa", value: false },
-                        ]}
-                      />
-                    </Form.Item>
-                  </Col>
-                ) : null}
               </Row>
             </section>
 

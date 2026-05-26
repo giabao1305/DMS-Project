@@ -8,7 +8,6 @@ import {
   GiftOutlined,
   PercentageOutlined,
   PlusOutlined,
-  ReloadOutlined,
   SearchOutlined,
   TagsOutlined,
 } from "@ant-design/icons";
@@ -21,7 +20,7 @@ import {
   Flex,
   Input,
   Popconfirm,
-  Select,
+  Segmented,
   Space,
   Table,
   Tag,
@@ -104,7 +103,6 @@ export default function PromotionsPage() {
     });
   }, [promotions, keyword, type]);
 
-  const hasFilter = keyword.trim().length > 0 || type !== "all";
 
   const handleDelete = async (id: string) => {
     try {
@@ -176,11 +174,6 @@ export default function PromotionsPage() {
     </Dropdown>
   );
 
-  const handleResetFilters = () => {
-    setKeyword("");
-    setType("all");
-  };
-
   const getPromotionValue = (promotion: Promotion) => {
     if (promotion.type === "percent") return `${promotion.discountPercent || 0}%`;
     if (promotion.type === "amount") return money(promotion.discountAmount || 0);
@@ -202,6 +195,13 @@ export default function PromotionsPage() {
           </Text>
         </div>
       ),
+    },
+    {
+      title: "Trạng thái",
+      dataIndex: "isActive",
+      width: 150,
+      align: "center",
+      render: (_, record) => renderStatusDropdown(record),
     },
     {
       title: "Loại",
@@ -239,13 +239,6 @@ export default function PromotionsPage() {
           {formatDate(record.startDate)} - {formatDate(record.endDate)}
         </Text>
       ),
-    },
-    {
-      title: "Trạng thái",
-      dataIndex: "isActive",
-      width: 150,
-      align: "center",
-      render: (_, record) => renderStatusDropdown(record),
     },
     {
       title: "Hành động",
@@ -307,7 +300,7 @@ export default function PromotionsPage() {
       <section className="admin-promotions-shell">
         <div className="admin-promotions-hero">
           <div>
-            <Tag className="admin-promotions-hero-tag">Promotion Operation</Tag>
+            <Tag className="admin-promotions-hero-tag">Quản lý khuyến mãi</Tag>
             <Title level={2} className="admin-promotions-hero-title">
               Điều phối chương trình ưu đãi
             </Title>
@@ -370,7 +363,7 @@ export default function PromotionsPage() {
                 onChange={(event) => setKeyword(event.target.value)}
               />
 
-              <Select<PromotionTypeFilter>
+              <Segmented<PromotionTypeFilter>
                 size="large"
                 value={type}
                 onChange={setType}
@@ -383,16 +376,6 @@ export default function PromotionsPage() {
                 ]}
               />
 
-              {hasFilter ? (
-                <Button
-                  size="large"
-                  icon={<ReloadOutlined />}
-                  onClick={handleResetFilters}
-                  className="admin-promotions-action-button"
-                >
-                  Xóa bộ lọc
-                </Button>
-              ) : null}
             </Flex>
           </Flex>
         </Card>
@@ -411,9 +394,6 @@ export default function PromotionsPage() {
                   khuyến mãi
                 </Text>
               </div>
-              <Tag color="blue" className="admin-promotions-result-tag">
-                Realtime promotion monitoring
-              </Tag>
             </Flex>
           }
         >

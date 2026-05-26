@@ -194,8 +194,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         </div>
 
         <div className="admin-brand-copy">
-          <Text className="admin-brand-title">DMS Admin</Text>
-          <Text className="admin-brand-subtitle">Distribution Control</Text>
+          <Text className="admin-brand-title">DMS Quản trị</Text>
+          <Text className="admin-brand-subtitle">Quản lý phân phối</Text>
         </div>
 
         {!isMobile && (
@@ -233,14 +233,14 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             </Flex>
 
             <Tag color={isSocketConnected ? "success" : "error"}>
-              {isSocketConnected ? "Online" : "Offline"}
+              {isSocketConnected ? "Trực tuyến" : "Mất kết nối"}
             </Tag>
           </Flex>
         </div>
 
         <Tooltip
           placement="right"
-          title={isSocketConnected ? "Realtime online" : "Realtime offline"}
+          title={isSocketConnected ? "Dữ liệu trực tuyến" : "Dữ liệu gián đoạn"}
         ></Tooltip>
       </div>
 
@@ -365,7 +365,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                   />
 
                   <Text>
-                    {isSocketConnected ? "Realtime online" : "Realtime offline"}
+                    {isSocketConnected ? "Đang kết nối" : "Mất kết nối"}
                   </Text>
                 </div>
               )}
@@ -391,7 +391,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                   <div className="admin-header-user-copy">
                     <Text className="admin-header-user-name">{adminName}</Text>
                     <Text className="admin-header-user-role">
-                      Administrator
+                      Quản trị viên
                     </Text>
                   </div>
                 </div>
@@ -1270,14 +1270,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           box-shadow: var(--admin-shadow-sm);
           overflow: hidden;
           transition:
-            border-color var(--admin-motion),
-            box-shadow var(--admin-motion),
+            background-color var(--admin-motion),
             transform var(--admin-float-motion);
         }
 
         .admin-page-card:hover,
         .admin-content-frame .ant-card:hover {
-          border-color: #cbd5e1 !important;
+          border-color: var(--admin-border) !important;
           box-shadow: var(--admin-shadow-sm);
           transform: none;
         }
@@ -1313,7 +1312,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             .admin-users-filter-card,
             .admin-users-table-card
           ):hover {
-          box-shadow: var(--admin-shadow-sm) !important;
+          border-color: var(--admin-border) !important;
+          box-shadow: 0 10px 24px rgba(15, 23, 42, 0.055) !important;
           transform: none !important;
         }
 
@@ -1327,8 +1327,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             [class*="-management-row"],
             [class*="-queue-item"]
           ):hover {
-          border-color: #cbd5e1 !important;
-          box-shadow: var(--admin-shadow-sm) !important;
+          border-color: var(--admin-border) !important;
+          box-shadow: 0 10px 24px rgba(15, 23, 42, 0.055) !important;
           transform: none !important;
         }
 
@@ -1430,14 +1430,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           border-radius: var(--admin-radius) !important;
           border: 1px solid var(--admin-border);
           background: #ffffff;
-          transition:
-            border-color var(--admin-motion),
-            box-shadow var(--admin-motion);
+          transition: none;
         }
 
         .admin-content-frame .ant-table-wrapper:hover,
         .admin-page-table:hover {
-          border-color: #cbd5e1;
+          border-color: var(--admin-border);
           box-shadow: none;
         }
 

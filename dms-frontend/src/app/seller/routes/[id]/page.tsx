@@ -270,7 +270,7 @@ export default function SellerRouteDetailPage() {
     {
       title: "Hành động",
       align: "center",
-      width: 260,
+      width: 320,
       render: (_, record) => {
         const customerId = getCustomerId(record.customer);
         const canCheckIn =
@@ -281,7 +281,7 @@ export default function SellerRouteDetailPage() {
           route.status !== "completed";
 
         return (
-          <Space size={8} wrap>
+          <Space size={12} className="seller-route-detail-actions">
             <Link href={`/seller/customers/${customerId}`}>
               <Button
                 icon={<EyeOutlined />}
@@ -463,7 +463,7 @@ export default function SellerRouteDetailPage() {
             columns={columns}
             dataSource={sortedCustomers}
             pagination={false}
-            scroll={{ x: 1280 }}
+            scroll={{ x: 1360 }}
             locale={{
               emptyText: <Empty description="Tuyến chưa có khách hàng" />,
             }}
@@ -617,8 +617,22 @@ export default function SellerRouteDetailPage() {
         .seller-route-detail-secondary-action.ant-btn,
         .seller-route-detail-primary-action.ant-btn {
           height: 36px;
+          min-width: 128px;
           border-radius: 10px;
           font-weight: 750;
+          white-space: nowrap;
+        }
+
+        .seller-route-detail-actions {
+          display: inline-flex;
+          flex-wrap: nowrap;
+          justify-content: center;
+          width: 100%;
+        }
+
+        .seller-route-detail-table .ant-table-tbody > tr > td:last-child,
+        .seller-route-detail-table .ant-table-thead > tr > th:last-child {
+          padding-inline: 20px !important;
         }
 
         .seller-route-detail-secondary-action.ant-btn {
