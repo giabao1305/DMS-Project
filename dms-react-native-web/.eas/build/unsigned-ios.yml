@@ -31,9 +31,12 @@ build:
           /usr/bin/zip -qry ../dms-seller-unsigned.ipa Payload
           cd ../..
           test -f build/dms-seller-unsigned.ipa
+          cp build/dms-seller-unsigned.ipa ../dms-seller-unsigned.ipa
+          test -f ../dms-seller-unsigned.ipa
           find build -name '*.ipa' -print
+          ls -lah ../dms-seller-unsigned.ipa
     - eas/upload_artifact:
         name: Upload unsigned IPA
         inputs:
           type: application-archive
-          path: ./ios/build/dms-seller-unsigned.ipa
+          path: dms-seller-unsigned.ipa

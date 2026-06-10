@@ -33,7 +33,3 @@ yarn-debug.*
 yarn-error.*
 .DS_Store
 *.tsbuildinfo
-
-# Generated binaries
-*.ipa
-*.apk

@@ -18,6 +18,4 @@ dms-frontend/build/
 **/.env.*
 !**/.env.example
 !**/.env.*.example
-**/*.ipa
-**/*.apk
 **/*.log
