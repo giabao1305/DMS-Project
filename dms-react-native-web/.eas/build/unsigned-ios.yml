@@ -33,10 +33,12 @@ build:
           test -f build/dms-seller-unsigned.ipa
           cp build/dms-seller-unsigned.ipa ../dms-seller-unsigned.ipa
           test -f ../dms-seller-unsigned.ipa
+          pwd
           find build -name '*.ipa' -print
+          find .. -name '*.ipa' -print
           ls -lah ../dms-seller-unsigned.ipa
     - eas/upload_artifact:
         name: Upload unsigned IPA
         inputs:
           type: application-archive
-          path: dms-seller-unsigned.ipa
+          path: dms-react-native-web/dms-seller-unsigned.ipa
