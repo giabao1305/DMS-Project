@@ -14,6 +14,8 @@ import type {
 type ReportQuery = {
   month?: number;
   year?: number;
+  distributor?: string;
+  seller?: string;
 };
 
 const buildQuery = (url: string, params?: ReportQuery) => {
@@ -25,6 +27,14 @@ const buildQuery = (url: string, params?: ReportQuery) => {
 
   if (params?.year) {
     searchParams.set("year", String(params.year));
+  }
+
+  if (params?.distributor) {
+    searchParams.set("distributor", params.distributor);
+  }
+
+  if (params?.seller) {
+    searchParams.set("seller", params.seller);
   }
 
   const queryString = searchParams.toString();

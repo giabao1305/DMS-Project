@@ -31,6 +31,10 @@ export function getSort(query?: PaginationQueryDto): Record<string, 1 | -1> {
   };
 }
 
+export function buildSearchRegex(search: string): RegExp {
+  return new RegExp(search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+}
+
 export function toPaginatedResult<T>(
   data: T[],
   total: number,

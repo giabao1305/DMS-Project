@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   EditOutlined,
@@ -7,9 +7,10 @@ import {
   MailOutlined,
   PhoneOutlined,
   ShopOutlined,
+  TeamOutlined,
   UserOutlined,
 } from "@ant-design/icons";
-import { Avatar, Button, Col, Empty, Flex, Row, Space, Tag, Typography } from "antd";
+import { Avatar, Button, Empty, Space, Tag, Typography } from "antd";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 
@@ -18,17 +19,60 @@ import AdminPageHeader from "@/components/ui/AdminPageHeader";
 import { useGetUserByIdQuery, useGetUsersQuery } from "@/features/users/userService";
 import type { User } from "@/features/users/userTypes";
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
+
+const roleLabel: Record<string, string> = {
+  admin: "Admin",
+  distributor: "Nhà phân phối",
+  seller: "DSR",
+};
+
+const roleTone: Record<string, string> = {
+  admin: "blue",
+  distributor: "blue",
+  seller: "cyan",
+};
 
 const getManagerName = (manager: User["manager"], users: User[]) => {
   if (!manager) return "-";
   if (typeof manager !== "string") {
-    return manager.fullName || manager.email || "-";
+    return manager.companyName || manager.fullName || manager.email || "-";
   }
 
   const distributor = users.find((user) => user._id === manager);
-  return distributor?.fullName || distributor?.email || manager;
+  return distributor?.companyName || distributor?.fullName || distributor?.email || manager;
 };
+
+function DetailLine({
+  icon,
+  label,
+  value,
+  strong,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value?: React.ReactNode;
+  strong?: boolean;
+}) {
+  return (
+    <div className="admin-user-detail-line">
+      <span className="admin-user-detail-line-icon">{icon}</span>
+      <span className="admin-user-detail-line-label">{label}</span>
+      <span className={strong ? "admin-user-detail-line-value is-strong" : "admin-user-detail-line-value"}>
+        {value || "-"}
+      </span>
+    </div>
+  );
+}
+
+function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="admin-user-detail-section">
+      <div className="admin-user-detail-section-title">{title}</div>
+      <div className="admin-user-detail-section-body">{children}</div>
+    </section>
+  );
+}
 
 export default function UserDetailPage() {
   const router = useRouter();
@@ -58,11 +102,7 @@ export default function UserDetailPage() {
         <AdminPageHeader
           title="Chi tiết nhân viên"
           description="Xem thông tin tài khoản và trạng thái hoạt động của nhân viên."
-          extra={
-            <Button onClick={() => router.push("/admin/users")}>
-              Quay lại
-            </Button>
-          }
+          extra={<Button onClick={() => router.push("/admin/users")}>Quay lại</Button>}
         />
         <div className="admin-user-detail-frame">
           <Empty description="Không tìm thấy nhân viên" />
@@ -72,18 +112,17 @@ export default function UserDetailPage() {
     );
   }
 
+  const statusLabel = user.isActive ? "Hoạt động" : "Khóa";
+  const displayRole = roleLabel[user.role] || user.role;
   return (
     <>
       <AdminBreadcrumb />
-
       <AdminPageHeader
         title="Chi tiết nhân viên"
-        description="Xem thông tin tài khoản, liên hệ và hồ sơ công ty của nhân viên."
+        description="Thông tin định danh, liên hệ và phân quyền của nhân viên."
         extra={
           <Space>
-            <Button onClick={() => router.push("/admin/users")}>
-              Quay lại
-            </Button>
+            <Button onClick={() => router.push("/admin/users")}>Quay lại</Button>
             <Link href={`/admin/users/${user._id}/edit`}>
               <Button color="orange" variant="solid" icon={<EditOutlined />}>
                 Sửa nhân viên
@@ -95,182 +134,49 @@ export default function UserDetailPage() {
 
       <section className="admin-user-detail-shell">
         <div className="admin-user-detail-frame">
-          <section className="admin-user-detail-section">
-            <Flex
-              align="center"
-              justify="space-between"
-              gap={18}
-              wrap="wrap"
-              className="admin-user-profile-head"
-            >
-              <Flex align="center" gap={16} className="admin-user-profile-main">
-                <Avatar
-                  size={72}
-                  src={user.avatar}
-                  icon={<UserOutlined />}
-                  className="admin-user-avatar"
-                />
-                <div>
-                  <Title level={3} className="admin-user-title">
-                    {user.fullName}
-                  </Title>
-                  <Text className="admin-user-subtitle">{user.email}</Text>
+          <div className="admin-user-profile-head">
+            <div className="admin-user-identity">
+              <Avatar size={64} src={user.avatar} icon={<UserOutlined />} className="admin-user-avatar" />
+              <div className="admin-user-profile-copy">
+                <div className="admin-user-meta-row">
+                  <span className="admin-user-eyebrow">{user.code || "Chưa có mã"}</span>
+                  <Tag color={user.isActive ? "green" : "default"}>{statusLabel}</Tag>
+                  <Tag color={roleTone[user.role] || "blue"}>{displayRole}</Tag>
                 </div>
-              </Flex>
-
-              <Space wrap>
-                <Tag
-                  color={user.isActive ? "green" : "default"}
-                  className="admin-user-detail-tag"
-                >
-                  {user.isActive ? "Hoạt động" : "Khóa"}
-                </Tag>
-                <Tag color="blue" className="admin-user-detail-tag">
-                  {user.role.toUpperCase()}
-                </Tag>
-              </Space>
-            </Flex>
-          </section>
-
-          <section className="admin-user-detail-section">
-            <Flex
-              justify="space-between"
-              align="flex-start"
-              gap={14}
-              wrap="wrap"
-              className="admin-user-section-head"
-            >
-              <div>
-                <Text className="admin-user-section-title">
-                  Thông tin tài khoản
-                </Text>
-                <Text className="admin-user-section-desc">
-                  Dữ liệu định danh và trạng thái sử dụng trong hệ thống.
-                </Text>
+                <h1 className="admin-user-title">{user.fullName}</h1>
+                <p className="admin-user-email">{user.email}</p>
               </div>
-            </Flex>
+            </div>
+          </div>
 
-            <Row gutter={[16, 16]}>
-              <Col xs={24} md={12} xl={8}>
-                <InfoItem icon={<IdcardOutlined />} label="Mã nhân sự" value={user.code || "-"} />
-              </Col>
-              <Col xs={24} md={12} xl={8}>
-                <InfoItem icon={<UserOutlined />} label="Họ tên" value={user.fullName} />
-              </Col>
-              <Col xs={24} md={12} xl={8}>
-                <InfoItem icon={<MailOutlined />} label="Email" value={user.email} />
-              </Col>
-              <Col xs={24} md={12} xl={8}>
-                <InfoItem
-                  icon={<PhoneOutlined />}
-                  label="Số điện thoại"
-                  value={user.phone || "-"}
-                />
-              </Col>
+          <div className="admin-user-detail-content">
+            <DetailSection title="Tài khoản">
+              <DetailLine icon={<IdcardOutlined />} label="Mã nhân sự" value={user.code} strong />
+              <DetailLine icon={<TeamOutlined />} label="Vai trò" value={roleLabel[user.role] || user.role} />
               {user.role === "seller" ? (
-                <Col xs={24} md={12} xl={8}>
-                  <InfoItem
-                    icon={<ShopOutlined />}
-                    label="Nhà phân phối quản lý"
-                    value={getManagerName(user.manager, users)}
-                  />
-                </Col>
+                <DetailLine icon={<ShopOutlined />} label="NPP quản lý" value={getManagerName(user.manager, users)} />
               ) : null}
-            </Row>
-          </section>
+            </DetailSection>
 
-          <section className="admin-user-detail-section">
-            <Flex
-              justify="space-between"
-              align="flex-start"
-              gap={14}
-              wrap="wrap"
-              className="admin-user-section-head"
-            >
-              <div>
-                <Text className="admin-user-section-title">Thông tin hồ sơ</Text>
-                <Text className="admin-user-section-desc">
-                  Công ty, mã số thuế và địa chỉ liên hệ của nhân viên.
-                </Text>
-              </div>
-            </Flex>
+            <DetailSection title="Liên hệ">
+              <DetailLine icon={<MailOutlined />} label="Email" value={user.email} strong />
+              <DetailLine icon={<PhoneOutlined />} label="Số điện thoại" value={user.phone} />
+              <DetailLine icon={<EnvironmentOutlined />} label="Địa chỉ" value={user.address} />
+            </DetailSection>
 
-            <Row gutter={[16, 16]}>
-              <Col xs={24} md={12}>
-                <InfoItem
-                  icon={<ShopOutlined />}
-                  label="Công ty"
-                  value={user.companyName || "-"}
-                />
-              </Col>
-              <Col xs={24} md={12}>
-                <InfoItem
-                  icon={<IdcardOutlined />}
-                  label="Mã số thuế"
-                  value={user.taxCode || "-"}
-                />
-              </Col>
-              <Col xs={24}>
-                <InfoItem
-                  icon={<EnvironmentOutlined />}
-                  label="Địa chỉ"
-                  value={user.address || "-"}
-                />
-              </Col>
-            </Row>
-          </section>
-
-          <section className="admin-user-detail-section">
-            <Flex
-              justify="space-between"
-              align="flex-start"
-              gap={14}
-              wrap="wrap"
-              className="admin-user-section-head"
-            >
-              <div>
-                <Text className="admin-user-section-title">Ảnh đại diện</Text>
-                <Text className="admin-user-section-desc">
-                  Đường dẫn avatar đang lưu trên hồ sơ tài khoản.
-                </Text>
-              </div>
-            </Flex>
-
-            {user.avatar ? (
-              <Text copyable className="admin-user-avatar-url">
-                {user.avatar}
-              </Text>
-            ) : (
-              <Text type="secondary">Chưa có avatar.</Text>
-            )}
-          </section>
+            <DetailSection title="Hồ sơ công ty">
+              <DetailLine icon={<ShopOutlined />} label="Công ty" value={user.companyName} />
+              <DetailLine icon={<IdcardOutlined />} label="Mã số thuế" value={user.taxCode} />
+              {user.avatar ? (
+                <DetailLine icon={<UserOutlined />} label="Avatar" value={<Text copyable>{user.avatar}</Text>} />
+              ) : null}
+            </DetailSection>
+          </div>
         </div>
       </section>
 
       <UserDetailStyles />
     </>
-  );
-}
-
-function InfoItem({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: React.ReactNode;
-}) {
-  return (
-    <Flex gap={12} align="flex-start" className="admin-user-info-item">
-      <Flex align="center" justify="center" className="admin-user-info-icon">
-        {icon}
-      </Flex>
-      <div className="admin-user-info-copy">
-        <Text className="admin-user-info-label">{label}</Text>
-        <Text className="admin-user-info-value">{value}</Text>
-      </div>
-    </Flex>
   );
 }
 
@@ -283,11 +189,11 @@ function UserDetailStyles() {
       }
 
       .admin-user-detail-frame {
-        min-height: 260px;
-        padding: 20px;
+        min-height: 240px;
         border: 1px solid #dbe4f0;
         border-radius: 8px;
         background: #ffffff;
+        overflow: hidden;
       }
 
       .admin-user-detail-frame.is-loading {
@@ -298,131 +204,183 @@ function UserDetailStyles() {
       }
 
       @keyframes admin-user-detail-loading {
-        0% {
-          background-position: 100% 50%;
-        }
-        100% {
-          background-position: 0 50%;
-        }
-      }
-
-      .admin-user-detail-section + .admin-user-detail-section {
-        margin-top: 24px;
-        padding-top: 22px;
-        border-top: 1px solid #dbe4f0;
+        0% { background-position: 100% 50%; }
+        100% { background-position: 0 50%; }
       }
 
       .admin-user-profile-head {
-        min-height: 92px;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        padding: 20px 24px 22px;
+        border-bottom: 1px solid #dbe4f0;
+        background: #f8fbff;
       }
 
-      .admin-user-profile-main {
+      .admin-user-identity {
         min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex: 1 1 auto;
+        background: transparent !important;
+        box-shadow: none !important;
       }
 
       .admin-user-avatar {
-        background: #eff6ff;
+        background: #eaf2ff;
         color: #2563eb;
+        box-shadow: inset 0 0 0 1px #c8ddff;
+        flex: 0 0 auto;
       }
 
-      .admin-user-title.ant-typography {
-        margin: 0;
-        color: #0f172a;
-        font-size: 24px;
+      .admin-user-profile-copy {
+        min-width: 0;
+        max-width: 760px;
+        padding: 0;
+        border: 0;
+        background: transparent !important;
+        box-shadow: none !important;
+      }
+
+      .admin-user-meta-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 7px;
+      }
+
+      .admin-user-eyebrow {
+        display: inline-flex;
+        color: #2563eb !important;
+        font-size: 12px;
         font-weight: 900;
         letter-spacing: 0;
       }
 
-      .admin-user-subtitle.ant-typography {
+      .admin-user-meta-row .ant-tag {
+        min-height: 26px;
+        display: inline-flex;
+        align-items: center;
+        margin-inline-end: 0;
+        border-radius: 999px;
+        font-weight: 800;
+      }
+
+      .admin-user-title {
+        margin: 0;
+        padding: 0;
+        color: #0f172a;
+        font-size: 25px;
+        font-weight: 900;
+        line-height: 1.16;
+        background: transparent !important;
+        box-shadow: none !important;
+      }
+
+      .admin-user-email {
         display: block;
-        margin-top: 4px;
+        margin: 4px 0 0;
+        padding: 0;
         color: #64748b;
         font-size: 13px;
         font-weight: 700;
         word-break: break-word;
+        background: transparent !important;
+        box-shadow: none !important;
       }
 
-      .admin-user-detail-tag {
-        min-width: 96px;
-        height: 31px;
-        margin-inline-end: 0;
-        display: inline-flex !important;
+      .admin-user-detail-content {
+        padding: 18px 24px 24px;
+      }
+
+      .admin-user-detail-section + .admin-user-detail-section {
+        margin-top: 22px;
+      }
+
+      .admin-user-detail-section-title {
+        margin-bottom: 10px;
+        color: #0f172a;
+        font-size: 14px;
+        font-weight: 900;
+      }
+
+      .admin-user-detail-section-body {
+        border: 1px solid #dbe4f0;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .admin-user-detail-line {
+        display: grid;
+        grid-template-columns: 42px 190px 1fr;
+        align-items: center;
+        min-height: 52px;
+        background: #ffffff;
+      }
+
+      .admin-user-detail-line + .admin-user-detail-line {
+        border-top: 1px solid #edf2f7;
+      }
+
+      .admin-user-detail-line-icon {
+        width: 42px;
+        height: 52px;
+        display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: 999px !important;
+        color: #2563eb;
+        background: #f8fbff;
+      }
+
+      .admin-user-detail-line-label,
+      .admin-user-detail-line-value {
+        padding: 13px 16px;
+      }
+
+      .admin-user-detail-line-label {
+        color: #64748b;
+        font-size: 12.5px;
         font-weight: 800;
       }
 
-      .admin-user-section-head {
-        margin-bottom: 18px;
-      }
-
-      .admin-user-section-title,
-      .admin-user-section-desc,
-      .admin-user-info-label,
-      .admin-user-info-value {
-        display: block;
-      }
-
-      .admin-user-section-title {
-        color: #0f172a !important;
-        font-size: 16px;
-        font-weight: 900;
-      }
-
-      .admin-user-section-desc,
-      .admin-user-info-label {
-        color: #64748b !important;
-        font-size: 12.5px;
-        font-weight: 600;
-      }
-
-      .admin-user-info-item {
-        min-height: 82px;
-        padding: 16px;
-        border: 1px solid #dbe4f0;
-        border-radius: 8px;
-        background: #f8fafc;
-      }
-
-      .admin-user-info-icon {
-        width: 40px;
-        height: 40px;
-        min-width: 40px;
-        border: 1px solid #c7ddfe;
-        border-radius: 8px;
-        color: #2563eb;
-        background: #eff6ff;
-      }
-
-      .admin-user-info-copy {
-        min-width: 0;
-      }
-
-      .admin-user-info-value {
-        margin-top: 4px;
-        color: #0f172a !important;
+      .admin-user-detail-line-value {
+        color: #0f172a;
         font-size: 14px;
-        font-weight: 900;
+        font-weight: 700;
         word-break: break-word;
       }
 
-      .admin-user-avatar-url {
-        display: block;
-        padding: 14px;
-        border: 1px solid #dbe4f0;
-        border-radius: 8px;
-        background: #f8fafc;
-        word-break: break-all;
+      .admin-user-detail-line-value.is-strong {
+        font-weight: 900;
       }
 
       @media (max-width: 767px) {
-        .admin-user-detail-frame {
+        .admin-user-profile-head {
+          flex-direction: column;
+          padding: 16px;
+        }
+
+        .admin-user-identity {
+          align-items: flex-start;
+        }
+
+        .admin-user-detail-content {
           padding: 14px;
         }
 
-        .admin-user-title.ant-typography {
-          font-size: 21px;
+        .admin-user-detail-line {
+          grid-template-columns: 38px 1fr;
+        }
+
+        .admin-user-detail-line-label {
+          padding-bottom: 2px;
+        }
+
+        .admin-user-detail-line-value {
+          grid-column: 2;
+          padding-top: 0;
         }
       }
     `}</style>

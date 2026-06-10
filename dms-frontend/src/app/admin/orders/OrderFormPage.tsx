@@ -8,6 +8,7 @@ import {
   TeamOutlined,
 } from "@ant-design/icons";
 import {
+  Alert,
   App,
   Button,
   Col,
@@ -41,18 +42,22 @@ import type {
   OrderItem,
   UpdateOrderRequest,
 } from "@/features/orders/orderTypes";
-import { useGetProductsQuery } from "@/features/products/productService";
 import type { Product } from "@/features/products/productTypes";
 import { useGetActivePromotionsQuery } from "@/features/promotions/promotionService";
 import type { Promotion } from "@/features/promotions/promotionTypes";
 import { useGetUsersQuery } from "@/features/users/userService";
 import type { User } from "@/features/users/userTypes";
+import {
+  useGetWarehousesQuery,
+  useGetSellerWarehouseStocksQuery,
+} from "@/features/warehouses/warehouseService";
 
 const { Text } = Typography;
 
 type OrderFormMode = "create" | "edit";
 
 type OrderFormValues = {
+  distributor?: string;
   seller: string;
   customer: string;
   promotion?: string;
@@ -116,8 +121,8 @@ const findBestPromotion = (promotions: Promotion[], total: number) => {
   }, eligiblePromotions[0]);
 };
 
-const getOrderRelationId = (value: string | { _id: string }) =>
-  typeof value === "string" ? value : value._id;
+const getOrderRelationId = (value?: string | { _id: string }) =>
+  !value ? undefined : typeof value === "string" ? value : value._id;
 
 export default function OrderFormPage({ mode }: { mode: OrderFormMode }) {
   const isEdit = mode === "edit";
@@ -137,17 +142,43 @@ export default function OrderFormPage({ mode }: { mode: OrderFormMode }) {
   );
   const { data: users = [] } = useGetUsersQuery();
   const { data: customers = [] } = useGetCustomersQuery();
-  const { data: products = [] } = useGetProductsQuery();
+  const { data: warehouses = [] } = useGetWarehousesQuery();
   const { data: promotions = [] } = useGetActivePromotionsQuery();
   const [createOrder, { isLoading: creating }] = useCreateOrderMutation();
   const [updateOrder, { isLoading: updating }] = useUpdateOrderMutation();
 
   const selectedSellerId = Form.useWatch("seller", form);
+  const selectedDistributorId = Form.useWatch("distributor", form);
   const selectedPromotionId = Form.useWatch("promotion", form);
 
-  const sellers = useMemo(
-    () => users.filter((user) => isSalesRepRole(user.role) && user.isActive),
+  const distributors = useMemo(
+    () => users.filter((user) => user.role === "distributor" && user.isActive),
     [users],
+  );
+  const sellers = useMemo(
+    () =>
+      users.filter((user) => {
+        if (!isSalesRepRole(user.role) || !user.isActive) return false;
+        if (!selectedDistributorId) return false;
+        return getOrderRelationId(user.manager) === selectedDistributorId;
+      }),
+    [selectedDistributorId, users],
+  );
+
+  const selectedDistributorWarehouses = warehouses.filter(
+    (warehouse) =>
+      warehouse.type === "distributor" &&
+      getOrderRelationId(warehouse.distributor) === selectedDistributorId,
+  );
+  const selectedWarehouse = selectedDistributorWarehouses.find(
+    (warehouse) => warehouse.isActive,
+  );
+  const hasInactiveDistributorWarehouse = selectedDistributorWarehouses.some(
+    (warehouse) => !warehouse.isActive,
+  );
+  const { data: warehouseStocks = [] } = useGetSellerWarehouseStocksQuery(
+    selectedSellerId || "",
+    { skip: !selectedSellerId },
   );
 
   const filteredCustomers = useMemo(() => {
@@ -166,16 +197,24 @@ export default function OrderFormPage({ mode }: { mode: OrderFormMode }) {
   }, [customers, selectedSellerId]);
 
   const activeProducts = useMemo(
-    () => products.filter((product) => product.isActive),
-    [products],
+    () =>
+      warehouseStocks.flatMap((stock) => {
+        if (typeof stock.product === "string") return [];
+        if (!stock.product.isActive || stock.quantity <= 0) return [];
+        return [
+          {
+            ...stock.product,
+            price: stock.sellingPrice ?? stock.averageCost,
+            stock: stock.quantity,
+          },
+        ];
+      }),
+    [warehouseStocks],
   );
 
   const totalAmount = useMemo(
     () =>
-      items.reduce(
-        (sum, item) => sum + item.product.price * item.quantity,
-        0,
-      ),
+      items.reduce((sum, item) => sum + item.product.price * item.quantity, 0),
     [items],
   );
 
@@ -218,20 +257,27 @@ export default function OrderFormPage({ mode }: { mode: OrderFormMode }) {
   }, [form, isEdit, promotions, selectedPromotionId, totalAmount]);
 
   useEffect(() => {
-    if (!isEdit || !order || products.length === 0) return;
+    if (!isEdit || !order) return;
 
     form.setFieldsValue({
-      seller: getOrderRelationId(order.seller as string | User),
-      customer: getOrderRelationId(order.customer as string | Customer),
+      distributor: getOrderRelationId(order.distributor as string | User),
+      seller: getOrderRelationId(order.seller as string | User | undefined)!,
+      customer: getOrderRelationId(
+        order.customer as string | Customer | undefined,
+      )!,
       promotion: getPromotionId(order.promotion),
       note: order.note,
     });
+  }, [form, isEdit, order]);
+
+  useEffect(() => {
+    if (!isEdit || !order || activeProducts.length === 0) return;
 
     const mappedItems = order.items
       .map((item: OrderItem) => {
         const productId =
           typeof item.product === "string" ? item.product : item.product._id;
-        const product = products.find((entry) => entry._id === productId);
+        const product = activeProducts.find((entry) => entry._id === productId);
 
         if (!product) return null;
 
@@ -243,7 +289,7 @@ export default function OrderFormPage({ mode }: { mode: OrderFormMode }) {
       .filter(Boolean) as SelectedItem[];
 
     setItems(mappedItems);
-  }, [form, isEdit, order, products]);
+  }, [activeProducts, form, isEdit, order]);
 
   const handleAddItem = () => {
     if (!selectedProductId) {
@@ -256,7 +302,9 @@ export default function OrderFormPage({ mode }: { mode: OrderFormMode }) {
       return;
     }
 
-    const product = products.find((item) => item._id === selectedProductId);
+    const product = activeProducts.find(
+      (item) => item._id === selectedProductId,
+    );
 
     if (!product) {
       message.warning("Sản phẩm không tồn tại");
@@ -306,6 +354,11 @@ export default function OrderFormPage({ mode }: { mode: OrderFormMode }) {
         return;
       }
 
+      if (!selectedWarehouse) {
+        message.warning("Nhà phân phối chưa có kho NPP đang hoạt động");
+        return;
+      }
+
       const body: CreateOrderRequest | UpdateOrderRequest = {
         seller: values.seller,
         customer: values.customer,
@@ -334,7 +387,6 @@ export default function OrderFormPage({ mode }: { mode: OrderFormMode }) {
       message.success("Tạo đơn hàng thành công");
       router.push("/admin/orders");
     } catch (error: unknown) {
-
       const err = error as {
         data?: {
           message?: string | string[];
@@ -432,6 +484,13 @@ export default function OrderFormPage({ mode }: { mode: OrderFormMode }) {
             form={form}
             layout="vertical"
             onFinish={handleSubmit}
+            onValuesChange={(changed) => {
+              if ("distributor" in changed) {
+                form.resetFields(["seller", "customer"]);
+                setItems([]);
+                setSelectedProductId(undefined);
+              }
+            }}
           >
             <section className="admin-order-form-section">
               <Flex
@@ -446,7 +505,8 @@ export default function OrderFormPage({ mode }: { mode: OrderFormMode }) {
                     Người bán và khách hàng
                   </Text>
                   <Text className="admin-order-form-section-desc">
-                    Chọn seller trước để lọc danh sách khách hàng phụ trách.
+                    Chọn nhà phân phối trước, sau đó chọn seller và khách hàng
+                    thuộc đúng tuyến.
                   </Text>
                 </div>
                 <Tag color="blue" className="admin-order-form-section-tag">
@@ -455,7 +515,36 @@ export default function OrderFormPage({ mode }: { mode: OrderFormMode }) {
               </Flex>
 
               <Row gutter={[18, 0]}>
-                <Col xs={24} md={12}>
+                <Col xs={24} md={8}>
+                  <Form.Item
+                    label="Nhà phân phối"
+                    name="distributor"
+                    rules={[
+                      {
+                        required: true,
+                        message: "Vui lòng chọn nhà phân phối",
+                      },
+                    ]}
+                  >
+                    <Select
+                      size="large"
+                      showSearch
+                      allowClear
+                      placeholder="Chọn NPP"
+                      optionFilterProp="label"
+                      disabled={isEdit}
+                      options={distributors.map((distributor) => ({
+                        label:
+                          distributor.companyName ||
+                          distributor.fullName ||
+                          distributor.email,
+                        value: distributor._id,
+                      }))}
+                    />
+                  </Form.Item>
+                </Col>
+
+                <Col xs={24} md={8}>
                   <Form.Item
                     label="Nhân viên bán hàng"
                     name="seller"
@@ -469,7 +558,12 @@ export default function OrderFormPage({ mode }: { mode: OrderFormMode }) {
                       allowClear
                       placeholder="Chọn seller"
                       optionFilterProp="label"
-                      onChange={() => form.setFieldValue("customer", undefined)}
+                      disabled={!selectedDistributorId || isEdit}
+                      onChange={() => {
+                        form.resetFields(["customer"]);
+                        setItems([]);
+                        setSelectedProductId(undefined);
+                      }}
                       options={sellers.map((seller) => ({
                         label: `${seller.fullName} - ${seller.email}`,
                         value: seller._id,
@@ -478,7 +572,7 @@ export default function OrderFormPage({ mode }: { mode: OrderFormMode }) {
                   </Form.Item>
                 </Col>
 
-                <Col xs={24} md={12}>
+                <Col xs={24} md={8}>
                   <Form.Item
                     label="Khách hàng"
                     name="customer"
@@ -520,7 +614,8 @@ export default function OrderFormPage({ mode }: { mode: OrderFormMode }) {
                     Sản phẩm trong đơn
                   </Text>
                   <Text className="admin-order-form-section-desc">
-                    Thêm sản phẩm, số lượng và kiểm tra tổng thanh toán.
+                    Thêm sản phẩm từ kho NPP của seller và kiểm tra tổng thanh
+                    toán.
                   </Text>
                 </div>
                 <Tag color="cyan" className="admin-order-form-section-tag">
@@ -528,7 +623,25 @@ export default function OrderFormPage({ mode }: { mode: OrderFormMode }) {
                 </Tag>
               </Flex>
 
-              <Row gutter={[12, 12]} align="middle" className="admin-order-add-row">
+              {selectedDistributorId && !selectedWarehouse && (
+                <Alert
+                  showIcon
+                  type="warning"
+                  className="admin-order-form-alert"
+                  message={
+                    hasInactiveDistributorWarehouse
+                      ? "Kho NPP của nhà phân phối này đang tạm ngưng"
+                      : "Nhà phân phối này chưa có kho NPP"
+                  }
+                  description="Hãy kích hoạt hoặc tạo kho NPP trước khi tạo đơn bán ra tiệm, để đơn hàng bóc tồn đúng từ kho nhà phân phối."
+                />
+              )}
+
+              <Row
+                gutter={[12, 12]}
+                align="middle"
+                className="admin-order-add-row"
+              >
                 <Col xs={24} md={14}>
                   <Select
                     size="large"
@@ -537,10 +650,11 @@ export default function OrderFormPage({ mode }: { mode: OrderFormMode }) {
                     placeholder="Chọn sản phẩm"
                     style={{ width: "100%" }}
                     value={selectedProductId}
+                    disabled={!selectedSellerId || !selectedWarehouse}
                     optionFilterProp="label"
                     onChange={setSelectedProductId}
                     options={activeProducts.map((product) => ({
-                      label: `${product.name} - ${money(product.price)}`,
+                      label: `${product.name} - ${money(product.price)} - tồn NPP ${product.stock}`,
                       value: product._id,
                     }))}
                   />
@@ -562,6 +676,7 @@ export default function OrderFormPage({ mode }: { mode: OrderFormMode }) {
                     size="large"
                     icon={<PlusOutlined />}
                     className="admin-order-add-button"
+                    disabled={!selectedWarehouse}
                     onClick={handleAddItem}
                   >
                     Thêm sản phẩm
@@ -716,7 +831,12 @@ export default function OrderFormPage({ mode }: { mode: OrderFormMode }) {
               </Row>
             </section>
 
-            <Flex justify="space-between" gap={12} wrap="wrap" className="admin-order-form-footer">
+            <Flex
+              justify="space-between"
+              gap={12}
+              wrap="wrap"
+              className="admin-order-form-footer"
+            >
               <Flex align="center" gap={10} className="admin-order-form-total">
                 <TeamOutlined />
                 <Text>{items.length} sản phẩm</Text>
@@ -764,8 +884,12 @@ export default function OrderFormPage({ mode }: { mode: OrderFormMode }) {
 
         .admin-order-form-frame.is-loading {
           min-height: 180px;
-          background:
-            linear-gradient(90deg, #f8fafc 25%, #eef3f8 37%, #f8fafc 63%);
+          background: linear-gradient(
+            90deg,
+            #f8fafc 25%,
+            #eef3f8 37%,
+            #f8fafc 63%
+          );
           background-size: 400% 100%;
           animation: admin-order-loading 1.2s ease infinite;
         }
@@ -816,6 +940,10 @@ export default function OrderFormPage({ mode }: { mode: OrderFormMode }) {
         }
 
         .admin-order-add-row {
+          margin-bottom: 18px;
+        }
+
+        .admin-order-form-alert {
           margin-bottom: 18px;
         }
 

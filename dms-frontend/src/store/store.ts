@@ -19,6 +19,7 @@ import { promotionService } from "@/features/promotions/promotionService";
 import { inventoryService } from "@/features/inventory/inventoryService";
 import { auditService } from "@/features/audit/auditService";
 import { dashboardService } from "@/features/dashboard/dashboardService";
+import { warehouseService } from "@/features/warehouses/warehouseService";
 
 export const store = configureStore({
   reducer: {
@@ -39,6 +40,7 @@ export const store = configureStore({
     [inventoryService.reducerPath]: inventoryService.reducer,
     [auditService.reducerPath]: auditService.reducer,
     [dashboardService.reducerPath]: dashboardService.reducer,
+    [warehouseService.reducerPath]: warehouseService.reducer,
   },
 
   middleware: (getDefaultMiddleware) =>
@@ -58,6 +60,7 @@ export const store = configureStore({
       inventoryService.middleware,
       auditService.middleware,
       dashboardService.middleware,
+      warehouseService.middleware,
     ),
 });
 

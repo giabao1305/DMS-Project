@@ -1,0 +1,36 @@
+build:
+  name: Build unsigned iOS IPA
+  steps:
+    - eas/checkout
+    - eas/install_node_modules
+    - eas/prebuild
+    - run:
+        name: Install pods
+        working_directory: ./ios
+        command: pod install
+    - run:
+        name: Build unsigned device app and package IPA
+        working_directory: ./ios
+        command: |
+          set -euo pipefail
+          workspace="$(find . -maxdepth 1 -name '*.xcworkspace' | head -n 1)"
+          scheme="$(basename "$workspace" .xcworkspace)"
+          xcodebuild \
+            -workspace "$workspace" \
+            -scheme "$scheme" \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+          mkdir -p build/unsigned/Payload
+          cp -R build/Build/Products/Release-iphoneos/*.app build/unsigned/Payload/
+          cd build/unsigned
+          /usr/bin/zip -qry ../dms-seller-unsigned.ipa Payload
+    - eas/upload_artifact:
+        name: Upload unsigned IPA
+        inputs:
+          type: application-archive
+          path: ios/build/dms-seller-unsigned.ipa

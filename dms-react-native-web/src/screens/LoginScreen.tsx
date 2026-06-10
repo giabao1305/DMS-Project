@@ -1,28 +1,35 @@
-﻿import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
+import {
+  Button as PaperButton,
+  TextInput as PaperTextInput,
+} from "react-native-paper";
 
 import { storeSession, type Session } from "../api/authStore";
 import { sellerApi } from "../api/sellerApi";
-import { bento, bentoSoftShadow } from "../theme";
+import { atlas, radius } from "../theme";
 import { toVietnameseError } from "../utils/errorMessage";
 
-const demoEmail = "quocandsr1@gmail.com";
-const demoPassword = "123456";
+const inputCaretColor = "#0F172A";
 
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>["name"];
 
-export function LoginScreen({ onLogin }: { onLogin: (session: Session) => void }) {
+export function LoginScreen({
+  onLogin,
+}: {
+  onLogin: (session: Session) => void;
+}) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);
@@ -31,34 +38,40 @@ export function LoginScreen({ onLogin }: { onLogin: (session: Session) => void }
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
 
-  const canSubmit = useMemo(() => Boolean(email.trim() && password.trim()), [email, password]);
+  const canSubmit = useMemo(
+    () => Boolean(email.trim() && password.trim()),
+    [email, password],
+  );
 
   const submit = async () => {
     if (!canSubmit || loading) return;
+
     setLoading(true);
     setError("");
     setInfo("");
 
     try {
-      const session = (await sellerApi.login({ email: email.trim(), password })) as Session;
+      const session = (await sellerApi.login({
+        email: email.trim(),
+        password,
+      })) as Session;
+
       if (session.user.role !== "seller") {
-        setError("Tài khoản này không phải nhân viên bán hàng.");
+        setError("Tài khoản này không được phép đăng nhập app bán hàng.");
         return;
       }
+
       storeSession(session);
       onLogin(session);
     } catch (err) {
-      setError(toVietnameseError(err instanceof Error ? err.message : "Đăng nhập thất bại"));
+      setError(
+        toVietnameseError(
+          err instanceof Error ? err.message : "Đăng nhập thất bại",
+        ),
+      );
     } finally {
       setLoading(false);
     }
-  };
-
-  const fillDemoAccount = () => {
-    setEmail(demoEmail);
-    setPassword(demoPassword);
-    setError("");
-    setInfo("Đã điền tài khoản demo để kiểm thử nhanh.");
   };
 
   const showForgotHelp = () => {
@@ -67,63 +80,109 @@ export function LoginScreen({ onLogin }: { onLogin: (session: Session) => void }
   };
 
   return (
-    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        <View style={styles.page}>
-          <View style={styles.brandRow}>
-            <View style={styles.brandMark}>
-              <Text style={styles.brandLetter}>D</Text>
+    <KeyboardAvoidingView
+      style={styles.root}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.card}>
+          <View style={styles.header}>
+            <View style={styles.logo}>
+              <Image
+                source={require("../../assets/favicon.png")}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
             </View>
-            <Text style={styles.brandName}>DMS SELLER</Text>
-          </View>
 
-          <View style={styles.formHeader}>
-            <View>
-              <Text style={styles.title}>Đăng nhập tài khoản</Text>
-              <Text style={styles.subtitle}>Vào ca để quản lý tuyến, đơn hàng và khách hàng.</Text>
-            </View>
-            <Pressable onPress={fillDemoAccount} style={({ pressed }) => [styles.demoButton, pressed && styles.pressed]}>
-              <MaterialCommunityIcons name="lightning-bolt-outline" size={15} color={bento.primaryDark} />
-              <Text style={styles.demoButtonText}>Demo</Text>
-            </Pressable>
+            <Text style={styles.appName}>DMS Seller</Text>
+            <Text style={styles.title}>Đăng nhập</Text>
+            <Text style={styles.subtitle}>
+              Quản lý tuyến, khách hàng và đơn hàng
+            </Text>
           </View>
 
           <View style={styles.form}>
             <LoginField
-              label="Số điện thoại / email"
+              label="Email / số điện thoại"
               value={email}
               onChangeText={setEmail}
-              placeholder="0901 234 567 hoặc email"
+              placeholder="Nhập email hoặc số điện thoại"
               icon="account-outline"
               keyboardType="email-address"
             />
 
             <View style={styles.field}>
               <Text style={styles.label}>Mật khẩu</Text>
+
               <View style={styles.inputWrap}>
-                <MaterialCommunityIcons name="lock-outline" size={18} color={bento.textMuted} />
-                <TextInput
+                <View style={styles.inputIcon}>
+                  <MaterialCommunityIcons
+                    name="lock-outline"
+                    size={18}
+                    color={atlas.primary}
+                  />
+                </View>
+
+                <PaperTextInput
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
                   placeholder="Nhập mật khẩu"
-                  placeholderTextColor={bento.textMuted}
+                  mode="flat"
+                  underlineColor="transparent"
+                  activeUnderlineColor="transparent"
+                  cursorColor={inputCaretColor}
+                  selectionColor="#BFD7FF"
+                  textColor={atlas.text}
+                  placeholderTextColor={atlas.textMuted}
                   style={styles.input}
+                  contentStyle={styles.paperInputContent}
                 />
-                <Pressable onPress={() => setShowPassword((value) => !value)} hitSlop={8}>
-                  <MaterialCommunityIcons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color={bento.textMuted} />
+
+                <Pressable
+                  onPress={() => setShowPassword((value) => !value)}
+                  hitSlop={10}
+                  style={({ pressed }) => pressed && styles.pressed}
+                >
+                  <MaterialCommunityIcons
+                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                    size={21}
+                    color={atlas.textMuted}
+                  />
                 </Pressable>
               </View>
             </View>
 
             <View style={styles.optionRow}>
-              <Pressable onPress={() => setRemember((value) => !value)} style={({ pressed }) => [styles.remember, pressed && styles.pressed]}>
+              <Pressable
+                onPress={() => setRemember((value) => !value)}
+                style={({ pressed }) => [
+                  styles.remember,
+                  pressed && styles.pressed,
+                ]}
+              >
                 <View style={[styles.checkbox, remember && styles.checkboxOn]}>
-                  {remember ? <MaterialCommunityIcons name="check" size={13} color="#FFFFFF" /> : null}
+                  {remember ? (
+                    <MaterialCommunityIcons
+                      name="check"
+                      size={13}
+                      color="#FFFFFF"
+                    />
+                  ) : null}
                 </View>
-                <Text style={styles.optionText}>Ghi nhớ đăng nhập</Text>
+                <Text style={styles.optionText}>Ghi nhớ</Text>
               </Pressable>
-              <Pressable onPress={showForgotHelp} hitSlop={8} style={({ pressed }) => pressed && styles.pressed}>
+
+              <Pressable
+                onPress={showForgotHelp}
+                hitSlop={8}
+                style={({ pressed }) => pressed && styles.pressed}
+              >
                 <Text style={styles.forgot}>Quên mật khẩu?</Text>
               </Pressable>
             </View>
@@ -131,22 +190,22 @@ export function LoginScreen({ onLogin }: { onLogin: (session: Session) => void }
             {info ? <MessageBox type="info" message={info} /> : null}
             {error ? <MessageBox type="error" message={error} /> : null}
 
-            <Pressable
+            <PaperButton
+              mode="contained"
               onPress={submit}
               disabled={!canSubmit || loading}
-              style={({ pressed }) => [styles.loginButton, pressed && styles.pressed, (!canSubmit || loading) && styles.disabled]}
+              buttonColor={atlas.primary}
+              textColor="#FFFFFF"
+              style={[
+                styles.loginButton,
+                (!canSubmit || loading) && styles.disabled,
+              ]}
+              contentStyle={styles.loginButtonContent}
+              labelStyle={styles.loginText}
             >
-              {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.loginText}>Đăng nhập</Text>
-              )}
-            </Pressable>
-          </View>
+              {loading ? <ActivityIndicator color="#FFFFFF" /> : "Đăng nhập"}
+            </PaperButton>
 
-          <View style={styles.supportBox}>
-            <MaterialCommunityIcons name="shield-account-outline" size={18} color={bento.primaryDark} />
-            <Text style={styles.supportText}>Tài khoản seller được cấp bởi quản trị viên DMS.</Text>
           </View>
         </View>
       </ScrollView>
@@ -172,110 +231,126 @@ function LoginField({
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
+
       <View style={styles.inputWrap}>
-        <MaterialCommunityIcons name={icon} size={18} color={bento.textMuted} />
-        <TextInput
+        <View style={styles.inputIcon}>
+          <MaterialCommunityIcons name={icon} size={18} color={atlas.primary} />
+        </View>
+
+        <PaperTextInput
           value={value}
           onChangeText={onChangeText}
           autoCapitalize="none"
           keyboardType={keyboardType}
           placeholder={placeholder}
-          placeholderTextColor={bento.textMuted}
+          mode="flat"
+          underlineColor="transparent"
+          activeUnderlineColor="transparent"
+          cursorColor={inputCaretColor}
+          selectionColor="#BFD7FF"
+          textColor={atlas.text}
+          placeholderTextColor={atlas.textMuted}
           style={styles.input}
+          contentStyle={styles.paperInputContent}
         />
       </View>
     </View>
   );
 }
 
-function MessageBox({ type, message }: { type: "info" | "error"; message: string }) {
+function MessageBox({
+  type,
+  message,
+}: {
+  type: "info" | "error";
+  message: string;
+}) {
   const isError = type === "error";
+
   return (
-    <View style={[styles.messageBox, isError ? styles.errorBox : styles.infoBox]}>
-      <MaterialCommunityIcons name={isError ? "alert-circle-outline" : "information-outline"} size={17} color={isError ? bento.danger : bento.primaryDark} />
-      <Text style={[styles.messageText, isError ? styles.errorText : styles.infoText]}>{message}</Text>
+    <View
+      style={[styles.messageBox, isError ? styles.errorBox : styles.infoBox]}
+    >
+      <MaterialCommunityIcons
+        name={isError ? "alert-circle-outline" : "information-outline"}
+        size={17}
+        color={isError ? atlas.danger : atlas.primary}
+      />
+      <Text style={[styles.messageText, isError && styles.errorText]}>
+        {message}
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
-    backgroundColor: bento.background,
     flex: 1,
+    backgroundColor: atlas.primary,
   },
   content: {
-    alignItems: "center",
-    backgroundColor: bento.background,
+    backgroundColor: atlas.primary,
     flexGrow: 1,
+    paddingBottom: 24,
+    paddingHorizontal: 20,
+    paddingTop: 24,
     justifyContent: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 28,
   },
-  page: {
-    gap: 20,
-    maxWidth: 410,
+  card: {
+    alignSelf: "center",
+    backgroundColor: atlas.surface,
+    borderColor: "rgba(255,255,255,0.72)",
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    maxWidth: 400,
+    padding: 24,
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 18 },
+    shadowOpacity: 0.18,
+    shadowRadius: 26,
     width: "100%",
+    elevation: 4,
   },
-  brandRow: {
+  header: {
     alignItems: "center",
-    flexDirection: "row",
-    gap: 9,
+    marginBottom: 22,
   },
-  brandMark: {
+  logo: {
     alignItems: "center",
-    backgroundColor: bento.primary,
-    borderRadius: 8,
-    height: 28,
+    backgroundColor: "#FFFFFF",
+    borderColor: atlas.borderStrong,
+    borderRadius: 18,
+    borderWidth: 1,
+    height: 74,
     justifyContent: "center",
-    width: 28,
-    ...bentoSoftShadow,
+    marginBottom: 12,
+    overflow: "hidden",
+    width: 74,
   },
-  brandLetter: {
-    color: "#FFFFFF",
-    fontSize: 20,
-    fontWeight: "900",
-    lineHeight: 22,
+  logoImage: {
+    borderRadius: 14,
+    height: 62,
+    width: 62,
   },
-  brandName: {
-    color: bento.text,
-    fontSize: 16,
-    fontWeight: "900",
-  },
-  formHeader: {
-    alignItems: "flex-start",
-    flexDirection: "row",
-    gap: 12,
-    justifyContent: "space-between",
-    marginTop: 6,
+  appName: {
+    color: atlas.primary,
+    fontSize: 13,
+    fontWeight: "800",
+    marginBottom: 8,
   },
   title: {
-    color: bento.text,
-    fontSize: 18,
-    fontWeight: "900",
+    color: atlas.text,
+    fontSize: 25,
+    fontWeight: "700",
+    letterSpacing: 0,
   },
   subtitle: {
-    color: bento.textSecondary,
-    fontSize: 12,
-    fontWeight: "700",
+    color: atlas.textSecondary,
+    fontSize: 13,
+    fontWeight: "600",
     lineHeight: 18,
     marginTop: 6,
-    maxWidth: 250,
-  },
-  demoButton: {
-    alignItems: "center",
-    backgroundColor: bento.primarySoft,
-    borderColor: bento.borderStrong,
-    borderRadius: 999,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  demoButtonText: {
-    color: bento.primaryDark,
-    fontSize: 12,
-    fontWeight: "900",
+    textAlign: "center",
   },
   form: {
     gap: 15,
@@ -284,125 +359,118 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   label: {
-    color: bento.text,
-    fontSize: 12,
-    fontWeight: "800",
+    color: atlas.text,
+    fontSize: 13,
+    fontWeight: "600",
   },
   inputWrap: {
-    alignItems: "center",
-    backgroundColor: bento.surface,
-    borderColor: bento.border,
-    borderRadius: 10,
-    borderWidth: 1,
+    minHeight: 56,
     flexDirection: "row",
-    gap: 10,
-    minHeight: 46,
-    paddingHorizontal: 12,
-    ...bentoSoftShadow,
+    alignItems: "center",
+    gap: 11,
+    paddingHorizontal: 13,
+    borderRadius: radius.lg,
+    backgroundColor: atlas.chromeSoft,
+    borderWidth: 1,
+    borderColor: atlas.border,
+  },
+  inputIcon: {
+    alignItems: "center",
+    backgroundColor: atlas.primarySoft,
+    borderRadius: radius.md,
+    height: 34,
+    justifyContent: "center",
+    width: 34,
   },
   input: {
-    color: bento.text,
     flex: 1,
-    fontSize: 14,
-    fontWeight: "700",
     minWidth: 0,
+    backgroundColor: "transparent",
+    color: atlas.text,
+    fontSize: 14,
+    fontWeight: "600",
     outlineStyle: "none" as never,
+    ...(Platform.OS === "web"
+      ? ({ caretColor: inputCaretColor } as never)
+      : {}),
+  },
+  paperInputContent: {
+    paddingHorizontal: 0,
+    fontSize: 14,
+    fontWeight: "600",
   },
   optionRow: {
-    alignItems: "center",
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
   },
   remember: {
-    alignItems: "center",
     flexDirection: "row",
-    gap: 7,
+    alignItems: "center",
+    gap: 8,
   },
   checkbox: {
+    width: 18,
+    height: 18,
+    borderRadius: 7,
     alignItems: "center",
-    backgroundColor: bento.surface,
-    borderColor: bento.border,
-    borderRadius: 4,
-    borderWidth: 1,
-    height: 17,
     justifyContent: "center",
-    width: 17,
+    borderWidth: 1,
+    borderColor: atlas.border,
+    backgroundColor: atlas.surface,
   },
   checkboxOn: {
-    backgroundColor: bento.primary,
-    borderColor: bento.primary,
+    backgroundColor: atlas.primary,
+    borderColor: atlas.primary,
   },
   optionText: {
-    color: bento.textSecondary,
+    color: atlas.textSecondary,
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   forgot: {
-    color: bento.primaryDark,
+    color: atlas.primary,
     fontSize: 12,
-    fontWeight: "800",
-  },
-  loginButton: {
-    alignItems: "center",
-    backgroundColor: bento.primary,
-    borderRadius: 11,
-    height: 48,
-    justifyContent: "center",
-    marginTop: 3,
-    shadowColor: bento.primary,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.18,
-    shadowRadius: 18,
-  },
-  loginText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "900",
+    fontWeight: "600",
   },
   messageBox: {
-    alignItems: "center",
-    borderRadius: 12,
-    borderWidth: 1,
     flexDirection: "row",
-    gap: 8,
-    padding: 11,
+    alignItems: "center",
+    gap: 9,
+    padding: 12,
+    borderRadius: radius.md,
+    borderWidth: 1,
   },
   infoBox: {
-    backgroundColor: bento.primarySoft,
-    borderColor: bento.borderStrong,
+    backgroundColor: atlas.primarySoft,
+    borderColor: atlas.borderStrong,
   },
   errorBox: {
-    backgroundColor: bento.dangerSoft,
-    borderColor: "#FFCACA",
+    backgroundColor: atlas.dangerSoft,
+    borderColor: "#FECACA",
   },
   messageText: {
     flex: 1,
+    color: atlas.primaryDark,
     fontSize: 12,
-    fontWeight: "800",
+    fontWeight: "700",
     lineHeight: 17,
-  },
-  infoText: {
-    color: bento.primaryDark,
   },
   errorText: {
-    color: bento.danger,
+    color: atlas.danger,
   },
-  supportBox: {
-    alignItems: "center",
-    backgroundColor: bento.primarySoft,
-    borderColor: bento.borderStrong,
-    borderRadius: 12,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: 8,
-    padding: 12,
+  loginButton: {
+    marginTop: 4,
+    borderRadius: radius.lg,
+    overflow: "hidden",
   },
-  supportText: {
-    color: bento.primaryDark,
-    flex: 1,
-    fontSize: 12,
-    fontWeight: "800",
-    lineHeight: 17,
+  loginButtonContent: {
+    minHeight: 56,
+  },
+  loginText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "700",
   },
   pressed: {
     opacity: 0.72,
@@ -411,4 +479,3 @@ const styles = StyleSheet.create({
     opacity: 0.48,
   },
 });
-

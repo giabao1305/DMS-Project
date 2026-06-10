@@ -1,4 +1,4 @@
-import AccountSettingsPage from "@/components/account/AccountSettingsPage";
+﻿import AccountSettingsPage from "@/components/account/AccountSettingsPage";
 import { DistributorPageShell } from "@/components/distributor/DistributorPageShell";
 
 export default function DistributorProfilePage() {
@@ -12,3 +12,8 @@ export default function DistributorProfilePage() {
     </DistributorPageShell>
   );
 }
+
+
+
+
+

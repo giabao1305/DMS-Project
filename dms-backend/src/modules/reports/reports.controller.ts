@@ -16,6 +16,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { UserRole } from '../users/schemas/user.schema';
 import type { UserDocument } from '../users/schemas/user.schema';
 import { CreateKpiDto } from './dto/create-kpi.dto';
+import { FinancialReportQueryDto } from './dto/financial-report-query.dto';
 import { ReportsService } from './reports.service';
 import { UpdateKpiDto } from './dto/update-kpi.dto';
 @Controller('reports')
@@ -43,10 +44,19 @@ export class ReportsController {
       year ? Number(year) : undefined,
     );
   }
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR)
   @Patch('kpis/:id')
-  updateKpi(@Param('id') id: string, @Body() updateKpiDto: UpdateKpiDto) {
-    return this.reportsService.updateKpi(id, updateKpiDto);
+  updateKpi(
+    @Param('id') id: string,
+    @Body() updateKpiDto: UpdateKpiDto,
+    @CurrentUser() user: UserDocument,
+  ) {
+    return this.reportsService.updateKpi(
+      id,
+      updateKpiDto,
+      user._id.toString(),
+      user.role,
+    );
   }
   @Roles(UserRole.ADMIN)
   @Get('visits')
@@ -72,10 +82,30 @@ export class ReportsController {
     );
   }
 
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR)
+  @Get('financial')
+  getFinancialReport(
+    @Query() query: FinancialReportQueryDto,
+    @CurrentUser() user: UserDocument,
+  ) {
+    return this.reportsService.getFinancialReport(
+      query,
+      user._id.toString(),
+      user.role,
+    );
+  }
+
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR)
   @Post('kpis')
-  createKpi(@Body() createKpiDto: CreateKpiDto) {
-    return this.reportsService.createKpi(createKpiDto);
+  createKpi(
+    @Body() createKpiDto: CreateKpiDto,
+    @CurrentUser() user: UserDocument,
+  ) {
+    return this.reportsService.createKpi(
+      createKpiDto,
+      user._id.toString(),
+      user.role,
+    );
   }
 
   @Roles(UserRole.ADMIN)
@@ -96,9 +126,9 @@ export class ReportsController {
     return this.reportsService.findSellerKpis(sellerId);
   }
 
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR)
   @Patch('kpis/:id/refresh')
-  refreshKpi(@Param('id') id: string) {
-    return this.reportsService.refreshKpi(id);
+  refreshKpi(@Param('id') id: string, @CurrentUser() user: UserDocument) {
+    return this.reportsService.refreshKpi(id, user._id.toString(), user.role);
   }
 }

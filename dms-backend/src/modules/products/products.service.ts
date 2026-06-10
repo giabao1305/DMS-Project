@@ -8,6 +8,7 @@ import { Model, Types } from 'mongoose';
 
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import {
+  buildSearchRegex,
   getPagination,
   getSort,
   PaginatedResult,
@@ -162,7 +163,7 @@ export class ProductsService {
     }
 
     if (query?.search) {
-      const search = new RegExp(query.search.trim(), 'i');
+      const search = buildSearchRegex(query.search);
       filter.$or = [
         { name: search },
         { code: search },

@@ -29,7 +29,7 @@ import { UpdateCustomerDto } from './dto/update-customer.dto';
 export class CustomersController {
   constructor(private readonly customersService: CustomersService) {}
 
-  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR, UserRole.SELLER)
+  @Roles(UserRole.DISTRIBUTOR, UserRole.SELLER)
   @Post()
   create(
     @Body() createCustomerDto: CreateCustomerDto,
@@ -88,13 +88,13 @@ export class CustomersController {
     );
   }
 
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR)
   @Patch(':id/approve')
   approve(@Param('id') id: string, @CurrentUser() user: UserDocument) {
-    return this.customersService.approve(id, user._id.toString());
+    return this.customersService.approve(id, user._id.toString(), user.role);
   }
 
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR)
   @Patch(':id/reject')
   reject(
     @Param('id') id: string,
@@ -104,6 +104,7 @@ export class CustomersController {
     return this.customersService.reject(
       id,
       user._id.toString(),
+      user.role,
       rejectCustomerDto.rejectReason,
     );
   }

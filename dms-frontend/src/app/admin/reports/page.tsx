@@ -18,6 +18,7 @@ import {
   Empty,
   Flex,
   Row,
+  Select,
   Statistic,
   Table,
   Tag,
@@ -25,7 +26,7 @@ import {
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import type { CSSProperties, ReactNode } from "react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import AdminBreadcrumb from "@/components/ui/AdminBreadcrumb";
 import AdminPageHeader from "@/components/ui/AdminPageHeader";
@@ -43,17 +44,21 @@ import type {
   SellersReportItem,
   VisitsReportItem,
 } from "@/features/reports/reportTypes";
+import { useGetUsersQuery } from "@/features/users/userService";
 import { useRealtimeRefetch } from "@/hooks/useRealtimeRefetch";
 
 const { Text, Title } = Typography;
 
-const orderStatusMap: Record<OrdersReportItem["_id"], { label: string; color: string }> = {
+const orderStatusMap: Record<
+  OrdersReportItem["_id"],
+  { label: string; color: string }
+> = {
   pending: { label: "Chờ xác nhận", color: "orange" },
   approved: { label: "Đã xác nhận", color: "blue" },
   delivered: { label: "Đã giao", color: "green" },
   return_requested: { label: "Chờ duyệt trả hàng", color: "gold" },
   cancelled: { label: "Đã hủy", color: "red" },
-  returned: { label: "Đã trả hàng", color: "purple" },
+  returned: { label: "Đã trả hàng", color: "blue" },
 };
 
 const statTone = {
@@ -133,7 +138,11 @@ function ReportStatCard({
           />
         </div>
 
-        <Flex align="center" justify="center" className="admin-reports-stat-icon">
+        <Flex
+          align="center"
+          justify="center"
+          className="admin-reports-stat-icon"
+        >
           {icon}
         </Flex>
       </Flex>
@@ -145,13 +154,20 @@ function ReportStatCard({
 
 export default function AdminReportsPage() {
   const { message } = App.useApp();
+  const [distributor, setDistributor] = useState<string>();
+  const { data: users = [] } = useGetUsersQuery();
+  const distributors = useMemo(
+    () => users.filter((user) => user.role === "distributor" && user.isActive),
+    [users],
+  );
   const now = useMemo(() => new Date(), []);
   const params = useMemo(
     () => ({
       month: now.getMonth() + 1,
       year: now.getFullYear(),
+      distributor,
     }),
-    [now],
+    [distributor, now],
   );
 
   const {
@@ -198,14 +214,8 @@ export default function AdminReportsPage() {
       (sum, item) => sum + item.totalRevenue,
       0,
     );
-    const totalOrders = orders.reduce(
-      (sum, item) => sum + item.totalOrders,
-      0,
-    );
-    const totalVisits = visits.reduce(
-      (sum, item) => sum + item.totalVisits,
-      0,
-    );
+    const totalOrders = orders.reduce((sum, item) => sum + item.totalOrders, 0);
+    const totalVisits = visits.reduce((sum, item) => sum + item.totalVisits, 0);
     const deliveredOrders =
       orders.find((item) => item._id === "delivered")?.totalOrders || 0;
     const completionRate =
@@ -287,7 +297,10 @@ export default function AdminReportsPage() {
       dataIndex: "_id",
       width: 190,
       render: (status: OrdersReportItem["_id"]) => (
-        <Tag color={orderStatusMap[status]?.color} className="admin-reports-status-tag">
+        <Tag
+          color={orderStatusMap[status]?.color}
+          className="admin-reports-status-tag"
+        >
           {orderStatusMap[status]?.label}
         </Tag>
       ),
@@ -499,6 +512,34 @@ export default function AdminReportsPage() {
           </div>
         </div>
 
+        <Card variant="borderless" className="admin-reports-filter-card">
+          <Flex align="center" justify="space-between" gap={16} wrap="wrap">
+            <div>
+              <Text className="admin-reports-panel-title">Bộ lọc báo cáo</Text>
+              <Text className="admin-reports-panel-desc">
+                Chọn nhà phân phối để xem doanh thu, đơn hàng, lượt ghé thăm và
+                hiệu suất seller theo đúng đội phụ trách.
+              </Text>
+            </div>
+            <Select
+              allowClear
+              showSearch
+              size="large"
+              placeholder="Lọc nhà phân phối"
+              optionFilterProp="label"
+              value={distributor}
+              onChange={setDistributor}
+              className="admin-reports-distributor-select"
+              options={distributors.map((item) => ({
+                value: item._id,
+                label: `${item.code ? `${item.code} - ` : ""}${
+                  item.companyName || item.fullName || item.email
+                }`,
+              }))}
+            />
+          </Flex>
+        </Card>
+
         <Row gutter={[16, 16]}>
           {statCards.map((item) => (
             <Col xs={24} sm={12} xl={6} key={item.label}>
@@ -514,7 +555,12 @@ export default function AdminReportsPage() {
               className="admin-reports-panel"
               loading={loadingSales}
               title={
-                <Flex align="center" justify="space-between" gap={14} wrap="wrap">
+                <Flex
+                  align="center"
+                  justify="space-between"
+                  gap={14}
+                  wrap="wrap"
+                >
                   <div>
                     <Text className="admin-reports-panel-title">
                       Doanh thu theo ngày
@@ -570,7 +616,12 @@ export default function AdminReportsPage() {
               className="admin-reports-panel"
               loading={loadingSellers}
               title={
-                <Flex align="center" justify="space-between" gap={14} wrap="wrap">
+                <Flex
+                  align="center"
+                  justify="space-between"
+                  gap={14}
+                  wrap="wrap"
+                >
                   <div>
                     <Text className="admin-reports-panel-title">
                       Top seller doanh thu
@@ -715,7 +766,9 @@ export default function AdminReportsPage() {
               showTotal: (total) => `Tổng ${total} seller`,
             }}
             locale={{
-              emptyText: <Empty description="Chưa có dữ liệu doanh thu seller" />,
+              emptyText: (
+                <Empty description="Chưa có dữ liệu doanh thu seller" />
+              ),
             }}
           />
         </Card>
@@ -731,7 +784,11 @@ export default function AdminReportsPage() {
                   Theo dõi mức hoàn thành doanh thu, đơn hàng và lượt ghé thăm.
                 </Text>
               </div>
-              <Flex align="center" justify="center" className="admin-reports-kpi-icon">
+              <Flex
+                align="center"
+                justify="center"
+                className="admin-reports-kpi-icon"
+              >
                 <BarChartOutlined />
               </Flex>
             </Flex>
@@ -774,7 +831,11 @@ export default function AdminReportsPage() {
           border: 1px solid rgba(125, 211, 252, 0.2);
           border-radius: 8px;
           background:
-            radial-gradient(circle at 86% 18%, rgba(16, 185, 129, 0.22), transparent 28%),
+            radial-gradient(
+              circle at 86% 18%,
+              rgba(16, 185, 129, 0.22),
+              transparent 28%
+            ),
             linear-gradient(135deg, #071a24 0%, #102b3a 52%, #12394a 100%);
           box-shadow: 0 22px 46px rgba(7, 26, 36, 0.18);
         }
@@ -854,6 +915,28 @@ export default function AdminReportsPage() {
 
         .admin-reports-row {
           margin-top: 16px;
+        }
+
+        .admin-reports-filter-card {
+          margin-bottom: 16px;
+          overflow: hidden;
+          border: 1px solid #dbe4f0 !important;
+          border-radius: 8px !important;
+          background: #ffffff !important;
+          box-shadow: 0 10px 24px rgba(15, 23, 42, 0.055) !important;
+        }
+
+        .admin-reports-filter-card .ant-card-body {
+          padding: 18px 20px !important;
+        }
+
+        .admin-reports-distributor-select {
+          width: 280px !important;
+          max-width: 100%;
+        }
+
+        .admin-reports-distributor-select .ant-select-selector {
+          border-radius: 8px !important;
         }
 
         .admin-reports-stat-card,
@@ -1011,12 +1094,18 @@ export default function AdminReportsPage() {
           background-clip: padding-box !important;
         }
 
-        .admin-reports-table .ant-table-thead > tr > th.ant-table-cell-fix-right {
+        .admin-reports-table
+          .ant-table-thead
+          > tr
+          > th.ant-table-cell-fix-right {
           background: #f8fafc !important;
           background-color: #f8fafc !important;
         }
 
-        .admin-reports-table .ant-table-tbody > tr:hover > td.ant-table-cell-fix-right {
+        .admin-reports-table
+          .ant-table-tbody
+          > tr:hover
+          > td.ant-table-cell-fix-right {
           background: #f8fbff !important;
         }
 
@@ -1073,6 +1162,10 @@ export default function AdminReportsPage() {
 
           .admin-reports-hero-title.ant-typography {
             font-size: 26px;
+          }
+
+          .admin-reports-distributor-select {
+            width: 100% !important;
           }
         }
 

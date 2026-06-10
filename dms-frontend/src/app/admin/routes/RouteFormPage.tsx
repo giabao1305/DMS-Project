@@ -68,6 +68,7 @@ type RouteFormPageProps = {
 
 type RouteFormValues = {
   name: string;
+  distributor?: string;
   seller: string;
   workDate: dayjs.Dayjs;
   repeatMode?: RepeatMode;
@@ -80,8 +81,18 @@ type SelectedCustomer = {
   note?: string;
 };
 
+type InsertPosition = "start" | "end" | `after:${string}`;
+
 const getSellerId = (seller: string | User) =>
   typeof seller === "string" ? seller : seller._id;
+
+const getManagerId = (user?: User) => {
+  const manager = user?.manager;
+
+  if (!manager) return undefined;
+
+  return typeof manager === "string" ? manager : manager._id;
+};
 
 const getCustomerId = (customer: string | Customer) =>
   typeof customer === "string" ? customer : customer._id;
@@ -94,6 +105,71 @@ const getAssignedSellerId = (customer: Customer) => {
   return typeof assignedSeller === "string"
     ? assignedSeller
     : assignedSeller._id;
+};
+
+const getRouteOrder = (value?: number) =>
+  Number.isFinite(value) && value ? value : Number.MAX_SAFE_INTEGER;
+
+const sortSelectedCustomers = (customers: SelectedCustomer[]) =>
+  [...customers].sort(
+    (left, right) =>
+      getRouteOrder(left.orderIndex) - getRouteOrder(right.orderIndex),
+  );
+
+const normalizeCustomerOrder = (customers: SelectedCustomer[]) =>
+  sortSelectedCustomers(customers).map((item, index) => ({
+    ...item,
+    orderIndex: index + 1,
+  }));
+
+const insertCustomers = (
+  currentCustomers: SelectedCustomer[],
+  addedCustomers: SelectedCustomer[],
+  position: InsertPosition,
+) => {
+  const current = normalizeCustomerOrder(currentCustomers);
+
+  if (position === "start") {
+    return normalizeCustomerOrder([...addedCustomers, ...current]);
+  }
+
+  if (position.startsWith("after:")) {
+    const customerId = position.replace("after:", "");
+    const insertIndex = current.findIndex(
+      (item) => item.customer._id === customerId,
+    );
+
+    if (insertIndex >= 0) {
+      return normalizeCustomerOrder([
+        ...current.slice(0, insertIndex + 1),
+        ...addedCustomers,
+        ...current.slice(insertIndex + 1),
+      ]);
+    }
+  }
+
+  return normalizeCustomerOrder([...current, ...addedCustomers]);
+};
+
+const hasDuplicatedOrderIndex = (customers: SelectedCustomer[]) => {
+  const orderIndexes = new Set<number>();
+
+  for (const item of customers) {
+    if (
+      !Number.isInteger(item.orderIndex) ||
+      item.orderIndex < 1
+    ) {
+      return true;
+    }
+
+    if (orderIndexes.has(item.orderIndex)) {
+      return true;
+    }
+
+    orderIndexes.add(item.orderIndex);
+  }
+
+  return false;
 };
 
 const getIsoWeek = (date: Date) => {
@@ -155,6 +231,9 @@ export default function RouteFormPage({
   const [form] = Form.useForm<RouteFormValues>();
 
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>();
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [insertPosition, setInsertPosition] =
+    useState<InsertPosition>("end");
   const [note, setNote] = useState("");
   const [customersInRoute, setCustomersInRoute] = useState<SelectedCustomer[]>(
     [],
@@ -179,6 +258,7 @@ export default function RouteFormPage({
   const [createRoute, { isLoading: creating }] = useCreateRouteMutation();
   const [updateRoute, { isLoading: updating }] = useUpdateRouteMutation();
   const selectedSellerId = Form.useWatch("seller", form);
+  const selectedDistributorId = Form.useWatch("distributor", form);
   const repeatMode = Form.useWatch("repeatMode", form) ?? "none";
   const workDate = Form.useWatch("workDate", form);
   const endDate = Form.useWatch("endDate", form);
@@ -191,13 +271,23 @@ export default function RouteFormPage({
     [endDate, repeatMode, workDate],
   );
 
-  const sellers = useMemo(
+  const distributors = useMemo(
     () =>
-      (isDistributorScope ? distributorSellers : adminUsers).filter(
-        (user) => isSalesRepRole(user.role) && user.isActive,
+      adminUsers.filter(
+        (user) => user.role === "distributor" && user.isActive,
       ),
-    [adminUsers, distributorSellers, isDistributorScope],
+    [adminUsers],
   );
+  const sellers = useMemo(() => {
+    const source = (isDistributorScope ? distributorSellers : adminUsers).filter(
+      (user) => isSalesRepRole(user.role) && user.isActive,
+    );
+
+    if (isDistributorScope) return source;
+    if (!selectedDistributorId) return [];
+
+    return source.filter((seller) => getManagerId(seller) === selectedDistributorId);
+  }, [adminUsers, distributorSellers, isDistributorScope, selectedDistributorId]);
   const customers = isDistributorScope ? distributorCustomers : adminCustomers;
 
   const routeSelectableCustomers = useMemo(() => {
@@ -220,6 +310,44 @@ export default function RouteFormPage({
     );
   }, [customersInRoute, routeSelectableCustomers]);
 
+  const customerSearchText = customerSearch.trim().toLowerCase();
+  const visibleAvailableRouteCustomers = useMemo(() => {
+    const filteredCustomers = customerSearchText
+      ? availableRouteCustomers.filter((customer) =>
+          [customer.name, customer.ownerName, customer.phone, customer.address]
+            .filter(Boolean)
+            .some((value) => value!.toLowerCase().includes(customerSearchText)),
+        )
+      : availableRouteCustomers;
+
+    return filteredCustomers.slice(0, 80);
+  }, [availableRouteCustomers, customerSearchText]);
+
+  const customerSelectOptions = useMemo(
+    () =>
+      visibleAvailableRouteCustomers.map((customer) => ({
+        label: `${customer.name} - ${customer.phone || "Chưa có SĐT"}`,
+        value: customer._id,
+      })),
+    [visibleAvailableRouteCustomers],
+  );
+
+  const orderedCustomersInRoute = useMemo(
+    () => sortSelectedCustomers(customersInRoute),
+    [customersInRoute],
+  );
+  const insertPositionOptions = useMemo(
+    () => [
+      { label: "Đầu tuyến", value: "start" },
+      { label: "Cuối tuyến", value: "end" },
+      ...orderedCustomersInRoute.map((item) => ({
+        label: `Sau ${item.orderIndex}. ${item.customer.name}`,
+        value: `after:${item.customer._id}` as InsertPosition,
+      })),
+    ],
+    [orderedCustomersInRoute],
+  );
+
   useEffect(() => {
     if (
       selectedCustomerId &&
@@ -230,11 +358,42 @@ export default function RouteFormPage({
   }, [availableRouteCustomers, selectedCustomerId]);
 
   useEffect(() => {
-    if (!isEdit || !route || customers.length === 0) return;
+    if (!selectedSellerId) return;
+    if (sellers.some((seller) => seller._id === selectedSellerId)) return;
+
+    form.setFieldValue("seller", undefined);
+    setSelectedCustomerId(undefined);
+    setCustomersInRoute([]);
+  }, [form, selectedSellerId, sellers]);
+
+  useEffect(() => {
+    if (
+      insertPosition.startsWith("after:") &&
+      !customersInRoute.some(
+        (item) => `after:${item.customer._id}` === insertPosition,
+      )
+    ) {
+      setInsertPosition("end");
+    }
+  }, [customersInRoute, insertPosition]);
+
+  useEffect(() => {
+    if (
+      !isEdit ||
+      !route ||
+      customers.length === 0 ||
+      (!isDistributorScope && adminUsers.length === 0)
+    ) {
+      return;
+    }
+
+    const routeSellerId = getSellerId(route.seller);
+    const routeSeller = adminUsers.find((user) => user._id === routeSellerId);
 
     form.setFieldsValue({
       name: route.name,
-      seller: getSellerId(route.seller),
+      distributor: isDistributorScope ? undefined : getManagerId(routeSeller),
+      seller: routeSellerId,
       workDate: dayjs(route.workDate),
     });
 
@@ -253,8 +412,8 @@ export default function RouteFormPage({
       })
       .filter(Boolean) as SelectedCustomer[];
 
-    setCustomersInRoute(mappedCustomers);
-  }, [customers, form, isEdit, route]);
+    setCustomersInRoute(normalizeCustomerOrder(mappedCustomers));
+  }, [adminUsers, customers, form, isDistributorScope, isEdit, route]);
 
   const handleAddCustomer = () => {
     if (!selectedSellerId) {
@@ -285,16 +444,22 @@ export default function RouteFormPage({
       return;
     }
 
-    setCustomersInRoute((previous) => [
-      ...previous,
-      {
-        customer,
-        orderIndex: previous.length + 1,
-        note: note.trim() || undefined,
-      },
-    ]);
+    setCustomersInRoute((previous) =>
+      insertCustomers(
+        previous,
+        [
+          {
+            customer,
+            orderIndex: 0,
+            note: note.trim() || undefined,
+          },
+        ],
+        insertPosition,
+      ),
+    );
 
     setSelectedCustomerId(undefined);
+    setCustomerSearch("");
     setNote("");
   };
 
@@ -309,26 +474,27 @@ export default function RouteFormPage({
       return;
     }
 
-    setCustomersInRoute((previous) => [
-      ...previous,
-      ...availableRouteCustomers.map((customer, index) => ({
-        customer,
-        orderIndex: previous.length + index + 1,
-      })),
-    ]);
+    setCustomersInRoute((previous) =>
+      insertCustomers(
+        previous,
+        availableRouteCustomers.map((customer) => ({
+          customer,
+          orderIndex: 0,
+        })),
+        insertPosition,
+      ),
+    );
     setSelectedCustomerId(undefined);
+    setCustomerSearch("");
     setNote("");
     message.success(`Đã thêm ${availableRouteCustomers.length} khách của DSR`);
   };
 
   const handleRemoveCustomer = (customerId: string) => {
     setCustomersInRoute((previous) =>
-      previous
-        .filter((item) => item.customer._id !== customerId)
-        .map((item, index) => ({
-          ...item,
-          orderIndex: index + 1,
-        })),
+      normalizeCustomerOrder(
+        previous.filter((item) => item.customer._id !== customerId),
+      ),
     );
   };
 
@@ -352,11 +518,19 @@ export default function RouteFormPage({
         return;
       }
 
+      if (hasDuplicatedOrderIndex(customersInRoute)) {
+        message.warning("Thứ tự ghé thăm không hợp lệ hoặc bị trùng");
+        return;
+      }
+
+      const normalizedCustomers = normalizeCustomerOrder(customersInRoute);
+      setCustomersInRoute(normalizedCustomers);
+
       const body: CreateRouteRequest | UpdateRouteRequest = {
         name: values.name,
         seller: values.seller,
         workDate: values.workDate.format("YYYY-MM-DD"),
-        customers: customersInRoute.map((item) => ({
+        customers: normalizedCustomers.map((item) => ({
           customer: item.customer._id,
           orderIndex: item.orderIndex,
           note: item.note,
@@ -428,6 +602,7 @@ export default function RouteFormPage({
       render: (_, record) => (
         <InputNumber
           min={1}
+          precision={0}
           value={record.orderIndex}
           className="admin-route-form-order-input"
           onChange={(value) =>
@@ -583,8 +758,10 @@ export default function RouteFormPage({
               className="admin-route-form-steps"
               items={[
                 {
-                  title: "Chọn DSR",
-                  description: "Chọn người đi tuyến và ngày làm việc",
+                  title: isDistributorScope ? "Chọn DSR" : "Chọn NPP & DSR",
+                  description: isDistributorScope
+                    ? "Chọn người đi tuyến và ngày làm việc"
+                    : "Chọn nhà phân phối rồi chọn DSR",
                 },
                 {
                   title: "Chọn khách",
@@ -638,14 +815,46 @@ export default function RouteFormPage({
                   </Form.Item>
                 </Col>
 
+                {!isDistributorScope ? (
+                  <Col xs={24} lg={12}>
+                    <Form.Item
+                      label="Nhà phân phối"
+                      name="distributor"
+                      rules={[
+                        {
+                          required: true,
+                          message: "Vui lòng chọn nhà phân phối",
+                        },
+                      ]}
+                    >
+                      <Select
+                        size="large"
+                        showSearch
+                        allowClear
+                        placeholder="Chọn nhà phân phối"
+                        optionFilterProp="label"
+                        onChange={() => {
+                          form.setFieldValue("seller", undefined);
+                          setSelectedCustomerId(undefined);
+                          setCustomersInRoute([]);
+                        }}
+                        options={distributors.map((distributor) => ({
+                          label: `${distributor.companyName || distributor.fullName} - ${distributor.email}`,
+                          value: distributor._id,
+                        }))}
+                      />
+                    </Form.Item>
+                  </Col>
+                ) : null}
+
                 <Col xs={24} lg={12}>
                   <Form.Item
-                    label="Nhân viên phụ trách"
+                    label="DSR phụ trách"
                     name="seller"
                     rules={[
                       {
                         required: true,
-                        message: "Vui lòng chọn seller",
+                        message: "Vui lòng chọn DSR",
                       },
                     ]}
                   >
@@ -653,10 +862,16 @@ export default function RouteFormPage({
                       size="large"
                       showSearch
                       allowClear
-                      placeholder="Chọn seller"
+                      disabled={!isDistributorScope && !selectedDistributorId}
+                      placeholder={
+                        isDistributorScope || selectedDistributorId
+                          ? "Chọn DSR"
+                          : "Chọn nhà phân phối trước"
+                      }
                       optionFilterProp="label"
                       onChange={() => {
                         setSelectedCustomerId(undefined);
+                        setCustomerSearch("");
                         setCustomersInRoute([]);
                       }}
                       options={sellers.map((seller) => ({
@@ -757,7 +972,7 @@ export default function RouteFormPage({
               </Flex>
 
               <Row gutter={[12, 12]} align="middle" className="admin-route-form-add-row">
-                <Col xs={24} xl={11}>
+                <Col xs={24} xl={8}>
                   <Select
                     size="large"
                     showSearch
@@ -770,16 +985,37 @@ export default function RouteFormPage({
                     }
                     style={{ width: "100%" }}
                     value={selectedCustomerId}
-                    optionFilterProp="label"
+                    filterOption={false}
+                    onSearch={setCustomerSearch}
                     onChange={setSelectedCustomerId}
-                    options={availableRouteCustomers.map((customer) => ({
-                      label: `${customer.name} - ${customer.phone}`,
-                      value: customer._id,
-                    }))}
+                    onClear={() => setCustomerSearch("")}
+                    onOpenChange={(open) => {
+                      if (!open) setCustomerSearch("");
+                    }}
+                    options={customerSelectOptions}
+                    virtual
+                    notFoundContent={
+                      selectedSellerId
+                        ? "Không tìm thấy khách phù hợp"
+                        : "Chọn DSR trước"
+                    }
                   />
                 </Col>
 
-                <Col xs={24} xl={8}>
+                <Col xs={24} xl={5}>
+                  <Select<InsertPosition>
+                    size="large"
+                    value={insertPosition}
+                    disabled={customersInRoute.length === 0}
+                    placeholder="Vị trí thêm"
+                    style={{ width: "100%" }}
+                    optionFilterProp="label"
+                    onChange={setInsertPosition}
+                    options={insertPositionOptions}
+                  />
+                </Col>
+
+                <Col xs={24} xl={6}>
                   <Input
                     size="large"
                     placeholder="Ghi chú điểm ghé"
@@ -820,12 +1056,27 @@ export default function RouteFormPage({
                 <Tag color="cyan">
                   Còn {availableRouteCustomers.length} khách có thể thêm
                 </Tag>
+                {availableRouteCustomers.length > visibleAvailableRouteCustomers.length ? (
+                  <Tag color="gold">
+                    Hiển thị {visibleAvailableRouteCustomers.length}/
+                    {availableRouteCustomers.length}, nhập từ khóa để lọc nhanh
+                  </Tag>
+                ) : null}
               </Flex>
 
               <Table<SelectedCustomer>
                 rowKey={(record) => record.customer._id}
-                pagination={false}
-                dataSource={customersInRoute}
+                pagination={
+                  orderedCustomersInRoute.length > 8
+                    ? {
+                        pageSize: 8,
+                        showSizeChanger: false,
+                        size: "small",
+                        showTotal: (total) => `Tổng ${total} điểm bán`,
+                      }
+                    : false
+                }
+                dataSource={orderedCustomersInRoute}
                 columns={customerColumns}
                 scroll={{ x: 1040 }}
                 className="admin-route-form-table"
@@ -1014,6 +1265,10 @@ export default function RouteFormPage({
           border-radius: 8px;
         }
 
+        .admin-route-form-table .ant-pagination {
+          margin: 14px 0 0 !important;
+        }
+
         .admin-route-form-table .ant-table-thead > tr > th {
           color: #64748b !important;
           font-size: 12px;
@@ -1107,16 +1362,16 @@ export default function RouteFormPage({
 
         .admin-route-form-shell.is-distributor-route-form
           .admin-route-form-panel {
-          border-color: #d7ebe7 !important;
+          border-color: #dbeafe !important;
           border-radius: 16px;
-          box-shadow: 0 16px 34px rgba(11, 47, 42, 0.06) !important;
+          box-shadow: 0 16px 34px rgba(37, 99, 235, 0.06) !important;
         }
 
         .admin-route-form-shell.is-distributor-route-form
           .admin-route-form-steps {
-          border-color: #d7ebe7;
+          border-color: #dbeafe;
           border-radius: 14px;
-          background: #f3fbf9;
+          background: #eff6ff;
         }
 
         .admin-route-form-shell.is-distributor-route-form
@@ -1124,7 +1379,7 @@ export default function RouteFormPage({
           + .admin-route-form-section,
         .admin-route-form-shell.is-distributor-route-form
           .admin-route-form-footer {
-          border-top-color: #d7ebe7;
+          border-top-color: #dbeafe;
         }
 
         .admin-route-form-shell.is-distributor-route-form
@@ -1138,9 +1393,9 @@ export default function RouteFormPage({
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 10px;
-          border: 1px solid #d7ebe7;
+          border: 1px solid #dbeafe;
           border-radius: 14px;
-          background: #f3fbf9;
+          background: #eff6ff;
         }
 
         .admin-route-form-shell.is-distributor-route-form
@@ -1154,29 +1409,29 @@ export default function RouteFormPage({
 
         .admin-route-form-shell.is-distributor-route-form
           .admin-route-form-add-button.ant-btn-primary {
-          border-color: #0d9488 !important;
-          background: #0d9488 !important;
-          box-shadow: 0 12px 24px rgba(13, 148, 136, 0.18);
+          border-color: #2563eb !important;
+          background: #2563eb !important;
+          box-shadow: 0 12px 24px rgba(37, 99, 235, 0.18);
         }
 
         .admin-route-form-shell.is-distributor-route-form
           .admin-route-form-add-button.ant-btn-primary:hover {
-          border-color: #0f766e !important;
-          background: #0f766e !important;
+          border-color: #1d4ed8 !important;
+          background: #1d4ed8 !important;
         }
 
         .admin-route-form-shell.is-distributor-route-form
           .admin-route-form-add-button.ant-btn-default {
-          border-color: #a7d8d0 !important;
-          color: #0b2f2a !important;
+          border-color: #bfdbfe !important;
+          color: #1e40af !important;
           background: #ffffff !important;
         }
 
         .admin-route-form-shell.is-distributor-route-form
           .admin-route-form-add-button.ant-btn-default:hover {
-          border-color: #0d9488 !important;
-          color: #0f766e !important;
-          background: #e8f7f4 !important;
+          border-color: #2563eb !important;
+          color: #1d4ed8 !important;
+          background: #eff6ff !important;
         }
 
         .admin-route-form-shell.is-distributor-route-form
@@ -1186,27 +1441,27 @@ export default function RouteFormPage({
 
         .admin-route-form-shell.is-distributor-route-form
           .admin-route-form-total {
-          border-color: #d7ebe7;
+          border-color: #dbeafe;
           border-radius: 12px;
-          background: #f3fbf9;
+          background: #eff6ff;
         }
 
         .admin-route-form-shell.is-distributor-route-form
           .admin-route-form-total
           .anticon {
-          color: #0d9488;
+          color: #2563eb;
         }
 
         .admin-route-form-shell.is-distributor-route-form
           .admin-route-form-action.ant-btn-primary {
-          border-color: #0d9488 !important;
-          background: #0d9488 !important;
+          border-color: #2563eb !important;
+          background: #2563eb !important;
         }
 
         .admin-route-form-shell.is-distributor-route-form
           .admin-route-form-action.ant-btn-primary:hover {
-          border-color: #0f766e !important;
-          background: #0f766e !important;
+          border-color: #1d4ed8 !important;
+          background: #1d4ed8 !important;
         }
 
         @media (max-width: 767px) {

@@ -22,6 +22,7 @@ const vi = {
   visitTooFar: "B\u1ea1n \u0111ang \u1edf qu\u00e1 xa \u0111i\u1ec3m b\u00e1n. Vui l\u00f2ng \u0111\u1ebfn g\u1ea7n kh\u00e1ch h\u00e0ng h\u01a1n r\u1ed3i th\u1eed l\u1ea1i.",
   locationMissing: "Ch\u01b0a c\u00f3 t\u1ecda \u0111\u1ed9 c\u1ee7a \u0111i\u1ec3m b\u00e1n. Vui l\u00f2ng c\u1eadp nh\u1eadt v\u1ecb tr\u00ed kh\u00e1ch h\u00e0ng tr\u01b0\u1edbc khi vi\u1ebfng th\u0103m.",
   locationInvalid: "T\u1ecda \u0111\u1ed9 GPS ch\u01b0a h\u1ee3p l\u1ec7. Vui l\u00f2ng l\u1ea5y l\u1ea1i v\u1ecb tr\u00ed hi\u1ec7n t\u1ea1i.",
+  checkInRequired: "B\u1ea1n c\u1ea7n check-in t\u1ea1i kh\u00e1ch h\u00e0ng n\u00e0y tr\u01b0\u1edbc khi t\u1ea1o \u0111\u01a1n h\u00e0ng.",
   unknown: "\u0110\u00e3 c\u00f3 l\u1ed7i x\u1ea3y ra. Vui l\u00f2ng th\u1eed l\u1ea1i.",
 };
 
@@ -50,6 +51,7 @@ const patternMessages: Array<[RegExp, string, boolean?]> = [
   [/timeout|aborted/i, vi.timeout],
   [/invalid credentials|wrong password|incorrect password/i, vi.login],
   [/unauthorized|jwt|token/i, vi.session],
+  [/must\s+check\s*in.*customer.*creat(e|ing).*(order)|check\s*in.*customer.*before.*order/i, vi.checkInRequired],
   [/forbidden|permission|access denied/i, vi.forbidden],
   [/not found/i, vi.notFound],
   [/duplicate|already exists/i, vi.duplicate],

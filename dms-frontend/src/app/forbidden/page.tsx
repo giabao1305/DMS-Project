@@ -13,6 +13,7 @@ function ForbiddenContent() {
   const requiredRole = searchParams.get("required") ?? "";
   const currentRole = searchParams.get("current") ?? "";
   const currentDashboard = getRoleHomePath(currentRole);
+  const hasDashboard = currentDashboard !== "/forbidden";
 
   return (
     <main className="system-state-page">
@@ -34,9 +35,11 @@ function ForbiddenContent() {
         }
         extra={
           <Space wrap>
-            <Button type="primary" onClick={() => router.replace(currentDashboard)}>
-              Về dashboard của tôi
-            </Button>
+            {hasDashboard ? (
+              <Button type="primary" onClick={() => router.replace(currentDashboard)}>
+                Về dashboard của tôi
+              </Button>
+            ) : null}
             <Button onClick={() => router.replace("/auth/login")}>
               Đăng nhập tài khoản khác
             </Button>

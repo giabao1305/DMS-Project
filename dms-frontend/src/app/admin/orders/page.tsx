@@ -17,6 +17,7 @@ import {
   Flex,
   Input,
   Segmented,
+  Select,
   Space,
   Table,
   Tag,
@@ -33,6 +34,7 @@ import { getOrderAmounts } from "@/features/orders/orderAmounts";
 import { useGetOrdersPageQuery } from "@/features/orders/orderService";
 import type { Order, OrderStatus } from "@/features/orders/orderTypes";
 import type { User } from "@/features/users/userTypes";
+import { useGetUsersQuery } from "@/features/users/userService";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useRealtimeHighlight } from "@/hooks/useRealtimeHighlight";
 import { useRealtimeRefetch } from "@/hooks/useRealtimeRefetch";
@@ -51,7 +53,7 @@ const statusMap: Record<OrderStatus, { label: string; color: string }> = {
   delivered: { label: "Đã giao", color: "green" },
   return_requested: { label: "Chờ duyệt trả hàng", color: "gold" },
   cancelled: { label: "Đã hủy", color: "red" },
-  returned: { label: "Đã trả hàng", color: "purple" },
+  returned: { label: "Đã trả hàng", color: "blue" },
 };
 
 const money = (value: number) => `${value.toLocaleString("vi-VN")}đ`;
@@ -64,22 +66,37 @@ const formatDate = (value?: string) => {
   return date.toLocaleDateString("vi-VN");
 };
 
-const getCustomerName = (customer: Order["customer"]) =>
+const getCustomerName = (customer?: Order["customer"]) =>
   typeof customer === "string" ? customer : (customer as Customer)?.name || "-";
 
-const getSellerName = (seller: Order["seller"]) =>
+const getSellerName = (seller?: Order["seller"]) =>
   typeof seller === "string" ? seller : (seller as User)?.fullName || "-";
+
+const getDistributorName = (distributor?: Order["distributor"]) =>
+  typeof distributor === "string"
+    ? distributor
+    : (distributor as User)?.companyName ||
+      (distributor as User)?.fullName ||
+      "-";
 
 export default function AdminOrdersPage() {
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState<OrderStatusFilter>("all");
+  const [distributor, setDistributor] = useState<string>();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const searchKeyword = useDebouncedValue(keyword);
+  const { data: users = [] } = useGetUsersQuery();
+  const distributors = useMemo(
+    () => users.filter((user) => user.role === "distributor" && user.isActive),
+    [users],
+  );
 
   const { data, isLoading, refetch } = useGetOrdersPageQuery({
     page,
     limit: pageSize,
+    type: "distributor_to_store",
+    distributor,
     search: searchKeyword.trim() || undefined,
     status: status === "all" ? undefined : status,
     sortBy: "createdAt",
@@ -152,7 +169,7 @@ export default function AdminOrdersPage() {
             <Text className="admin-orders-strong">
               {getCustomerName(customer)}
             </Text>
-            <Text className="admin-orders-muted">Khách hàng đặt đơn</Text>
+            <Text className="admin-orders-muted">Tiệm nhận hàng</Text>
           </div>
         ),
       },
@@ -166,6 +183,16 @@ export default function AdminOrdersPage() {
             <Text className="admin-orders-strong">{getSellerName(seller)}</Text>
             <Text className="admin-orders-muted">Seller phụ trách</Text>
           </div>
+        ),
+      },
+      {
+        title: "Nhà phân phối",
+        dataIndex: "distributor",
+        width: 210,
+        render: (distributor) => (
+          <Text className="admin-orders-strong">
+            {getDistributorName(distributor)}
+          </Text>
         ),
       },
       {
@@ -229,33 +256,38 @@ export default function AdminOrdersPage() {
       <AdminBreadcrumb />
 
       <AdminPageHeader
-        title="Quản lý đơn hàng"
-        description="Theo dõi, tạo và xác nhận đơn hàng trong hệ thống phân phối."
+        title="Đơn thị trường"
+        description="Giám sát đơn NPP/seller bán ra tiệm, doanh thu sell-out và trạng thái giao hàng."
         extra={
-          <Link href="/admin/orders/create">
-            <Button type="primary" icon={<PlusOutlined />}>
-              Tạo đơn hàng
-            </Button>
-          </Link>
+          <Space>
+            <Link href="/admin/orders/supply">
+              <Button icon={<CheckCircleOutlined />}>Duyệt nhập kho</Button>
+            </Link>
+            <Link href="/admin/orders/create">
+              <Button type="primary" icon={<PlusOutlined />}>
+                Tạo đơn tiệm
+              </Button>
+            </Link>
+          </Space>
         }
       />
 
       <section className="admin-orders-shell">
         <div className="admin-orders-hero">
           <div>
-            <Tag className="admin-orders-hero-tag">Vận hành đơn hàng</Tag>
+            <Tag className="admin-orders-hero-tag">Sell-out</Tag>
             <Title level={2} className="admin-orders-hero-title">
-              Điều phối đơn hàng
+              Giám sát đơn thị trường
             </Title>
             <Text className="admin-orders-hero-desc">
-              Theo dõi trạng thái xử lý, doanh thu và các đơn cần admin kiểm
-              tra trong ngày.
+              Theo dõi hàng đã bán ra tiệm, doanh thu, trả hàng và hiệu quả thị
+              trường của từng NPP/seller.
             </Text>
 
             <div className="admin-orders-hero-metrics">
               <div>
                 <ShoppingCartOutlined />
-                <span>Tổng đơn</span>
+                <span>Tổng đơn thị trường</span>
                 <strong>{overview.total.toLocaleString("vi-VN")}</strong>
               </div>
               <div>
@@ -278,7 +310,7 @@ export default function AdminOrdersPage() {
 
           <div className="admin-orders-hero-panel">
             <ShoppingCartOutlined />
-            <span>Đơn đang xử lý</span>
+            <span>Đơn thị trường đang xử lý</span>
             <strong>{overview.active.toLocaleString("vi-VN")}</strong>
             <Text>đơn chờ xác nhận hoặc giao hàng</Text>
           </div>
@@ -291,7 +323,7 @@ export default function AdminOrdersPage() {
                 Bộ lọc đơn hàng
               </Title>
               <Text className="admin-orders-filter-description">
-                Tìm theo mã đơn, khách hàng, seller hoặc lọc theo trạng thái.
+                Tìm theo mã đơn, ghi chú, sản phẩm hoặc lọc theo trạng thái.
               </Text>
             </div>
 
@@ -299,7 +331,7 @@ export default function AdminOrdersPage() {
               <Input
                 allowClear
                 size="large"
-                placeholder="Tìm mã đơn, khách hàng, seller"
+                placeholder="Tìm mã đơn, ghi chú, sản phẩm"
                 prefix={<SearchOutlined />}
                 className="admin-orders-search-input"
                 value={keyword}
@@ -307,6 +339,26 @@ export default function AdminOrdersPage() {
                   setKeyword(event.target.value);
                   setPage(1);
                 }}
+              />
+
+              <Select
+                allowClear
+                showSearch
+                size="large"
+                optionFilterProp="label"
+                placeholder="Lọc nhà phân phối"
+                style={{ width: 240 }}
+                value={distributor}
+                onChange={(value) => {
+                  setDistributor(value);
+                  setPage(1);
+                }}
+                options={distributors.map((item) => ({
+                  value: item._id,
+                  label: `${item.code ? `${item.code} - ` : ""}${
+                    item.companyName || item.fullName
+                  }`,
+                }))}
               />
 
               <Segmented<OrderStatusFilter>
@@ -327,7 +379,6 @@ export default function AdminOrdersPage() {
                   { label: "Đã trả hàng", value: "returned" },
                 ]}
               />
-
             </Flex>
           </Flex>
         </Card>
@@ -339,7 +390,7 @@ export default function AdminOrdersPage() {
             <Flex align="center" justify="space-between" gap={14} wrap="wrap">
               <div>
                 <Text className="admin-orders-panel-title">
-                  Danh sách đơn hàng
+                  Danh sách đơn thị trường
                 </Text>
                 <Text className="admin-orders-panel-desc">
                   Hiển thị {totalOrders.toLocaleString("vi-VN")} đơn
@@ -370,7 +421,10 @@ export default function AdminOrdersPage() {
               setPage(pagination.current ?? 1);
               setPageSize(pagination.pageSize ?? 10);
             }}
-            locale={{              emptyText: <Empty description="Không tìm thấy đơn hàng phù hợp" />,
+            locale={{
+              emptyText: (
+                <Empty description="Không tìm thấy đơn hàng phù hợp" />
+              ),
             }}
           />
         </Card>
@@ -393,7 +447,11 @@ export default function AdminOrdersPage() {
           border: 1px solid rgba(125, 211, 252, 0.2);
           border-radius: 8px;
           background:
-            radial-gradient(circle at 86% 18%, rgba(16, 185, 129, 0.22), transparent 28%),
+            radial-gradient(
+              circle at 86% 18%,
+              rgba(16, 185, 129, 0.22),
+              transparent 28%
+            ),
             linear-gradient(135deg, #071a24 0%, #102b3a 52%, #12394a 100%);
           box-shadow: 0 22px 46px rgba(7, 26, 36, 0.18);
         }
@@ -681,7 +739,10 @@ export default function AdminOrdersPage() {
           background-color: #f8fafc !important;
         }
 
-        .admin-orders-table .ant-table-tbody > tr:hover > td.ant-table-cell-fix-right,
+        .admin-orders-table
+          .ant-table-tbody
+          > tr:hover
+          > td.ant-table-cell-fix-right,
         .admin-orders-table
           .ant-table-tbody
           > tr:hover

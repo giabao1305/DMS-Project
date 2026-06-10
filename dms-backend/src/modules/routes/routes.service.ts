@@ -6,10 +6,11 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type mongoose from 'mongoose';
-import { Model, Types } from 'mongoose';
+import { Model, Types, UpdateQuery } from 'mongoose';
 
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import {
+  buildSearchRegex,
   getPagination,
   getSort,
   PaginatedResult,
@@ -21,10 +22,16 @@ import {
   CustomerDocument,
   CustomerStatus,
 } from '../customers/schemas/customer.schema';
+import {
+  LeaveRequest,
+  LeaveRequestDocument,
+  LeaveStatus,
+} from '../leaves/schemas/leave-request.schema';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../notifications/schemas/notification.schema';
 import { User, UserDocument, UserRole } from '../users/schemas/user.schema';
 import { Visit, VisitDocument } from '../visits/schemas/visit.schema';
+import { AssignSubstituteRouteDto } from './dto/assign-substitute-route.dto';
 import { CreateRouteDto } from './dto/create-route.dto';
 import { UpdateRouteStatusDto } from './dto/update-route-status.dto';
 import { UpdateRouteDto } from './dto/update-route.dto';
@@ -54,6 +61,9 @@ export class RoutesService {
 
     @InjectModel(Customer.name)
     private readonly customerModel: Model<CustomerDocument>,
+
+    @InjectModel(LeaveRequest.name)
+    private readonly leaveRequestModel: Model<LeaveRequestDocument>,
 
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
@@ -126,6 +136,19 @@ export class RoutesService {
     }
   }
 
+  private async assertActiveSeller(
+    sellerId: string,
+    notFoundMessage = 'Seller not found',
+  ): Promise<UserDocument> {
+    const seller = await this.userModel.findById(sellerId);
+
+    if (!seller || !seller.isActive || seller.role !== UserRole.SELLER) {
+      throw new NotFoundException(notFoundMessage);
+    }
+
+    return seller;
+  }
+
   private async assertRouteAccess(
     routeId: string,
     userId: string,
@@ -149,11 +172,7 @@ export class RoutesService {
     adminId: string,
     role: UserRole,
   ): Promise<Route> {
-    const seller = await this.userModel.findById(createRouteDto.seller);
-
-    if (!seller || !seller.isActive || seller.role !== UserRole.SELLER) {
-      throw new NotFoundException('Seller not found');
-    }
+    await this.assertActiveSeller(createRouteDto.seller);
 
     if (role === UserRole.DISTRIBUTOR) {
       await this.assertManagedSeller(adminId, createRouteDto.seller);
@@ -166,6 +185,10 @@ export class RoutesService {
     this.validateRouteCustomerPlan(createRouteDto.customers);
 
     await this.ensureSellerHasNoRouteOnDate(
+      createRouteDto.seller,
+      new Date(createRouteDto.workDate),
+    );
+    await this.assertSellerNotOnApprovedLeave(
       createRouteDto.seller,
       new Date(createRouteDto.workDate),
     );
@@ -263,7 +286,10 @@ export class RoutesService {
 
     const existingRoute = await this.routeModel
       .findOne({
-        seller: new Types.ObjectId(sellerId),
+        $or: [
+          { seller: new Types.ObjectId(sellerId) },
+          { substituteSeller: new Types.ObjectId(sellerId) },
+        ],
         status: { $ne: RouteStatus.CANCELLED },
         workDate: {
           $gte: start,
@@ -276,7 +302,34 @@ export class RoutesService {
 
     if (existingRoute) {
       throw new BadRequestException(
-        'Seller already has a route on this work date',
+        'Seller already has a route or substitute route on this work date',
+      );
+    }
+  }
+
+  private async assertSellerNotOnApprovedLeave(
+    sellerId: string,
+    workDate: Date,
+  ): Promise<void> {
+    const start = new Date(workDate);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(workDate);
+    end.setHours(23, 59, 59, 999);
+
+    const leave = await this.leaveRequestModel
+      .findOne({
+        seller: new Types.ObjectId(sellerId),
+        status: LeaveStatus.APPROVED,
+        startDate: { $lte: end },
+        endDate: { $gte: start },
+      })
+      .select('_id')
+      .exec();
+
+    if (leave) {
+      throw new BadRequestException(
+        'Seller has approved leave on this work date',
       );
     }
   }
@@ -293,8 +346,18 @@ export class RoutesService {
       filter.status = query.status as RouteStatus;
     }
 
+    if (
+      query?.distributor &&
+      Types.ObjectId.isValid(query.distributor) &&
+      !filter.seller
+    ) {
+      filter.seller = {
+        $in: await this.getManagedSellerIds(query.distributor),
+      };
+    }
+
     if (query?.search) {
-      const search = new RegExp(query.search.trim(), 'i');
+      const search = buildSearchRegex(query.search);
       const sellers = await this.userModel
         .find({
           $or: [
@@ -306,10 +369,17 @@ export class RoutesService {
         .select('_id')
         .exec();
 
-      filter.$or = [
+      const searchFilter = [
         { name: search },
         { seller: { $in: sellers.map((seller) => seller._id) } },
       ];
+
+      if (filter.$or) {
+        filter.$and = [{ $or: filter.$or }, { $or: searchFilter }];
+        delete filter.$or;
+      } else {
+        filter.$or = searchFilter;
+      }
     }
 
     const workDate: DateRangeFilter = {};
@@ -336,6 +406,8 @@ export class RoutesService {
     const routeQuery = this.routeModel
       .find(filter)
       .populate('seller', 'fullName email phone companyName')
+      .populate('substituteSeller', 'fullName email phone companyName')
+      .populate('substituteAssignedBy', 'fullName email')
       .populate('createdBy', 'fullName email')
       .populate('customers.customer', 'name phone address')
       .sort(getSort(query));
@@ -358,17 +430,23 @@ export class RoutesService {
     role: UserRole,
     query?: PaginationQueryDto,
   ): Promise<Route[] | PaginatedResult<Route>> {
-    const seller =
+    const managedSellerIds =
       role === UserRole.DISTRIBUTOR
-        ? { $in: await this.getManagedSellerIds(sellerId) }
+        ? await this.getManagedSellerIds(sellerId)
+        : undefined;
+    const sellerFilter =
+      role === UserRole.DISTRIBUTOR
+        ? { $in: managedSellerIds }
         : new Types.ObjectId(sellerId);
 
     const filter = await this.buildRouteListFilter(query, {
-      seller,
+      $or: [{ seller: sellerFilter }, { substituteSeller: sellerFilter }],
     });
     const routeQuery = this.routeModel
       .find(filter)
       .populate('seller', 'fullName email phone companyName')
+      .populate('substituteSeller', 'fullName email phone companyName')
+      .populate('substituteAssignedBy', 'fullName email')
       .populate('createdBy', 'fullName email')
       .populate('customers.customer', 'name phone address latitude longitude')
       .sort(getSort(query));
@@ -402,13 +480,15 @@ export class RoutesService {
 
     return this.routeModel
       .find({
-        seller,
+        $or: [{ seller }, { substituteSeller: seller }],
         workDate: {
           $gte: start,
           $lte: end,
         },
       })
       .populate('seller', 'fullName email phone companyName')
+      .populate('substituteSeller', 'fullName email phone companyName')
+      .populate('substituteAssignedBy', 'fullName email')
       .populate('createdBy', 'fullName email')
       .populate('customers.customer', 'name phone address latitude longitude')
       .sort({ workDate: 1 })
@@ -419,6 +499,8 @@ export class RoutesService {
     const route = await this.routeModel
       .findById(id)
       .populate('seller', 'fullName email phone companyName')
+      .populate('substituteSeller', 'fullName email phone companyName')
+      .populate('substituteAssignedBy', 'fullName email')
       .populate('createdBy', 'fullName email')
       .populate('customers.customer', 'name phone address latitude longitude')
       .exec();
@@ -428,15 +510,24 @@ export class RoutesService {
     }
 
     const routeSellerId = this.getRelationId(route.seller);
+    const substituteSellerId = route.substituteSeller
+      ? this.getRelationId(route.substituteSeller)
+      : undefined;
 
-    if (role === UserRole.SELLER && routeSellerId !== userId) {
+    if (
+      role === UserRole.SELLER &&
+      routeSellerId !== userId &&
+      substituteSellerId !== userId
+    ) {
       throw new ForbiddenException('You can only view your own routes');
     }
 
     if (role === UserRole.DISTRIBUTOR) {
       const managedSellerIds = await this.getManagedSellerIds(userId);
       const canView = managedSellerIds.some(
-        (sellerId) => sellerId.toString() === routeSellerId,
+        (sellerId) =>
+          sellerId.toString() === routeSellerId ||
+          sellerId.toString() === substituteSellerId,
       );
 
       if (!canView) {
@@ -456,7 +547,7 @@ export class RoutesService {
     role: UserRole,
   ): Promise<Route> {
     const existingRoute = await this.assertRouteAccess(id, userId, role);
-    const updateData: {
+    const updateData: UpdateQuery<RouteDocument> & {
       name?: string;
       seller?: Types.ObjectId;
       workDate?: Date;
@@ -473,17 +564,56 @@ export class RoutesService {
     }
 
     if (updateRouteDto.seller) {
-      const seller = await this.userModel.findById(updateRouteDto.seller);
+      const currentSellerId = existingRoute.seller.toString();
+      const isChangingSeller = updateRouteDto.seller !== currentSellerId;
 
-      if (!seller || !seller.isActive || seller.role !== UserRole.SELLER) {
-        throw new NotFoundException('Seller not found');
+      if (isChangingSeller) {
+        const visitCount = await this.visitModel.countDocuments({
+          route: existingRoute._id,
+        });
+
+        if (visitCount > 0) {
+          throw new BadRequestException(
+            'Route already has visits. Assign a substitute seller instead of changing route owner',
+          );
+        }
       }
+
+      await this.assertActiveSeller(updateRouteDto.seller);
 
       if (role === UserRole.DISTRIBUTOR) {
         await this.assertManagedSeller(userId, updateRouteDto.seller);
       }
 
       updateData.seller = new Types.ObjectId(updateRouteDto.seller);
+
+      if (isChangingSeller) {
+        updateData.$unset = {
+          ...updateData.$unset,
+          substituteSeller: '',
+          substituteReason: '',
+          substituteAssignedBy: '',
+          substituteAssignedAt: '',
+        };
+      }
+
+      if (!updateRouteDto.customers) {
+        for (const item of existingRoute.customers) {
+          const customer = await this.customerModel.findById(item.customer);
+
+          if (!customer || !customer.isActive) {
+            throw new NotFoundException(
+              `Customer not found: ${item.customer.toString()}`,
+            );
+          }
+
+          if (customer.assignedSeller.toString() !== updateRouteDto.seller) {
+            throw new BadRequestException(
+              `Customer ${customer.name} is not assigned to this seller`,
+            );
+          }
+        }
+      }
     }
 
     if (updateRouteDto.workDate) {
@@ -491,17 +621,43 @@ export class RoutesService {
     }
 
     if (updateRouteDto.seller || updateRouteDto.workDate) {
+      const targetSellerId =
+        updateRouteDto.seller ?? existingRoute.seller.toString();
+      const targetWorkDate = updateRouteDto.workDate
+        ? new Date(updateRouteDto.workDate)
+        : existingRoute.workDate;
+
       await this.ensureSellerHasNoRouteOnDate(
-        updateRouteDto.seller ?? existingRoute.seller.toString(),
-        updateRouteDto.workDate
-          ? new Date(updateRouteDto.workDate)
-          : existingRoute.workDate,
+        targetSellerId,
+        targetWorkDate,
         id,
+      );
+      await this.assertSellerNotOnApprovedLeave(targetSellerId, targetWorkDate);
+    }
+
+    if (updateRouteDto.workDate && existingRoute.substituteSeller) {
+      const targetWorkDate = new Date(updateRouteDto.workDate);
+
+      await this.ensureSellerHasNoRouteOnDate(
+        existingRoute.substituteSeller.toString(),
+        targetWorkDate,
+        id,
+      );
+      await this.assertSellerNotOnApprovedLeave(
+        existingRoute.substituteSeller.toString(),
+        targetWorkDate,
       );
     }
 
     if (updateRouteDto.customers) {
       this.validateRouteCustomerPlan(updateRouteDto.customers);
+
+      const existingCustomerStatusById = new Map<string, RouteCustomerStatus>(
+        existingRoute.customers.map((item) => [
+          item.customer.toString(),
+          item.status,
+        ]),
+      );
 
       let validSellerId = updateRouteDto.seller;
 
@@ -540,7 +696,9 @@ export class RoutesService {
           customer: new Types.ObjectId(item.customer),
           orderIndex: item.orderIndex,
           note: item.note,
-          status: RouteCustomerStatus.PENDING,
+          status:
+            existingCustomerStatusById.get(item.customer) ??
+            RouteCustomerStatus.PENDING,
         });
       }
 
@@ -550,6 +708,142 @@ export class RoutesService {
     const route = await this.routeModel
       .findByIdAndUpdate(id, updateData, { returnDocument: 'after' })
       .populate('seller', 'fullName email phone companyName')
+      .populate('substituteSeller', 'fullName email phone companyName')
+      .populate('substituteAssignedBy', 'fullName email')
+      .populate('createdBy', 'fullName email')
+      .populate('customers.customer', 'name phone address latitude longitude')
+      .exec();
+
+    if (!route) {
+      throw new NotFoundException('Route not found');
+    }
+
+    this.emitRouteRealtime('status-updated', route);
+
+    return route;
+  }
+
+  async assignSubstitute(
+    id: string,
+    assignSubstituteRouteDto: AssignSubstituteRouteDto,
+    userId: string,
+    role: UserRole,
+  ): Promise<Route> {
+    const existingRoute = await this.assertRouteAccess(id, userId, role);
+    const routeOwner = await this.assertActiveSeller(
+      existingRoute.seller.toString(),
+      'Route owner not found',
+    );
+    const substituteSeller = await this.assertActiveSeller(
+      assignSubstituteRouteDto.substituteSeller,
+      'Substitute seller not found',
+    );
+
+    if (role === UserRole.DISTRIBUTOR) {
+      await this.assertManagedSeller(
+        userId,
+        assignSubstituteRouteDto.substituteSeller,
+      );
+    }
+
+    if (substituteSeller._id.toString() === existingRoute.seller.toString()) {
+      throw new BadRequestException(
+        'Substitute seller must be different from route owner',
+      );
+    }
+
+    const routeOwnerManager = routeOwner.manager?.toString();
+    const substituteManager = substituteSeller.manager?.toString();
+
+    if (!routeOwnerManager || routeOwnerManager !== substituteManager) {
+      throw new BadRequestException(
+        'Substitute seller must belong to the same distributor as route owner',
+      );
+    }
+
+    await this.ensureSellerHasNoRouteOnDate(
+      assignSubstituteRouteDto.substituteSeller,
+      existingRoute.workDate,
+      id,
+    );
+    await this.assertSellerNotOnApprovedLeave(
+      assignSubstituteRouteDto.substituteSeller,
+      existingRoute.workDate,
+    );
+
+    const route = await this.routeModel
+      .findByIdAndUpdate(
+        id,
+        {
+          substituteSeller: new Types.ObjectId(
+            assignSubstituteRouteDto.substituteSeller,
+          ),
+          substituteReason: assignSubstituteRouteDto.reason,
+          substituteAssignedBy: new Types.ObjectId(userId),
+          substituteAssignedAt: new Date(),
+        },
+        { returnDocument: 'after' },
+      )
+      .populate('seller', 'fullName email phone companyName')
+      .populate('substituteSeller', 'fullName email phone companyName')
+      .populate('substituteAssignedBy', 'fullName email')
+      .populate('createdBy', 'fullName email')
+      .populate('customers.customer', 'name phone address latitude longitude')
+      .exec();
+
+    if (!route) {
+      throw new NotFoundException('Route not found');
+    }
+
+    await this.notificationsService.create({
+      user: assignSubstituteRouteDto.substituteSeller,
+      title: 'Bạn có tuyến đi thay',
+      message: `Bạn được phân công đi thay tuyến "${route.name}"`,
+      type: NotificationType.ROUTE,
+      relatedId: route._id.toString(),
+    });
+
+    this.emitRouteRealtime('substitute-assigned', route);
+
+    return route;
+  }
+
+  async clearSubstitute(
+    id: string,
+    userId: string,
+    role: UserRole,
+  ): Promise<Route> {
+    const existingRoute = await this.assertRouteAccess(id, userId, role);
+
+    if (existingRoute.substituteSeller) {
+      const substituteVisitCount = await this.visitModel.countDocuments({
+        route: existingRoute._id,
+        seller: existingRoute.substituteSeller,
+      });
+
+      if (substituteVisitCount > 0) {
+        throw new BadRequestException(
+          'Route already has substitute visits and cannot clear substitute seller',
+        );
+      }
+    }
+
+    const route = await this.routeModel
+      .findByIdAndUpdate(
+        id,
+        {
+          $unset: {
+            substituteSeller: '',
+            substituteReason: '',
+            substituteAssignedBy: '',
+            substituteAssignedAt: '',
+          },
+        },
+        { returnDocument: 'after' },
+      )
+      .populate('seller', 'fullName email phone companyName')
+      .populate('substituteSeller', 'fullName email phone companyName')
+      .populate('substituteAssignedBy', 'fullName email')
       .populate('createdBy', 'fullName email')
       .populate('customers.customer', 'name phone address latitude longitude')
       .exec();
@@ -578,6 +872,8 @@ export class RoutesService {
         { returnDocument: 'after' },
       )
       .populate('seller', 'fullName email phone companyName')
+      .populate('substituteSeller', 'fullName email phone companyName')
+      .populate('substituteAssignedBy', 'fullName email')
       .populate('customers.customer', 'name phone address')
       .exec();
 

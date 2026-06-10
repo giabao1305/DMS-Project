@@ -31,6 +31,7 @@ import AdminBreadcrumb from "@/components/ui/AdminBreadcrumb";
 import AdminPageHeader from "@/components/ui/AdminPageHeader";
 import type { Customer } from "@/features/customers/customerTypes";
 import { getOrderAmounts } from "@/features/orders/orderAmounts";
+import OrderPaymentPanel from "@/features/orders/OrderPaymentPanel";
 import {
   exportOrderInvoiceExcel,
   exportOrderInvoicePdf,
@@ -54,7 +55,7 @@ const statusMap: Record<OrderStatus, { label: string; color: string }> = {
   delivered: { label: "Đã giao", color: "green" },
   return_requested: { label: "Chờ duyệt trả hàng", color: "orange" },
   cancelled: { label: "Đã hủy", color: "red" },
-  returned: { label: "Đã trả hàng", color: "purple" },
+  returned: { label: "Đã trả hàng", color: "blue" },
 };
 
 const money = (value: number) => `${value.toLocaleString("vi-VN")}đ`;
@@ -64,6 +65,37 @@ const formatDateTime = (value?: string) => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "-";
   return date.toLocaleString("vi-VN");
+};
+
+const apiMessage = (error: unknown, fallback: string) => {
+  const payload = error as { data?: { message?: string | string[] } };
+  const detail = payload.data?.message;
+  const raw = Array.isArray(detail) ? detail[0] : detail;
+
+  if (!raw) return fallback;
+  if (raw.includes("Only pending orders can be approved")) {
+    return "Chỉ đơn đang chờ xác nhận mới có thể xác nhận.";
+  }
+  if (raw.includes("Not enough stock in distributor warehouse")) {
+    return "Tồn kho NPP không đủ để xác nhận đơn này.";
+  }
+  if (raw.includes("Store order does not have a distributor warehouse")) {
+    return "Đơn chưa có kho NPP. Vui lòng kiểm tra phân công NPP/seller.";
+  }
+  if (raw.includes("Seller must belong to a distributor")) {
+    return "Seller chưa thuộc NPP có kho đang hoạt động.";
+  }
+  if (raw.includes("Product is not stocked in distributor warehouse")) {
+    return "Sản phẩm chưa có trong tồn kho NPP.";
+  }
+  if (raw.includes("Only approved orders can be delivered")) {
+    return "Chỉ đơn đã xác nhận mới có thể giao hàng.";
+  }
+  if (raw.includes("Only pending orders can be cancelled")) {
+    return "Chỉ đơn đang chờ xác nhận mới có thể hủy.";
+  }
+
+  return raw;
 };
 
 export default function AdminOrderDetailPage() {
@@ -88,8 +120,8 @@ export default function AdminOrderDetailPage() {
     try {
       await approveOrder(id).unwrap();
       message.success("Xác nhận đơn hàng thành công");
-    } catch {
-      message.error("Xác nhận đơn hàng thất bại");
+    } catch (error: unknown) {
+      message.error(apiMessage(error, "Xác nhận đơn hàng thất bại"));
     }
   };
 
@@ -97,8 +129,8 @@ export default function AdminOrderDetailPage() {
     try {
       await deliverOrder(id).unwrap();
       message.success("Giao đơn hàng thành công");
-    } catch {
-      message.error("Giao đơn hàng thất bại");
+    } catch (error: unknown) {
+      message.error(apiMessage(error, "Giao đơn hàng thất bại"));
     }
   };
 
@@ -106,8 +138,8 @@ export default function AdminOrderDetailPage() {
     try {
       await cancelOrder(id).unwrap();
       message.success("Hủy đơn hàng thành công");
-    } catch {
-      message.error("Hủy đơn hàng thất bại");
+    } catch (error: unknown) {
+      message.error(apiMessage(error, "Hủy đơn hàng thất bại"));
     }
   };
 
@@ -116,8 +148,8 @@ export default function AdminOrderDetailPage() {
       await returnOrder(id).unwrap();
       setIsReturnModalOpen(false);
       message.success("Trả hàng thành công, tồn kho đã được cập nhật");
-    } catch {
-      message.error("Trả hàng thất bại");
+    } catch (error: unknown) {
+      message.error(apiMessage(error, "Trả hàng thất bại"));
     }
   };
 
@@ -160,18 +192,41 @@ export default function AdminOrderDetailPage() {
   }
 
   const customer =
-    typeof order.customer === "string" ? null : (order.customer as Customer);
+    typeof order.customer === "string"
+      ? null
+      : (order.customer as Customer | undefined);
   const seller =
-    typeof order.seller === "string" ? null : (order.seller as User);
-  const customerName =
-    customer?.name ||
-    (typeof order.customer === "string" ? order.customer : "-");
-  const customerPhone = customer?.phone || "-";
-  const customerAddress = customer?.address || "-";
-  const sellerName =
-    seller?.fullName || (typeof order.seller === "string" ? order.seller : "-");
+    typeof order.seller === "string"
+      ? null
+      : (order.seller as User | undefined);
+  const distributor =
+    typeof order.distributor === "string"
+      ? null
+      : (order.distributor as User | undefined);
+  const isSupplyOrder = order.orderType === "manufacturer_to_distributor";
+  const customerName = isSupplyOrder
+    ? order.deliveryRecipientName ||
+      distributor?.companyName ||
+      distributor?.fullName ||
+      (typeof order.distributor === "string" ? order.distributor : "-")
+    : customer?.name ||
+      (typeof order.customer === "string" ? order.customer : "-");
+  const customerPhone = isSupplyOrder
+    ? order.deliveryPhone || distributor?.phone || "-"
+    : customer?.phone || "-";
+  const customerAddress = isSupplyOrder
+    ? order.deliveryAddress || distributor?.address || "-"
+    : customer?.address || "-";
+  const sellerName = isSupplyOrder
+    ? "Nestlé"
+    : seller?.fullName ||
+      (typeof order.seller === "string" ? order.seller : "-");
   const currentStatus = statusMap[order.status];
   const amounts = getOrderAmounts(order, resolvedPromotion);
+  const netCollected = Math.max(
+    (order.paidAmount || 0) - (order.refundedAmount || 0),
+    0,
+  );
   const invoiceExportOptions = {
     order,
     amounts,
@@ -201,7 +256,11 @@ export default function AdminOrderDetailPage() {
 
       <AdminPageHeader
         title={`Đơn hàng ${order.orderCode}`}
-        description="Chi tiết đơn hàng, khách hàng, sản phẩm và trạng thái xử lý."
+        description={
+          isSupplyOrder
+            ? "Đơn Nestlé cấp hàng xuống kho nhà phân phối."
+            : "Chi tiết đơn hàng, khách hàng, sản phẩm và trạng thái xử lý."
+        }
         extra={
           <Space wrap>
             <Button onClick={() => router.push("/admin/orders")}>
@@ -214,7 +273,7 @@ export default function AdminOrderDetailPage() {
               Xuất PDF
             </Button>
 
-            {order.status === "pending" ? (
+            {order.status === "pending" && !isSupplyOrder ? (
               <>
                 <Button
                   color="orange"
@@ -257,10 +316,11 @@ export default function AdminOrderDetailPage() {
 
             {order.status === "return_requested" ? (
               <Button
-                color="purple"
+                color="blue"
                 variant="solid"
                 icon={<RollbackOutlined />}
                 loading={returning}
+                disabled={netCollected > 0}
                 onClick={() => setIsReturnModalOpen(true)}
               >
                 Trả hàng
@@ -274,7 +334,11 @@ export default function AdminOrderDetailPage() {
         <Row gutter={[16, 16]}>
           <Col xs={24} lg={8}>
             <section className="admin-order-detail-frame">
-              <Flex vertical align="center" className="admin-order-detail-summary">
+              <Flex
+                vertical
+                align="center"
+                className="admin-order-detail-summary"
+              >
                 <Flex
                   align="center"
                   justify="center"
@@ -288,7 +352,10 @@ export default function AdminOrderDetailPage() {
                 <Text className="admin-order-detail-summary-subtitle">
                   {customerName}
                 </Text>
-                <Tag color={currentStatus?.color} className="admin-order-detail-status">
+                <Tag
+                  color={currentStatus?.color}
+                  className="admin-order-detail-status"
+                >
                   {currentStatus?.label || order.status}
                 </Tag>
               </Flex>
@@ -305,8 +372,24 @@ export default function AdminOrderDetailPage() {
                 <Divider className="admin-order-detail-divider" />
                 <Flex justify="space-between" align="center">
                   <Text>Thanh toán</Text>
-                  <strong className="is-final">{money(amounts.finalAmount)}</strong>
+                  <strong className="is-final">
+                    {money(amounts.finalAmount)}
+                  </strong>
                 </Flex>
+                {!isSupplyOrder && (
+                  <>
+                    <Flex justify="space-between" align="center">
+                      <Text>Giá vốn NPP</Text>
+                      <strong>{money(order.totalCost || 0)}</strong>
+                    </Flex>
+                    <Flex justify="space-between" align="center">
+                      <Text>Lãi gộp</Text>
+                      <strong className="is-final">
+                        {money(order.grossProfit || 0)}
+                      </strong>
+                    </Flex>
+                  </>
+                )}
               </div>
             </section>
           </Col>
@@ -330,8 +413,17 @@ export default function AdminOrderDetailPage() {
                   <strong>{order.orderCode}</strong>
                 </div>
                 <div className="admin-order-info-row">
+                  <Text>Luồng đơn</Text>
+                  <strong>
+                    {isSupplyOrder ? "Nestlé -> NPP" : "NPP -> Tiệm"}
+                  </strong>
+                </div>
+                <div className="admin-order-info-row">
                   <Text>Trạng thái</Text>
-                  <Tag color={currentStatus?.color} className="admin-order-detail-status">
+                  <Tag
+                    color={currentStatus?.color}
+                    className="admin-order-detail-status"
+                  >
                     {currentStatus?.label || order.status}
                   </Tag>
                 </div>
@@ -340,7 +432,7 @@ export default function AdminOrderDetailPage() {
                   <strong>{amounts.promotion?.name || "-"}</strong>
                 </div>
                 <div className="admin-order-info-row">
-                  <Text>Khách hàng</Text>
+                  <Text>{isSupplyOrder ? "Nhà phân phối" : "Khách hàng"}</Text>
                   <strong>{customerName}</strong>
                 </div>
                 <div className="admin-order-info-row">
@@ -355,6 +447,16 @@ export default function AdminOrderDetailPage() {
                   <Text>Ngày tạo</Text>
                   <strong>{formatDateTime(order.createdAt)}</strong>
                 </div>
+                {isSupplyOrder && (
+                  <div className="admin-order-info-row">
+                    <Text>Ngày muốn nhận</Text>
+                    <strong>
+                      {order.requestedDeliveryDate
+                        ? formatDateTime(order.requestedDeliveryDate)
+                        : "-"}
+                    </strong>
+                  </div>
+                )}
                 <div className="admin-order-info-row is-wide">
                   <Text>Địa chỉ</Text>
                   <strong>{customerAddress}</strong>
@@ -370,7 +472,12 @@ export default function AdminOrderDetailPage() {
           <Col span={24}>
             <section className="admin-order-detail-frame">
               <div className="admin-order-detail-head">
-                <Flex justify="space-between" align="center" gap={14} wrap="wrap">
+                <Flex
+                  justify="space-between"
+                  align="center"
+                  gap={14}
+                  wrap="wrap"
+                >
                   <div>
                     <Text className="admin-order-detail-title">
                       Danh sách sản phẩm
@@ -428,6 +535,10 @@ export default function AdminOrderDetailPage() {
                 ]}
               />
             </section>
+          </Col>
+
+          <Col span={24}>
+            <OrderPaymentPanel order={order} />
           </Col>
         </Row>
       </section>
@@ -523,8 +634,12 @@ export default function AdminOrderDetailPage() {
 
         .admin-order-detail-frame.is-loading {
           min-height: 180px;
-          background:
-            linear-gradient(90deg, #f8fafc 25%, #eef3f8 37%, #f8fafc 63%);
+          background: linear-gradient(
+            90deg,
+            #f8fafc 25%,
+            #eef3f8 37%,
+            #f8fafc 63%
+          );
           background-size: 400% 100%;
           animation: admin-order-detail-loading 1.2s ease infinite;
         }

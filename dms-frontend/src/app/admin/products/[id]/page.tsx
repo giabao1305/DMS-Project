@@ -41,8 +41,8 @@ const inventoryTypeMap: Record<InventoryType, { label: string; color: string }> 
   import: { label: "Nhập kho", color: "green" },
   export: { label: "Xuất kho", color: "orange" },
   order: { label: "Đơn hàng", color: "blue" },
-  return: { label: "Trả hàng", color: "purple" },
-  adjustment: { label: "Điều chỉnh", color: "purple" },
+  return: { label: "Trả hàng", color: "blue" },
+  adjustment: { label: "Điều chỉnh", color: "blue" },
 };
 
 const money = (value: number) => `${value.toLocaleString("vi-VN")}đ`;

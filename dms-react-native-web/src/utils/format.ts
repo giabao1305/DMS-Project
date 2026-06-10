@@ -31,7 +31,18 @@ export const shortDateTime = (value?: string) => {
 };
 
 export const getCustomerName = (customer?: string | Customer) =>
-  !customer ? "Khách hàng" : typeof customer === "string" ? customer : customer.name;
+  !customer
+    ? "Khách hàng"
+    : typeof customer === "string"
+      ? customer
+      : customer.name || "Khách hàng";
+
+export const getCustomerOwnerName = (customer?: string | Customer) =>
+  !customer
+    ? "Cửa hàng"
+    : typeof customer === "string"
+      ? customer
+      : customer.ownerName || "Cửa hàng";
 
 export const getCustomerId = (customer?: string | Customer) =>
   !customer ? "" : typeof customer === "string" ? customer : customer._id;

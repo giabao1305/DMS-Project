@@ -1,12 +1,18 @@
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useState } from "react";
-import { StyleSheet } from "react-native";
+import { Linking, StyleSheet } from "react-native";
+import { PaperProvider } from "react-native-paper";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
-import { getStoredSession, onSessionExpired, signOut, type Session } from "./src/api/authStore";
+import {
+  getStoredSession,
+  onSessionExpired,
+  signOut,
+  type Session,
+} from "./src/api/authStore";
 import { ApiProvider } from "./src/api/ApiProvider";
 import { AppShell, type SellerTab } from "./src/components/AppShell";
-import { bento, palette } from "./src/theme";
+import { bento, palette, paperTheme } from "./src/theme";
 import { LoginScreen } from "./src/screens/LoginScreen";
 import { SplashScreen } from "./src/screens/SplashScreen";
 import { CustomersScreen } from "./src/screens/CustomersScreen";
@@ -27,10 +33,18 @@ type VisitCreateIntent = {
 };
 
 export default function App() {
-  const [session, setSession] = useState<Session | null>(() => getStoredSession());
+  const [session, setSession] = useState<Session | null>(() =>
+    getStoredSession(),
+  );
   const [activeTab, setActiveTab] = useState<SellerTab>("dashboard");
-  const [visitCreateIntent, setVisitCreateIntent] = useState<VisitCreateIntent | null>(null);
-  const [orderCreateCustomerId, setOrderCreateCustomerId] = useState<string | null>(null);
+  const [visitCreateIntent, setVisitCreateIntent] =
+    useState<VisitCreateIntent | null>(null);
+  const [orderCreateCustomerId, setOrderCreateCustomerId] = useState<
+    string | null
+  >(null);
+  const [paymentReturnOrderId, setPaymentReturnOrderId] = useState<
+    string | null
+  >(null);
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
@@ -43,6 +57,22 @@ export default function App() {
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 1100);
     return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const handleUrl = (url: string | null) => {
+      const orderId = extractVnpayReturnOrderId(url);
+      if (!orderId) return;
+      setPaymentReturnOrderId(orderId);
+      setActiveTab("orders");
+    };
+
+    void Linking.getInitialURL().then(handleUrl);
+    const subscription = Linking.addEventListener("url", ({ url }) =>
+      handleUrl(url),
+    );
+
+    return () => subscription.remove();
   }, []);
 
   const apiContext = useMemo(
@@ -73,10 +103,19 @@ export default function App() {
   if (showSplash) {
     return (
       <SafeAreaProvider>
-        <SafeAreaView style={[styles.safeArea, styles.splashSafeArea]} edges={["top", "right", "bottom", "left"]}>
-          <StatusBar style="light" backgroundColor={bento.chrome} translucent={false} />
-          <SplashScreen />
-        </SafeAreaView>
+        <PaperProvider theme={paperTheme}>
+          <SafeAreaView
+            style={[styles.safeArea, styles.splashSafeArea]}
+            edges={["right", "left"]}
+          >
+            <StatusBar
+              style="light"
+              backgroundColor={bento.primary}
+              translucent={false}
+            />
+            <SplashScreen />
+          </SafeAreaView>
+        </PaperProvider>
       </SafeAreaProvider>
     );
   }
@@ -84,62 +123,143 @@ export default function App() {
   if (!session) {
     return (
       <SafeAreaProvider>
-        <SafeAreaView style={[styles.safeArea, styles.loginSafeArea]} edges={["top", "right", "bottom", "left"]}>
-          <StatusBar style="dark" backgroundColor={bento.background} translucent={false} />
-          <ApiProvider value={apiContext}>
-            <LoginScreen onLogin={setSession} />
-          </ApiProvider>
-        </SafeAreaView>
+        <PaperProvider theme={paperTheme}>
+          <SafeAreaView
+            style={[styles.safeArea, styles.loginSafeArea]}
+            edges={["right", "left"]}
+          >
+            <StatusBar
+              style="light"
+              backgroundColor={bento.primary}
+              translucent={false}
+            />
+            <ApiProvider value={apiContext}>
+              <LoginScreen onLogin={setSession} />
+            </ApiProvider>
+          </SafeAreaView>
+        </PaperProvider>
       </SafeAreaProvider>
     );
   }
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={[styles.safeArea, styles.authSafeArea, activeTab === "dashboard" && styles.dashboardSafeArea]} edges={["top", "right", "left"]}>
-        <StatusBar style="light" backgroundColor={activeTab === "dashboard" ? bento.chrome : palette.dark} translucent={false} />
-        <ApiProvider value={apiContext}>
-          <RefreshProvider>
-            <AppShell
-              activeTab={activeTab}
-              user={session.user}
-              onChangeTab={setActiveTab}
-              onLogout={handleLogout}
-            >
-              {activeTab === "dashboard" && <DashboardScreen user={session.user} onOpenTab={setActiveTab} />}
-              {activeTab === "customers" && (
-                <CustomersScreen
-                  onCreateOrder={openOrderCreate}
-                  onCreateVisit={openVisitCreate}
-                  onOpenTab={setActiveTab}
-                />
-              )}
-              {activeTab === "routes" && <RoutesScreen onOpenTab={setActiveTab} onCreateVisit={openVisitCreate} />}
-              {activeTab === "orders" && (
-                <OrdersScreen
-                  initialCustomerId={orderCreateCustomerId}
-                  onInitialCustomerConsumed={() => setOrderCreateCustomerId(null)}
-                  onOpenTab={setActiveTab}
-                />
-              )}
-              {activeTab === "visits" && (
-                <VisitsScreen
-                  onOpenTab={setActiveTab}
-                  initialCreateIntent={visitCreateIntent}
-                  onInitialCreateIntentConsumed={() => setVisitCreateIntent(null)}
-                />
-              )}
-              {activeTab === "kpis" && <KpisScreen onOpenTab={setActiveTab} />}
-              {activeTab === "leaves" && <LeavesScreen onOpenTab={setActiveTab} />}
-              {activeTab === "notifications" && <NotificationsScreen onOpenTab={setActiveTab} />}
-              {activeTab === "profile" && <ProfileScreen onLogout={handleLogout} />}
-              {activeTab === "more" && <MoreScreen onOpenTab={setActiveTab} onLogout={handleLogout} />}
-            </AppShell>
-          </RefreshProvider>
-        </ApiProvider>
-      </SafeAreaView>
+      <PaperProvider theme={paperTheme}>
+        <SafeAreaView
+          style={[
+            styles.safeArea,
+            styles.authSafeArea,
+            activeTab === "dashboard" && styles.dashboardSafeArea,
+          ]}
+          edges={["top", "right", "left"]}
+        >
+          <StatusBar
+            style="light"
+            backgroundColor="#103494"
+            translucent={false}
+          />
+          <ApiProvider value={apiContext}>
+            <RefreshProvider>
+              <AppShell
+                activeTab={activeTab}
+                user={session.user}
+                onChangeTab={setActiveTab}
+                onLogout={handleLogout}
+              >
+                {activeTab === "dashboard" && (
+                  <DashboardScreen
+                    user={session.user}
+                    onOpenTab={setActiveTab}
+                    onCreateOrder={openOrderCreate}
+                    onCreateVisit={openVisitCreate}
+                  />
+                )}
+                {activeTab === "customers" && (
+                  <CustomersScreen
+                    onCreateOrder={openOrderCreate}
+                    onCreateVisit={openVisitCreate}
+                    onOpenTab={setActiveTab}
+                  />
+                )}
+                {activeTab === "routes" && (
+                  <RoutesScreen
+                    user={session.user}
+                    onOpenTab={setActiveTab}
+                    onCreateVisit={openVisitCreate}
+                  />
+                )}
+                {activeTab === "orders" && (
+                  <OrdersScreen
+                    initialCustomerId={orderCreateCustomerId}
+                    onInitialCustomerConsumed={() =>
+                      setOrderCreateCustomerId(null)
+                    }
+                    paymentReturnOrderId={paymentReturnOrderId}
+                    onPaymentReturnConsumed={() =>
+                      setPaymentReturnOrderId(null)
+                    }
+                    onOpenTab={setActiveTab}
+                  />
+                )}
+                {activeTab === "visits" && (
+                  <VisitsScreen
+                    onOpenTab={setActiveTab}
+                    onCreateOrder={openOrderCreate}
+                    initialCreateIntent={visitCreateIntent}
+                    onInitialCreateIntentConsumed={() =>
+                      setVisitCreateIntent(null)
+                    }
+                  />
+                )}
+                {activeTab === "kpis" && (
+                  <KpisScreen onOpenTab={setActiveTab} />
+                )}
+                {activeTab === "leaves" && (
+                  <LeavesScreen onOpenTab={setActiveTab} />
+                )}
+                {activeTab === "notifications" && (
+                  <NotificationsScreen onOpenTab={setActiveTab} />
+                )}
+                {activeTab === "profile" && (
+                  <ProfileScreen onLogout={handleLogout} />
+                )}
+                {activeTab === "more" && (
+                  <MoreScreen
+                    user={session.user}
+                    onOpenTab={setActiveTab}
+                    onLogout={handleLogout}
+                  />
+                )}
+              </AppShell>
+            </RefreshProvider>
+          </ApiProvider>
+        </SafeAreaView>
+      </PaperProvider>
     </SafeAreaProvider>
   );
+}
+
+function extractVnpayReturnOrderId(url: string | null) {
+  if (!url) return undefined;
+
+  try {
+    const parsedUrl = new URL(url);
+    const queryOrderId =
+      parsedUrl.searchParams.get("vnpayOrderId") ||
+      parsedUrl.searchParams.get("orderId");
+
+    if (queryOrderId) return queryOrderId;
+
+    if (parsedUrl.protocol === "dmsseller:" && parsedUrl.hostname === "orders") {
+      const orderId = parsedUrl.pathname.replace(/^\/+/, "").split("/")[0];
+      return orderId || undefined;
+    }
+  } catch {
+    const match = url.match(/(?:vnpayOrderId|orderId)=([^&]+)/);
+    return match ? decodeURIComponent(match[1]) : undefined;
+  }
+
+  return undefined;
 }
 
 const styles = StyleSheet.create({
@@ -148,15 +268,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   splashSafeArea: {
-    backgroundColor: bento.chrome,
+    backgroundColor: bento.primary,
   },
   authSafeArea: {
-    backgroundColor: palette.dark,
+    backgroundColor: "#103494",
   },
   dashboardSafeArea: {
-    backgroundColor: bento.chrome,
+    backgroundColor: "#103494",
   },
   loginSafeArea: {
-    backgroundColor: bento.background,
+    backgroundColor: bento.primary,
   },
 });

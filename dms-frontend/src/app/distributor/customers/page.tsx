@@ -1,14 +1,24 @@
-"use client";
+﻿"use client";
 
 import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   CloseCircleOutlined,
+  EditOutlined,
   EyeOutlined,
+  PlusOutlined,
   ShopOutlined,
   TeamOutlined,
 } from "@ant-design/icons";
-import { Button, Empty, Flex, Table, Tag, Typography } from "antd";
+import {
+  Button,
+  Empty,
+  Flex,
+  Space,
+  Table,
+  Tag,
+  Typography,
+} from "antd";
 import type { ColumnsType } from "antd/es/table";
 import Link from "next/link";
 import { useMemo } from "react";
@@ -51,7 +61,6 @@ export default function DistributorCustomersPage() {
   const { data: sellers = [], refetch: refetchSellers } = useGetSellerUsersQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
-
   useRealtimeRefetch(["new-notification", "customer-updated", "user-updated"], () => {
     refetch();
     refetchSellers();
@@ -133,13 +142,28 @@ export default function DistributorCustomersPage() {
     {
       title: "Thao tác",
       align: "center",
-      width: 140,
+      width: 220,
       render: (_, record) => (
-        <Link href={`/distributor/customers/${record._id}`}>
-          <Button size="small" icon={<EyeOutlined />} className="distributor-row-action">
-            Chi tiết
-          </Button>
-        </Link>
+        <Space size={8} wrap>
+          <Link href={`/distributor/customers/${record._id}`}>
+            <Button
+              size="small"
+              icon={<EyeOutlined />}
+              className="distributor-row-action distributor-row-action-view"
+            >
+              Chi tiết
+            </Button>
+          </Link>
+          <Link href={`/distributor/customers/${record._id}/edit`}>
+            <Button
+              size="small"
+              icon={<EditOutlined />}
+              className="distributor-row-action distributor-row-action-edit"
+            >
+              Sửa/Gán
+            </Button>
+          </Link>
+        </Space>
       ),
     },
   ];
@@ -149,6 +173,17 @@ export default function DistributorCustomersPage() {
       eyebrow="Khách hàng"
       title="Khách hàng đội DSR"
       description="Theo dõi điểm bán được gán cho các DSR cấp dưới."
+      extra={
+        <Link href="/distributor/customers/create">
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            className="distributor-customer-create-button"
+          >
+            Thêm khách hàng
+          </Button>
+        </Link>
+      }
     >
       <DistributorCommandCenter
         eyebrow="Outlet coverage"
@@ -211,6 +246,31 @@ export default function DistributorCustomersPage() {
           locale={{ emptyText: <Empty description="Chưa có khách hàng" /> }}
         />
       </DistributorTableCard>
+
+      <style jsx global>{`
+        .distributor-content
+          .seller-page-header-extra
+          .distributor-customer-create-button.ant-btn-primary {
+          border-color: #2563eb !important;
+          background: #2563eb !important;
+          color: #ffffff !important;
+          box-shadow: 0 8px 18px rgba(37, 99, 235, 0.16) !important;
+        }
+
+        .distributor-content
+          .seller-page-header-extra
+          .distributor-customer-create-button.ant-btn-primary:hover {
+          border-color: #1d4ed8 !important;
+          background: #1d4ed8 !important;
+          color: #ffffff !important;
+          box-shadow: 0 10px 22px rgba(37, 99, 235, 0.2) !important;
+        }
+      `}</style>
     </DistributorPageShell>
   );
 }
+
+
+
+
+

@@ -31,9 +31,12 @@ import type { ColumnsType } from "antd/es/table";
 import Link from "next/link";
 import { useMemo } from "react";
 
-import SellerBreadcrumb from "@/components/ui/SellerBreadcrumb";
-import SellerPageHeader from "@/components/ui/SellerPageHeader";
+import {
+  DistributorBreadcrumb,
+  DistributorPageHeader,
+} from "@/components/distributor/DistributorPageShell";
 import { useGetMyCustomersQuery } from "@/features/customers/customerService";
+import { useGetSellerDashboardQuery } from "@/features/dashboard/dashboardService";
 import { useGetMyOrdersQuery } from "@/features/orders/orderService";
 import type { Order } from "@/features/orders/orderTypes";
 import { useGetMyRoutesQuery } from "@/features/routes/routeService";
@@ -50,11 +53,11 @@ const currencyFormatter = new Intl.NumberFormat("vi-VN");
 
 const orderStatusMap = {
   pending: { color: "gold", text: "Chờ duyệt" },
-  approved: { color: "green", text: "Đã duyệt" },
-  delivered: { color: "cyan", text: "Đã giao" },
+  approved: { color: "blue", text: "Đã duyệt" },
+  delivered: { color: "blue", text: "Đã giao" },
   return_requested: { color: "orange", text: "Chờ trả hàng" },
   cancelled: { color: "red", text: "Đã hủy" },
-  returned: { color: "purple", text: "Đã trả hàng" },
+  returned: { color: "blue", text: "Đã trả hàng" },
 };
 
 const routeStatusMap = {
@@ -64,12 +67,23 @@ const routeStatusMap = {
   cancelled: { color: "error", text: "Đã hủy" },
 };
 
-const getName = (value: Order["seller"] | Order["customer"] | Visit["customer"]) => {
+const getName = (
+  value: Order["seller"] | Order["customer"] | Visit["customer"],
+) => {
   if (!value) return "-";
-  if (typeof value === "string") return /^[a-f\d]{24}$/i.test(value) ? "-" : value;
+  if (typeof value === "string")
+    return /^[a-f\d]{24}$/i.test(value) ? "-" : value;
   if ("name" in value) return value.name || "-";
   return value.fullName || value.email || "-";
 };
+
+const getMoneyValue = (value?: number) => {
+  const amount = Number(value);
+  return Number.isFinite(amount) ? amount : 0;
+};
+
+const getDeliveredDate = (order: Order) =>
+  new Date(order.deliveredAt || order.updatedAt || order.createdAt);
 
 type DashboardMetricCardProps = {
   title: string;
@@ -101,7 +115,7 @@ function DashboardMetricCard({
             <Statistic
               value={value}
               valueStyle={{
-                color: "#0b2f2a",
+                color: "#0f172a",
                 fontSize: 26,
                 fontWeight: 800,
                 lineHeight: 1.15,
@@ -125,6 +139,13 @@ function DashboardMetricCard({
 export default function DistributorDashboardPage() {
   const distributor = useAppSelector((state) => state.auth.user);
 
+  const {
+    data: dashboard,
+    isLoading: isDashboardLoading,
+    refetch: refetchDashboard,
+  } = useGetSellerDashboardQuery(undefined, {
+    refetchOnMountOrArgChange: true,
+  });
   const {
     data: team = [],
     isLoading: isTeamLoading,
@@ -170,6 +191,7 @@ export default function DistributorDashboardPage() {
       "visit-updated",
     ],
     () => {
+      refetchDashboard();
       refetchTeam();
       refetchCustomers();
       refetchOrders();
@@ -181,12 +203,18 @@ export default function DistributorDashboardPage() {
   const today = useMemo(() => new Date().toDateString(), []);
 
   const todayRoutes = useMemo(
-    () => routes.filter((item) => new Date(item.workDate).toDateString() === today),
+    () =>
+      routes.filter((item) => new Date(item.workDate).toDateString() === today),
     [routes, today],
   );
 
   const todayOrders = useMemo(
-    () => orders.filter((item) => new Date(item.createdAt).toDateString() === today),
+    () =>
+      orders.filter(
+        (item) =>
+          item.orderType !== "manufacturer_to_distributor" &&
+          new Date(item.createdAt).toDateString() === today,
+      ),
     [orders, today],
   );
 
@@ -196,13 +224,31 @@ export default function DistributorDashboardPage() {
   );
 
   const stats = useMemo(() => {
-    const todayRevenue = todayOrders.reduce(
-      (total, item) => total + item.finalAmount,
+    const storeOrders = orders.filter(
+      (item) => item.orderType !== "manufacturer_to_distributor",
+    );
+    const deliveredStoreOrders = storeOrders.filter(
+      (item) => item.status === "delivered",
+    );
+    const todayDeliveredOrders = deliveredStoreOrders.filter(
+      (item) => getDeliveredDate(item).toDateString() === today,
+    );
+    const todayRevenue = todayDeliveredOrders.reduce(
+      (total, item) => total + getMoneyValue(item.finalAmount),
       0,
     );
-    const deliveredRevenue = orders
-      .filter((item) => item.status === "delivered")
-      .reduce((total, item) => total + item.finalAmount, 0);
+    const localDeliveredRevenue = deliveredStoreOrders.reduce(
+      (total, item) => total + getMoneyValue(item.finalAmount),
+      0,
+    );
+    const localDeliveredOrders = deliveredStoreOrders.length;
+    const dashboardRevenue = getMoneyValue(dashboard?.totalRevenue);
+    const dashboardDeliveredOrders = getMoneyValue(dashboard?.deliveredOrders);
+    const deliveredRevenue = Math.max(localDeliveredRevenue, dashboardRevenue);
+    const deliveredOrders = Math.max(
+      localDeliveredOrders,
+      dashboardDeliveredOrders,
+    );
 
     return {
       team: team.length,
@@ -212,10 +258,12 @@ export default function DistributorDashboardPage() {
         .length,
       pendingCustomers: customers.filter((item) => item.status === "pending")
         .length,
-      orders: orders.length,
-      pendingOrders: orders.filter((item) => item.status === "pending").length,
-      deliveredOrders: orders.filter((item) => item.status === "delivered").length,
+      orders: storeOrders.length,
+      pendingOrders: storeOrders.filter((item) => item.status === "pending")
+        .length,
+      deliveredOrders,
       todayOrders: todayOrders.length,
+      todayDeliveredOrders: todayDeliveredOrders.length,
       todayRevenue,
       deliveredRevenue,
       visits: visits.length,
@@ -223,7 +271,19 @@ export default function DistributorDashboardPage() {
       routes: routes.length,
       todayRoutes: todayRoutes.length,
     };
-  }, [activeVisits.length, customers, orders, routes.length, team, todayOrders, todayRoutes.length, visits.length]);
+  }, [
+    activeVisits.length,
+    customers,
+    dashboard?.deliveredOrders,
+    dashboard?.totalRevenue,
+    orders,
+    routes.length,
+    team,
+    today,
+    todayOrders,
+    todayRoutes.length,
+    visits.length,
+  ]);
 
   const routeCustomers = useMemo(
     () =>
@@ -249,7 +309,8 @@ export default function DistributorDashboardPage() {
     : 0;
 
   const distributorName = distributor?.fullName || "Distributor";
-  const distributorInitial = distributorName.trim().charAt(0).toUpperCase() || "D";
+  const distributorInitial =
+    distributorName.trim().charAt(0).toUpperCase() || "D";
 
   const routeColumns: ColumnsType<Route> = [
     {
@@ -284,7 +345,7 @@ export default function DistributorDashboardPage() {
       align: "center",
       width: 120,
       render: (value: Route["customers"]) => (
-        <Tag color="cyan" className="distributor-pill-tag">
+        <Tag color="blue" className="distributor-pill-tag">
           {value.length}
         </Tag>
       ),
@@ -364,508 +425,672 @@ export default function DistributorDashboardPage() {
 
   return (
     <>
-      <SellerBreadcrumb />
-      <SellerPageHeader
+      <DistributorBreadcrumb />
+      <DistributorPageHeader
+        eyebrow="Distributor command"
         title="Tổng quan nhà phân phối"
         description="Theo dõi nhanh hoạt động bán hàng, đội DSR, đơn hàng và tuyến ghé thăm hôm nay."
       />
 
-      <Flex vertical gap={22} className="distributor-page-stack distributor-dashboard-stack">
-      <Card className="distributor-dashboard-hero-card" styles={{ body: { padding: 0 } }}>
-        <Row gutter={0}>
-          <Col xs={24} lg={9}>
-            <div className="distributor-dashboard-profile-panel">
-              <Flex vertical justify="space-between" gap={24} style={{ height: "100%" }}>
-                <Flex align="center" gap={16}>
-                  <Avatar size={64} className="distributor-dashboard-avatar">
-                    {distributorInitial || <UserOutlined />}
-                  </Avatar>
-                  <Flex vertical gap={4} style={{ minWidth: 0 }}>
-                    <Text className="distributor-dashboard-profile-eyebrow">
-                      Hồ sơ nhà phân phối
-                    </Text>
-                    <Title level={3} ellipsis className="distributor-dashboard-profile-name">
-                      {distributorName}
-                    </Title>
-                  </Flex>
-                </Flex>
-
-                <Flex vertical gap={10}>
-                  <Flex align="center" gap={10}>
-                    <MailOutlined className="distributor-dashboard-profile-icon" />
-                    <Text ellipsis className="distributor-dashboard-profile-text">
-                      {distributor?.email || "Chưa có email"}
-                    </Text>
-                  </Flex>
-                  <Flex align="center" gap={10}>
-                    <PhoneOutlined className="distributor-dashboard-profile-icon" />
-                    <Text className="distributor-dashboard-profile-text">
-                      Quản lý đội DSR, tuyến bán hàng và hiệu suất điểm bán
-                    </Text>
-                  </Flex>
-                </Flex>
-
-                <Tag
-                  color={distributor?.isActive ? "success" : "error"}
-                  className="distributor-pill-tag"
+      <Flex
+        vertical
+        gap={22}
+        className="distributor-page-stack distributor-dashboard-stack"
+      >
+        <Card
+          className="distributor-dashboard-hero-card"
+          styles={{ body: { padding: 0 } }}
+        >
+          <Row gutter={0}>
+            <Col xs={24} lg={9}>
+              <div className="distributor-dashboard-profile-panel">
+                <Flex
+                  vertical
+                  justify="space-between"
+                  gap={24}
+                  style={{ height: "100%" }}
                 >
-                  {distributor?.isActive ? "Đang hoạt động" : "Tạm khóa"}
-                </Tag>
-              </Flex>
-            </div>
+                  <Flex align="center" gap={16}>
+                    <Avatar size={64} className="distributor-dashboard-avatar">
+                      {distributorInitial || <UserOutlined />}
+                    </Avatar>
+                    <Flex vertical gap={4} style={{ minWidth: 0 }}>
+                      <Text className="distributor-dashboard-profile-eyebrow">
+                        Hồ sơ nhà phân phối
+                      </Text>
+                      <Title
+                        level={3}
+                        ellipsis
+                        className="distributor-dashboard-profile-name"
+                      >
+                        {distributorName}
+                      </Title>
+                    </Flex>
+                  </Flex>
+
+                  <Flex vertical gap={10}>
+                    <Flex align="center" gap={10}>
+                      <MailOutlined className="distributor-dashboard-profile-icon" />
+                      <Text
+                        ellipsis
+                        className="distributor-dashboard-profile-text"
+                      >
+                        {distributor?.email || "Chưa có email"}
+                      </Text>
+                    </Flex>
+                    <Flex align="center" gap={10}>
+                      <PhoneOutlined className="distributor-dashboard-profile-icon" />
+                      <Text className="distributor-dashboard-profile-text">
+                        Quản lý đội DSR, tuyến bán hàng và hiệu suất điểm bán
+                      </Text>
+                    </Flex>
+                  </Flex>
+
+                  <Tag
+                    color={distributor?.isActive ? "success" : "error"}
+                    className="distributor-pill-tag"
+                  >
+                    {distributor?.isActive ? "Đang hoạt động" : "Tạm khóa"}
+                  </Tag>
+                </Flex>
+              </div>
+            </Col>
+
+            <Col xs={24} lg={15}>
+              <div className="distributor-dashboard-summary-panel">
+                <Row gutter={[18, 18]}>
+                  <Col xs={24} md={8}>
+                    <Flex vertical gap={6}>
+                      <Text className="distributor-dashboard-summary-label">
+                        Doanh thu hôm nay
+                      </Text>
+                      <Text
+                        strong
+                        className="distributor-dashboard-summary-value"
+                      >
+                        {currencyFormatter.format(stats.todayRevenue)} đ
+                      </Text>
+                      <Text className="distributor-dashboard-summary-description">
+                        Từ {stats.todayDeliveredOrders} đơn đã giao trong ngày.
+                      </Text>
+                    </Flex>
+                  </Col>
+                  <Col xs={24} md={8}>
+                    <Flex vertical gap={6}>
+                      <Text className="distributor-dashboard-summary-label">
+                        Tiến độ tuyến hôm nay
+                      </Text>
+                      <Progress
+                        percent={routeProgress}
+                        strokeColor="#2563eb"
+                        trailColor="#dbeafe"
+                      />
+                      <Text className="distributor-dashboard-summary-description">
+                        Đã ghé {visitedRouteCustomers}/{routeCustomers.length}{" "}
+                        điểm bán.
+                      </Text>
+                    </Flex>
+                  </Col>
+                  <Col xs={24} md={8}>
+                    <Flex vertical gap={6}>
+                      <Text className="distributor-dashboard-summary-label">
+                        Đội DSR hoạt động
+                      </Text>
+                      <Text
+                        strong
+                        className="distributor-dashboard-summary-value"
+                      >
+                        {stats.activeTeam}/{stats.team}
+                      </Text>
+                      <Text className="distributor-dashboard-summary-description">
+                        {teamActiveRate}% nhân sự đang sẵn sàng nhận tuyến.
+                      </Text>
+                    </Flex>
+                  </Col>
+                </Row>
+
+                <Flex gap={10} wrap="wrap" style={{ marginTop: 24 }}>
+                  <Link href="/distributor/team">
+                    <Button
+                      icon={<TeamOutlined />}
+                      className="distributor-dashboard-button"
+                    >
+                      Xem đội DSR
+                    </Button>
+                  </Link>
+                  <Link href="/distributor/routes">
+                    <Button
+                      icon={<EnvironmentOutlined />}
+                      className="distributor-dashboard-button"
+                    >
+                      Xem tuyến hôm nay
+                    </Button>
+                  </Link>
+                  <Link href="/distributor/kpis">
+                    <Button
+                      icon={<RiseOutlined />}
+                      className="distributor-dashboard-button"
+                    >
+                      KPI đội
+                    </Button>
+                  </Link>
+                </Flex>
+              </div>
+            </Col>
+          </Row>
+        </Card>
+
+        <Row gutter={[16, 16]}>
+          <Col xs={24} sm={12} xl={6}>
+            <DashboardMetricCard
+              title="DSR trong đội"
+              value={stats.team}
+              icon={<TeamOutlined />}
+              loading={isTeamLoading}
+              description="Nhân sự được gán trực tiếp cho distributor."
+            />
           </Col>
-
-          <Col xs={24} lg={15}>
-            <div className="distributor-dashboard-summary-panel">
-              <Row gutter={[18, 18]}>
-                <Col xs={24} md={8}>
-                  <Flex vertical gap={6}>
-                    <Text className="distributor-dashboard-summary-label">
-                      Doanh thu hôm nay
-                    </Text>
-                    <Text strong className="distributor-dashboard-summary-value">
-                      {currencyFormatter.format(stats.todayRevenue)} đ
-                    </Text>
-                    <Text className="distributor-dashboard-summary-description">
-                      Từ {stats.todayOrders} đơn hàng phát sinh trong ngày.
-                    </Text>
-                  </Flex>
-                </Col>
-                <Col xs={24} md={8}>
-                  <Flex vertical gap={6}>
-                    <Text className="distributor-dashboard-summary-label">
-                      Tiến độ tuyến hôm nay
-                    </Text>
-                    <Progress
-                      percent={routeProgress}
-                      strokeColor="#0d9488"
-                      trailColor="#d9eee9"
-                    />
-                    <Text className="distributor-dashboard-summary-description">
-                      Đã ghé {visitedRouteCustomers}/{routeCustomers.length} điểm bán.
-                    </Text>
-                  </Flex>
-                </Col>
-                <Col xs={24} md={8}>
-                  <Flex vertical gap={6}>
-                    <Text className="distributor-dashboard-summary-label">
-                      Đội DSR hoạt động
-                    </Text>
-                    <Text strong className="distributor-dashboard-summary-value">
-                      {stats.activeTeam}/{stats.team}
-                    </Text>
-                    <Text className="distributor-dashboard-summary-description">
-                      {teamActiveRate}% nhân sự đang sẵn sàng nhận tuyến.
-                    </Text>
-                  </Flex>
-                </Col>
-              </Row>
-
-              <Flex gap={10} wrap="wrap" style={{ marginTop: 24 }}>
-                <Link href="/distributor/team">
-                  <Button icon={<TeamOutlined />} className="distributor-dashboard-button">
-                    Xem đội DSR
-                  </Button>
-                </Link>
-                <Link href="/distributor/routes">
-                  <Button icon={<EnvironmentOutlined />} className="distributor-dashboard-button">
-                    Xem tuyến hôm nay
-                  </Button>
-                </Link>
-                <Link href="/distributor/kpis">
-                  <Button icon={<RiseOutlined />} className="distributor-dashboard-button">
-                    KPI đội
-                  </Button>
-                </Link>
-              </Flex>
-            </div>
+          <Col xs={24} sm={12} xl={6}>
+            <DashboardMetricCard
+              title="Khách chờ duyệt"
+              value={stats.pendingCustomers}
+              icon={<ClockCircleOutlined />}
+              loading={isCustomersLoading}
+              description="Điểm bán mới đang chờ admin xét duyệt."
+            />
+          </Col>
+          <Col xs={24} sm={12} xl={6}>
+            <DashboardMetricCard
+              title="Đơn hôm nay"
+              value={stats.todayOrders}
+              icon={<ShoppingCartOutlined />}
+              loading={isOrdersLoading}
+              description="Đơn hàng đội DSR tạo trong ngày."
+            />
+          </Col>
+          <Col xs={24} sm={12} xl={6}>
+            <DashboardMetricCard
+              title="Đang ghé thăm"
+              value={stats.activeVisits}
+              icon={<AimOutlined />}
+              loading={isVisitsLoading}
+              description="Phiên check-in đang còn hoạt động."
+            />
           </Col>
         </Row>
-      </Card>
 
-      <Row gutter={[16, 16]}>
-        <Col xs={24} sm={12} xl={6}>
-          <DashboardMetricCard
-            title="DSR trong đội"
-            value={stats.team}
-            icon={<TeamOutlined />}
-            loading={isTeamLoading}
-            description="Nhân sự được gán trực tiếp cho distributor."
-          />
-        </Col>
-        <Col xs={24} sm={12} xl={6}>
-          <DashboardMetricCard
-            title="Khách chờ duyệt"
-            value={stats.pendingCustomers}
-            icon={<ClockCircleOutlined />}
-            loading={isCustomersLoading}
-            description="Điểm bán mới đang chờ admin xét duyệt."
-          />
-        </Col>
-        <Col xs={24} sm={12} xl={6}>
-          <DashboardMetricCard
-            title="Đơn hôm nay"
-            value={stats.todayOrders}
-            icon={<ShoppingCartOutlined />}
-            loading={isOrdersLoading}
-            description="Đơn hàng đội DSR tạo trong ngày."
-          />
-        </Col>
-        <Col xs={24} sm={12} xl={6}>
-          <DashboardMetricCard
-            title="Đang ghé thăm"
-            value={stats.activeVisits}
-            icon={<AimOutlined />}
-            loading={isVisitsLoading}
-            description="Phiên check-in đang còn hoạt động."
-          />
-        </Col>
-      </Row>
+        <Row gutter={[16, 16]}>
+          <Col xs={24} sm={12} xl={6}>
+            <DashboardMetricCard
+              title="Tổng điểm bán"
+              value={stats.customers}
+              icon={<CheckCircleOutlined />}
+              loading={isCustomersLoading}
+              description={`${stats.approvedCustomers} điểm bán đã được duyệt.`}
+            />
+          </Col>
+          <Col xs={24} sm={12} xl={6}>
+            <DashboardMetricCard
+              title="Tổng đơn hàng"
+              value={stats.orders}
+              icon={<ShoppingCartOutlined />}
+              loading={isOrdersLoading}
+              description={`${stats.pendingOrders} đơn đang chờ xử lý.`}
+            />
+          </Col>
+          <Col xs={24} sm={12} xl={6}>
+            <DashboardMetricCard
+              title="Doanh thu đã giao"
+              value={stats.deliveredRevenue}
+              formattedValue={`${currencyFormatter.format(stats.deliveredRevenue)} đ`}
+              icon={<DollarOutlined />}
+              loading={isOrdersLoading || isDashboardLoading}
+              description={`${stats.deliveredOrders} đơn đã giao thành công.`}
+            />
+          </Col>
+          <Col xs={24} sm={12} xl={6}>
+            <DashboardMetricCard
+              title="Khách trong tuyến"
+              value={routeCustomers.length}
+              icon={<EnvironmentOutlined />}
+              loading={isRoutesLoading}
+              description={`Từ ${stats.todayRoutes} tuyến bán hàng hôm nay.`}
+            />
+          </Col>
+        </Row>
 
-      <Row gutter={[16, 16]}>
-        <Col xs={24} sm={12} xl={6}>
-          <DashboardMetricCard
-            title="Tổng điểm bán"
-            value={stats.customers}
-            icon={<CheckCircleOutlined />}
-            loading={isCustomersLoading}
-            description={`${stats.approvedCustomers} điểm bán đã được duyệt.`}
-          />
-        </Col>
-        <Col xs={24} sm={12} xl={6}>
-          <DashboardMetricCard
-            title="Tổng đơn hàng"
-            value={stats.orders}
-            icon={<ShoppingCartOutlined />}
-            loading={isOrdersLoading}
-            description={`${stats.pendingOrders} đơn đang chờ xử lý.`}
-          />
-        </Col>
-        <Col xs={24} sm={12} xl={6}>
-          <DashboardMetricCard
-            title="Doanh thu đã giao"
-            value={stats.deliveredRevenue}
-            formattedValue={`${currencyFormatter.format(stats.deliveredRevenue)} đ`}
-            icon={<DollarOutlined />}
-            loading={isOrdersLoading}
-            description={`${stats.deliveredOrders} đơn đã giao thành công.`}
-          />
-        </Col>
-        <Col xs={24} sm={12} xl={6}>
-          <DashboardMetricCard
-            title="Khách trong tuyến"
-            value={routeCustomers.length}
-            icon={<EnvironmentOutlined />}
-            loading={isRoutesLoading}
-            description={`Từ ${stats.todayRoutes} tuyến bán hàng hôm nay.`}
-          />
-        </Col>
-      </Row>
-
-      {activeVisits[0] && (
-        <Card className="distributor-dashboard-active-card">
-          <Flex justify="space-between" align="center" gap={18} wrap="wrap">
-            <Flex align="center" gap={16}>
-              <div className="distributor-dashboard-active-icon">
-                <EnvironmentOutlined />
-              </div>
-              <Flex vertical gap={5}>
-                <Text className="distributor-dashboard-active-label">
-                  DSR đang check-in
-                </Text>
-                <Title level={4} className="distributor-dashboard-active-title">
-                  {getName(activeVisits[0].customer)}
-                </Title>
-                <Text className="distributor-dashboard-active-description">
-                  {getName(activeVisits[0].seller)} check-in lúc{" "}
-                  {new Date(activeVisits[0].checkInTime).toLocaleString("vi-VN")}
-                </Text>
+        {activeVisits[0] && (
+          <Card className="distributor-dashboard-active-card">
+            <Flex justify="space-between" align="center" gap={18} wrap="wrap">
+              <Flex align="center" gap={16}>
+                <div className="distributor-dashboard-active-icon">
+                  <EnvironmentOutlined />
+                </div>
+                <Flex vertical gap={5}>
+                  <Text className="distributor-dashboard-active-label">
+                    DSR đang check-in
+                  </Text>
+                  <Title
+                    level={4}
+                    className="distributor-dashboard-active-title"
+                  >
+                    {getName(activeVisits[0].customer)}
+                  </Title>
+                  <Text className="distributor-dashboard-active-description">
+                    {getName(activeVisits[0].seller)} check-in lúc{" "}
+                    {new Date(activeVisits[0].checkInTime).toLocaleString(
+                      "vi-VN",
+                    )}
+                  </Text>
+                </Flex>
               </Flex>
+              <Tag color="processing" className="distributor-pill-tag">
+                Đang ghé
+              </Tag>
             </Flex>
-            <Tag color="processing" className="distributor-pill-tag">
-              Đang ghé
-            </Tag>
-          </Flex>
-        </Card>
-      )}
+          </Card>
+        )}
 
-      <Row gutter={[16, 16]}>
-        <Col xs={24} xl={14}>
-          <Card
-            title={
-              <Flex vertical gap={2}>
-                <Text strong className="distributor-table-card-title">
+        <Row gutter={[16, 16]}>
+          <Col xs={24} xl={14}>
+            <Card
+              title={
+                <Text className="distributor-table-card-title">
                   Tuyến hôm nay
                 </Text>
-                <Text className="distributor-table-card-description">
-                  Danh sách tuyến đội DSR cần thực thi trong ngày.
-                </Text>
-              </Flex>
-            }
-            extra={
-              <Link href="/distributor/routes">
-                <Button className="distributor-dashboard-button">Xem tất cả</Button>
-              </Link>
-            }
-            className="distributor-panel-card distributor-table-card"
-          >
-            <Table
-              rowKey="_id"
-              loading={isRoutesLoading}
-              columns={routeColumns}
-              dataSource={todayRoutes}
-              pagination={false}
-              scroll={{ x: 720 }}
-              locale={{ emptyText: <Empty description="Hôm nay chưa có tuyến" /> }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} xl={10}>
-          <Card
-            title={
-              <Flex vertical gap={2}>
-                <Text strong className="distributor-table-card-title">
+              }
+              extra={
+                <Link href="/distributor/routes">
+                  <Button className="distributor-dashboard-button">
+                    Xem tất cả
+                  </Button>
+                </Link>
+              }
+              className="distributor-panel-card distributor-table-card"
+            >
+              <Text className="distributor-table-card-description">
+                Danh sách tuyến đội DSR cần thực thi trong ngày.
+              </Text>
+              <Table
+                rowKey="_id"
+                loading={isRoutesLoading}
+                columns={routeColumns}
+                dataSource={todayRoutes}
+                pagination={false}
+                scroll={{ x: 720 }}
+                locale={{
+                  emptyText: (
+                    <Empty
+                      className="distributor-empty-state"
+                      description="Hôm nay chưa có tuyến"
+                    />
+                  ),
+                }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} xl={10}>
+            <Card
+              title={
+                <Text className="distributor-table-card-title">
                   Đơn hàng hôm nay
                 </Text>
-                <Text className="distributor-table-card-description">
-                  Các đơn mới phát sinh từ đội DSR.
-                </Text>
-              </Flex>
-            }
-            extra={
-              <Link href="/distributor/orders">
-                <Button className="distributor-dashboard-button">Xem tất cả</Button>
-              </Link>
-            }
-            className="distributor-panel-card distributor-table-card"
-          >
-            <Table
-              rowKey="_id"
-              loading={isOrdersLoading}
-              columns={orderColumns}
-              dataSource={todayOrders}
-              pagination={false}
-              scroll={{ x: 800 }}
-              locale={{ emptyText: <Empty description="Hôm nay chưa có đơn hàng" /> }}
-            />
-          </Card>
-        </Col>
-      </Row>
-
-      <Card
-        title={
-          <Flex vertical gap={2}>
-            <Text strong className="distributor-table-card-title">
-              Thao tác nhanh
-            </Text>
-            <Text className="distributor-table-card-description">
-              Các khu vực distributor thường cần kiểm tra trong ngày.
-            </Text>
-          </Flex>
-        }
-        className="distributor-panel-card"
-      >
-        <Row gutter={[14, 14]}>
-          {[
-            { href: "/distributor/team", icon: <TeamOutlined />, text: "Đội DSR" },
-            { href: "/distributor/customers", icon: <CheckCircleOutlined />, text: "Khách hàng đội" },
-            { href: "/distributor/orders", icon: <ShoppingCartOutlined />, text: "Đơn hàng đội" },
-            { href: "/distributor/visits", icon: <AimOutlined />, text: "Lịch sử ghé thăm" },
-          ].map((item) => (
-            <Col xs={24} sm={12} lg={6} key={item.href}>
-              <Link href={item.href}>
-                <Button block icon={item.icon} className="distributor-dashboard-quick-button">
-                  {item.text}
-                </Button>
-              </Link>
-            </Col>
-          ))}
+              }
+              extra={
+                <Link href="/distributor/orders">
+                  <Button className="distributor-dashboard-button">
+                    Xem tất cả
+                  </Button>
+                </Link>
+              }
+              className="distributor-panel-card distributor-table-card"
+            >
+              <Text className="distributor-table-card-description">
+                Các đơn mới phát sinh từ đội DSR.
+              </Text>
+              <Table
+                rowKey="_id"
+                loading={isOrdersLoading}
+                columns={orderColumns}
+                dataSource={todayOrders}
+                pagination={false}
+                scroll={{ x: 800 }}
+                locale={{
+                  emptyText: (
+                    <Empty
+                      className="distributor-empty-state"
+                      description="Hôm nay chưa có đơn hàng"
+                    />
+                  ),
+                }}
+              />
+            </Card>
+          </Col>
         </Row>
-      </Card>
 
-      <style jsx global>{`
-        .distributor-dashboard-hero-card {
-          overflow: hidden;
-          border: 1px solid #d7ebe7;
-          border-radius: 18px;
-          background: #ffffff;
-          box-shadow: 0 18px 42px rgba(11, 47, 42, 0.07);
-        }
+        <Card
+          title={
+            <Text className="distributor-table-card-title">Thao tác nhanh</Text>
+          }
+          className="distributor-panel-card"
+        >
+          <Text className="distributor-table-card-description">
+            Các khu vực distributor thường cần kiểm tra trong ngày.
+          </Text>
+          <Row gutter={[14, 14]}>
+            {[
+              {
+                href: "/distributor/team",
+                icon: <TeamOutlined />,
+                text: "Đội DSR",
+              },
+              {
+                href: "/distributor/customers",
+                icon: <CheckCircleOutlined />,
+                text: "Khách hàng đội",
+              },
+              {
+                href: "/distributor/orders",
+                icon: <ShoppingCartOutlined />,
+                text: "Đơn hàng đội",
+              },
+              {
+                href: "/distributor/visits",
+                icon: <AimOutlined />,
+                text: "Lịch sử ghé thăm",
+              },
+            ].map((item) => (
+              <Col xs={24} sm={12} lg={6} key={item.href}>
+                <Link href={item.href}>
+                  <Button
+                    block
+                    icon={item.icon}
+                    className="distributor-dashboard-quick-button"
+                  >
+                    {item.text}
+                  </Button>
+                </Link>
+              </Col>
+            ))}
+          </Row>
+        </Card>
 
-        .distributor-dashboard-profile-panel {
-          height: 100%;
-          min-height: 252px;
-          padding: 24px;
-          background: #07171f;
-          color: #ffffff;
-        }
+        <style jsx global>{`
+          .distributor-dashboard-hero-card {
+            overflow: hidden;
+            border: 1px solid #dbeafe;
+            border-radius: 18px;
+            background: #ffffff;
+            box-shadow: 0 18px 42px rgba(37, 99, 235, 0.07);
+          }
 
-        .distributor-dashboard-avatar {
-          flex-shrink: 0;
-          background: #ffffff;
-          color: #0d9488;
-          font-size: 27px;
-          font-weight: 800;
-        }
+          .distributor-dashboard-profile-panel {
+            height: 100%;
+            min-height: 208px;
+            padding: 18px;
+            background: #0f1f3d;
+            color: #ffffff;
+          }
 
-        .distributor-dashboard-profile-eyebrow,
-        .distributor-dashboard-summary-label,
-        .distributor-dashboard-active-label {
-          font-size: 12px;
-          font-weight: 800;
-          line-height: 1.45;
-          text-transform: uppercase;
-        }
+          .distributor-dashboard-avatar {
+            flex-shrink: 0;
+            background: #ffffff;
+            color: #2563eb;
+            font-size: 22px;
+            font-weight: 800;
+          }
 
-        .distributor-dashboard-profile-eyebrow {
-          color: rgba(255, 255, 255, 0.72) !important;
-        }
+          .distributor-dashboard-profile-eyebrow,
+          .distributor-dashboard-summary-label,
+          .distributor-dashboard-active-label {
+            font-size: 12px;
+            font-weight: 800;
+            line-height: 1.45;
+            text-transform: uppercase;
+          }
 
-        .distributor-dashboard-profile-name.ant-typography {
-          margin: 0;
-          color: #ffffff;
-          font-weight: 800;
-          line-height: 1.25;
-        }
+          .distributor-dashboard-profile-eyebrow {
+            color: rgba(255, 255, 255, 0.72) !important;
+          }
 
-        .distributor-dashboard-profile-icon {
-          color: rgba(255, 255, 255, 0.74);
-        }
+          .distributor-dashboard-profile-name.ant-typography {
+            margin: 0;
+            color: #ffffff !important;
+            font-weight: 800;
+            line-height: 1.25;
+          }
 
-        .distributor-dashboard-profile-text {
-          color: rgba(255, 255, 255, 0.9) !important;
-          font-size: 14px;
-          line-height: 1.5;
-        }
+          .distributor-dashboard-profile-name.ant-typography,
+          .distributor-dashboard-profile-name.ant-typography * {
+            color: #ffffff !important;
+          }
 
-        .distributor-dashboard-summary-panel {
-          padding: 24px;
-        }
+          .distributor-dashboard-profile-icon {
+            color: rgba(255, 255, 255, 0.74);
+          }
 
-        .distributor-dashboard-summary-label {
-          color: #5d7471 !important;
-        }
+          .distributor-dashboard-profile-text {
+            color: rgba(255, 255, 255, 0.9) !important;
+            font-size: 14px;
+            line-height: 1.5;
+          }
 
-        .distributor-dashboard-summary-value {
-          color: #0b2f2a !important;
-          font-size: 27px;
-          font-weight: 800;
-          line-height: 1.2;
-        }
+          .distributor-dashboard-summary-panel {
+            padding: 18px;
+          }
 
-        .distributor-dashboard-summary-description,
-        .distributor-dashboard-metric-description,
-        .distributor-dashboard-active-description {
-          color: #5d7471 !important;
-          font-size: 13px;
-          line-height: 1.5;
-        }
+          .distributor-dashboard-summary-label {
+            color: #475569 !important;
+          }
 
-        .distributor-dashboard-button.ant-btn {
-          height: 38px;
-          border-color: #d7ebe7;
-          border-radius: 12px;
-          color: #0b2f2a;
-          font-weight: 700;
-        }
+          .distributor-dashboard-summary-value {
+            color: #0f172a !important;
+            font-size: 22px;
+            font-weight: 800;
+            line-height: 1.2;
+          }
 
-        .distributor-dashboard-button.ant-btn:hover,
-        .distributor-dashboard-quick-button.ant-btn:hover {
-          border-color: #0d9488 !important;
-          color: #0d9488 !important;
-          background: #e7f8f5 !important;
-        }
+          .distributor-dashboard-summary-description,
+          .distributor-dashboard-metric-description,
+          .distributor-dashboard-active-description {
+            color: #475569 !important;
+            font-size: 13px;
+            line-height: 1.5;
+          }
 
-        .distributor-dashboard-metric-card {
-          height: 100%;
-          border: 1px solid #d7ebe7;
-          border-radius: 16px;
-          background: #ffffff;
-          box-shadow: 0 14px 30px rgba(11, 47, 42, 0.06);
-        }
+          .distributor-dashboard-button.ant-btn {
+            height: 38px;
+            border-color: var(--dashboard-button-color, #2563eb);
+            border-radius: 12px;
+            background: var(--dashboard-button-color, #2563eb);
+            color: #ffffff;
+            font-weight: 650;
+            box-shadow: 0 10px 20px var(--dashboard-button-shadow, rgba(37, 99, 235, 0.16));
+          }
 
-        .distributor-dashboard-metric-card .ant-card-body {
-          padding: 18px;
-        }
+          .distributor-dashboard-button.ant-btn:hover,
+          .distributor-dashboard-quick-button.ant-btn:hover {
+            border-color: var(--dashboard-button-hover, #1d4ed8) !important;
+            color: #ffffff !important;
+            background: var(--dashboard-button-hover, #1d4ed8) !important;
+          }
 
-        .distributor-dashboard-metric-icon {
-          width: 48px;
-          height: 48px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-          border-radius: 14px;
-          background: #e7f8f5;
-          color: #0d9488;
-          font-size: 22px;
-        }
+          .distributor-dashboard-summary-panel a:nth-child(1) {
+            --dashboard-button-color: #2563eb;
+            --dashboard-button-hover: #1d4ed8;
+            --dashboard-button-shadow: rgba(37, 99, 235, 0.16);
+          }
 
-        .distributor-dashboard-metric-value {
-          color: #0b2f2a !important;
-          font-size: 22px;
-          font-weight: 800;
-          line-height: 1.15;
-          text-align: right;
-        }
+          .distributor-dashboard-summary-panel a:nth-child(2) {
+            --dashboard-button-color: #d97706;
+            --dashboard-button-hover: #b45309;
+            --dashboard-button-shadow: rgba(217, 119, 6, 0.16);
+          }
 
-        .distributor-dashboard-metric-title {
-          color: #0b2f2a !important;
-          font-size: 14px;
-          font-weight: 800;
-          line-height: 1.45;
-        }
+          .distributor-dashboard-summary-panel a:nth-child(3) {
+            --dashboard-button-color: #2563eb;
+            --dashboard-button-hover: #1d4ed8;
+            --dashboard-button-shadow: rgba(37, 99, 235, 0.16);
+          }
 
-        .distributor-dashboard-money {
-          color: #0f766e !important;
-          font-size: 14px;
-          font-weight: 850;
-          line-height: 1.45;
-        }
+          .distributor-dashboard-metric-card {
+            height: 100%;
+            border: 1px solid #dbeafe;
+            border-radius: 16px;
+            background: #ffffff;
+            box-shadow: 0 14px 30px rgba(37, 99, 235, 0.06);
+          }
 
-        .distributor-dashboard-active-card {
-          overflow: hidden;
-          border: 1px solid #b7e7de;
-          border-radius: 16px;
-          background: #e8f7f3;
-          box-shadow: 0 16px 34px rgba(13, 148, 136, 0.08);
-        }
+          .distributor-dashboard-metric-card .ant-card-body {
+            padding: 14px;
+          }
 
-        .distributor-dashboard-active-icon {
-          width: 54px;
-          height: 54px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-          border-radius: 14px;
-          background: #d7f3ee;
-          color: #0d9488;
-          font-size: 25px;
-        }
+          .distributor-dashboard-metric-icon {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            border-radius: 14px;
+            background: #eff6ff;
+            color: #2563eb;
+            font-size: 18px;
+          }
 
-        .distributor-dashboard-active-label {
-          color: #0f766e !important;
-        }
+          .distributor-dashboard-metric-value {
+            color: #0f172a !important;
+            font-size: 18px;
+            font-weight: 800;
+            line-height: 1.15;
+            text-align: right;
+          }
 
-        .distributor-dashboard-active-title.ant-typography {
-          margin: 0;
-          color: #0b2f2a;
-          font-weight: 800;
-          line-height: 1.35;
-        }
+          .distributor-dashboard-metric-title {
+            color: #0f172a !important;
+            font-size: 14px;
+            font-weight: 800;
+            line-height: 1.45;
+          }
 
-        .distributor-dashboard-quick-button.ant-btn {
-          height: 52px;
-          justify-content: flex-start;
-          border-color: #d7ebe7;
-          border-radius: 14px;
-          color: #0b2f2a;
-          font-weight: 800;
-          padding-inline: 18px;
-        }
-      `}</style>
+          .distributor-dashboard-money {
+            color: #1d4ed8 !important;
+            font-size: 14px;
+            font-weight: 850;
+            line-height: 1.45;
+          }
+
+          .distributor-dashboard-active-card {
+            overflow: hidden;
+            border: 1px solid #bfdbfe;
+            border-radius: 16px;
+            background: #eff6ff;
+            box-shadow: 0 16px 34px rgba(37, 99, 235, 0.08);
+          }
+
+          .distributor-dashboard-active-icon {
+            width: 54px;
+            height: 54px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            border-radius: 14px;
+            background: #dbeafe;
+            color: #2563eb;
+            font-size: 20px;
+          }
+
+          .distributor-dashboard-active-label {
+            color: #1d4ed8 !important;
+          }
+
+          .distributor-dashboard-active-title.ant-typography {
+            margin: 0;
+            color: #0f172a;
+            font-weight: 800;
+            line-height: 1.35;
+          }
+
+          .distributor-dashboard-quick-button.ant-btn {
+            height: 52px;
+            justify-content: flex-start;
+            border-color: var(--dashboard-button-color, #2563eb);
+            border-radius: 14px;
+            background: var(--dashboard-button-color, #2563eb);
+            color: #ffffff;
+            font-weight: 650;
+            padding-inline: 18px;
+            box-shadow: 0 10px 22px var(--dashboard-button-shadow, rgba(37, 99, 235, 0.14));
+          }
+
+          .distributor-panel-card .ant-row .ant-col:nth-child(4n + 1) {
+            --dashboard-button-color: #2563eb;
+            --dashboard-button-hover: #1d4ed8;
+            --dashboard-button-shadow: rgba(37, 99, 235, 0.14);
+          }
+
+          .distributor-panel-card .ant-row .ant-col:nth-child(4n + 2) {
+            --dashboard-button-color: #2563eb;
+            --dashboard-button-hover: #1d4ed8;
+            --dashboard-button-shadow: rgba(37, 99, 235, 0.14);
+          }
+
+          .distributor-panel-card .ant-row .ant-col:nth-child(4n + 3) {
+            --dashboard-button-color: #d97706;
+            --dashboard-button-hover: #b45309;
+            --dashboard-button-shadow: rgba(217, 119, 6, 0.14);
+          }
+
+          .distributor-panel-card .ant-row .ant-col:nth-child(4n + 4) {
+            --dashboard-button-color: #e11d48;
+            --dashboard-button-hover: #be123c;
+            --dashboard-button-shadow: rgba(225, 29, 72, 0.14);
+          }
+
+          .distributor-dashboard-stack .ant-empty,
+          .distributor-empty-state.ant-empty {
+            margin: 24px 0;
+            color: #64748b;
+          }
+
+          .distributor-dashboard-stack .ant-empty-image,
+          .distributor-empty-state .ant-empty-image {
+            opacity: 1;
+          }
+
+          .distributor-dashboard-stack .ant-empty-img-default-ellipse,
+          .distributor-empty-state .ant-empty-img-default-ellipse {
+            fill: #eff6ff !important;
+            fill-opacity: 1 !important;
+          }
+
+          .distributor-dashboard-stack .ant-empty-img-default-path-1,
+          .distributor-dashboard-stack .ant-empty-img-default-path-2,
+          .distributor-dashboard-stack .ant-empty-img-default-path-3,
+          .distributor-dashboard-stack .ant-empty-img-default-path-4,
+          .distributor-dashboard-stack .ant-empty-img-default-path-5,
+          .distributor-empty-state .ant-empty-img-default-path-1,
+          .distributor-empty-state .ant-empty-img-default-path-2,
+          .distributor-empty-state .ant-empty-img-default-path-3,
+          .distributor-empty-state .ant-empty-img-default-path-4,
+          .distributor-empty-state .ant-empty-img-default-path-5 {
+            fill: #bfdbfe !important;
+          }
+
+          .distributor-dashboard-stack .ant-empty-description,
+          .distributor-empty-state .ant-empty-description {
+            color: #64748b !important;
+            font-size: 14px;
+            font-weight: 600;
+          }
+        `}</style>
       </Flex>
     </>
   );
 }
+
+
+
+
+

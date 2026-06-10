@@ -9,6 +9,7 @@ import { ClientSession, Model, Types } from 'mongoose';
 
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import {
+  buildSearchRegex,
   getPagination,
   getSort,
   PaginatedResult,
@@ -400,7 +401,7 @@ export class InventoryService {
     }
 
     if (query?.search) {
-      filter.note = new RegExp(query.search.trim(), 'i');
+      filter.note = buildSearchRegex(query.search);
     }
 
     const createdAt: DateRangeFilter = {};

@@ -18,6 +18,7 @@ import { ReportsModule } from './modules/reports/reports.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
+import { WarehousesModule } from './modules/warehouses/warehouses.module';
 
 import { SocketModule } from './modules/socket/socket.module';
 import { AppController } from './app.controller';
@@ -61,6 +62,7 @@ import { AppService } from './app.service';
     CategoriesModule,
     UploadModule,
     AuditLogsModule,
+    WarehousesModule,
 
     SocketModule,
   ],

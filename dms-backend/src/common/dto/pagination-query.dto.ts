@@ -41,6 +41,10 @@ export class PaginationQueryDto {
 
   @IsOptional()
   @IsString()
+  distributor?: string;
+
+  @IsOptional()
+  @IsString()
   isRead?: string;
 
   @IsOptional()

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   AimOutlined,
@@ -104,7 +104,7 @@ export default function DistributorVisitsPage() {
       align: "center",
       width: 140,
       render: (value?: number) => (
-        <Tag color={value !== undefined ? "cyan" : "default"} className="distributor-pill-tag">
+        <Tag color={value !== undefined ? "blue" : "default"} className="distributor-pill-tag">
           {value !== undefined ? `${Math.round(value)} m` : "-"}
         </Tag>
       ),
@@ -129,7 +129,11 @@ export default function DistributorVisitsPage() {
       width: 140,
       render: (_, record) => (
         <Link href={`/distributor/visits/${record._id}`}>
-          <Button size="small" icon={<EyeOutlined />} className="distributor-row-action">
+          <Button
+            size="small"
+            icon={<EyeOutlined />}
+            className="distributor-row-action distributor-row-action-view"
+          >
             Chi tiết
           </Button>
         </Link>
@@ -212,3 +216,8 @@ export default function DistributorVisitsPage() {
     </DistributorPageShell>
   );
 }
+
+
+
+
+

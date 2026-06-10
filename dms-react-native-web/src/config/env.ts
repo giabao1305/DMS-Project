@@ -2,10 +2,14 @@ import Constants from "expo-constants";
 import { Platform } from "react-native";
 
 const configuredApiUrl = process.env.EXPO_PUBLIC_API_URL;
+const hasRemoteConfiguredApiUrl = Boolean(configuredApiUrl && !isLoopbackUrl(configuredApiUrl));
 const webHost =
   typeof window !== "undefined" && window.location?.hostname
     ? window.location.hostname
     : "localhost";
+const isLocalWebHost = Platform.OS === "web" && isLoopbackHost(webHost);
+const shouldUseRemoteConfiguredApiUrl =
+  hasRemoteConfiguredApiUrl && !isLocalWebHost;
 
 const metroHost =
   Platform.OS === "web"
@@ -30,13 +34,14 @@ const defaultApiUrl =
       ? metroApiUrl || "http://localhost:5000"
       : `http://${webHost}:5000`;
 
-const isLocalWebHost =
-  Platform.OS === "web" && isLoopbackHost(webHost);
-
 export const API_URL =
-  isLocalWebHost ? `http://${webHost}:5000` : nativeConfiguredApiUrl || defaultApiUrl;
+  isLocalWebHost
+    ? `http://${webHost}:5000`
+    : shouldUseRemoteConfiguredApiUrl
+    ? configuredApiUrl
+    : nativeConfiguredApiUrl || defaultApiUrl;
 
-const platformFallbackApiUrls = configuredApiUrl && !isLocalWebHost && !isLoopbackUrl(configuredApiUrl)
+const platformFallbackApiUrls = shouldUseRemoteConfiguredApiUrl
   ? []
   : Platform.OS === "android"
     ? [

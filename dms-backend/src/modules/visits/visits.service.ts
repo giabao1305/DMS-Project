@@ -10,6 +10,7 @@ import { Model, Types } from 'mongoose';
 
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import {
+  buildSearchRegex,
   getPagination,
   getSort,
   PaginatedResult,
@@ -21,7 +22,11 @@ import {
   CustomerDocument,
   CustomerStatus,
 } from '../customers/schemas/customer.schema';
-import { Route, RouteDocument } from '../routes/schemas/route.schema';
+import {
+  Route,
+  RouteDocument,
+  RouteStatus,
+} from '../routes/schemas/route.schema';
 import { RoutesService } from '../routes/routes.service';
 import { User, UserDocument, UserRole } from '../users/schemas/user.schema';
 import { CheckInDto } from './dto/check-in.dto';
@@ -128,10 +133,6 @@ export class VisitsService {
       throw new BadRequestException('Customer has not been approved');
     }
 
-    if (customer.assignedSeller.toString() !== sellerId) {
-      throw new ForbiddenException('This customer is not assigned to you');
-    }
-
     let checkInDistance: number | undefined;
 
     if (customer.latitude !== undefined && customer.longitude !== undefined) {
@@ -151,14 +152,24 @@ export class VisitsService {
       }
     }
 
+    let isSubstituteRouteVisit = false;
+
     if (checkInDto.route) {
       const route = await this.routeModel.findById(checkInDto.route);
-
       if (!route) {
         throw new NotFoundException('Route not found');
       }
 
-      if (route.seller.toString() !== sellerId) {
+      if (
+        route.status !== RouteStatus.PLANNED &&
+        route.status !== RouteStatus.IN_PROGRESS
+      ) {
+        throw new BadRequestException('Route is not available for check-in');
+      }
+
+      isSubstituteRouteVisit = route.substituteSeller?.toString() === sellerId;
+
+      if (route.seller.toString() !== sellerId && !isSubstituteRouteVisit) {
         throw new ForbiddenException('This route is not assigned to you');
       }
 
@@ -169,6 +180,13 @@ export class VisitsService {
       if (!existsInRoute) {
         throw new BadRequestException('Customer is not in this route');
       }
+    }
+
+    if (
+      customer.assignedSeller.toString() !== sellerId &&
+      !isSubstituteRouteVisit
+    ) {
+      throw new ForbiddenException('This customer is not assigned to you');
     }
 
     const visit = new this.visitModel({
@@ -313,8 +331,18 @@ export class VisitsService {
       filter.status = query.status as VisitStatus;
     }
 
+    if (
+      query?.distributor &&
+      Types.ObjectId.isValid(query.distributor) &&
+      !filter.seller
+    ) {
+      filter.seller = {
+        $in: await this.getManagedSellerIds(query.distributor),
+      };
+    }
+
     if (query?.search) {
-      const search = new RegExp(query.search.trim(), 'i');
+      const search = buildSearchRegex(query.search);
       const [sellers, customers] = await Promise.all([
         this.userModel
           .find({

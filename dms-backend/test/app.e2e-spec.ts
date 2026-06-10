@@ -10,10 +10,6 @@ import { AppModule } from '../src/app.module';
 import type { AuditLog } from '../src/modules/audit-logs/schemas/audit-log.schema';
 import { CustomerStatus } from '../src/modules/customers/schemas/customer.schema';
 import type { Customer } from '../src/modules/customers/schemas/customer.schema';
-import {
-  InventoryTransaction,
-  InventoryTransactionType,
-} from '../src/modules/inventory/schemas/inventory-transaction.schema';
 import { LeaveStatus } from '../src/modules/leaves/schemas/leave-request.schema';
 import type { LeaveRequest } from '../src/modules/leaves/schemas/leave-request.schema';
 import { OrderStatus } from '../src/modules/orders/schemas/order.schema';
@@ -22,6 +18,13 @@ import type { Category } from '../src/modules/products/schemas/category.schema';
 import type { Product } from '../src/modules/products/schemas/product.schema';
 import { UserRole } from '../src/modules/users/schemas/user.schema';
 import type { User } from '../src/modules/users/schemas/user.schema';
+import { VisitStatus } from '../src/modules/visits/schemas/visit.schema';
+import type { Visit } from '../src/modules/visits/schemas/visit.schema';
+import {
+  WarehouseType,
+  type Warehouse,
+} from '../src/modules/warehouses/schemas/warehouse.schema';
+import type { WarehouseStock } from '../src/modules/warehouses/schemas/warehouse-stock.schema';
 
 jest.setTimeout(60_000);
 
@@ -33,11 +36,14 @@ describe('DMS critical workflows (e2e)', () => {
   let productModel: Model<Product>;
   let orderModel: Model<Order>;
   let leaveRequestModel: Model<LeaveRequest>;
-  let inventoryTransactionModel: Model<InventoryTransaction>;
+  let visitModel: Model<Visit>;
+  let warehouseModel: Model<Warehouse>;
+  let warehouseStockModel: Model<WarehouseStock>;
   let auditLogModel: Model<AuditLog>;
 
   const runId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const adminEmail = `e2e-admin-${runId}@dms.test`;
+  const distributorEmail = `e2e-distributor-${runId}@dms.test`;
   const sellerEmail = `e2e-seller-${runId}@dms.test`;
   const lockoutEmail = `e2e-lockout-${runId}@dms.test`;
   const productCode = `E2E-${runId}`.slice(0, 32);
@@ -47,7 +53,9 @@ describe('DMS critical workflows (e2e)', () => {
   let sellerToken: string;
   let sellerRefreshToken: string;
   let adminId: string;
+  let distributorId: string;
   let sellerId: string;
+  let warehouseId: string;
   let customerId: string;
   let productId: string;
 
@@ -84,8 +92,12 @@ describe('DMS critical workflows (e2e)', () => {
     leaveRequestModel = moduleFixture.get<Model<LeaveRequest>>(
       getModelToken('LeaveRequest'),
     );
-    inventoryTransactionModel = moduleFixture.get<Model<InventoryTransaction>>(
-      getModelToken('InventoryTransaction'),
+    visitModel = moduleFixture.get<Model<Visit>>(getModelToken('Visit'));
+    warehouseModel = moduleFixture.get<Model<Warehouse>>(
+      getModelToken('Warehouse'),
+    );
+    warehouseStockModel = moduleFixture.get<Model<WarehouseStock>>(
+      getModelToken('WarehouseStock'),
     );
     auditLogModel = moduleFixture.get<Model<AuditLog>>(
       getModelToken('AuditLog'),
@@ -103,12 +115,6 @@ describe('DMS critical workflows (e2e)', () => {
       cleanupTasks.push(orderModel.deleteMany({ seller: sellerId }).exec());
     }
 
-    if (inventoryTransactionModel && productId) {
-      cleanupTasks.push(
-        inventoryTransactionModel.deleteMany({ product: productId }).exec(),
-      );
-    }
-
     if (customerModel && sellerId) {
       cleanupTasks.push(
         customerModel.deleteMany({ createdBy: sellerId }).exec(),
@@ -118,6 +124,26 @@ describe('DMS critical workflows (e2e)', () => {
     if (leaveRequestModel && sellerId) {
       cleanupTasks.push(
         leaveRequestModel.deleteMany({ seller: sellerId }).exec(),
+      );
+    }
+
+    if (visitModel && sellerId) {
+      cleanupTasks.push(visitModel.deleteMany({ seller: sellerId }).exec());
+    }
+
+    if (warehouseStockModel && warehouseId) {
+      cleanupTasks.push(
+        warehouseStockModel
+          .deleteMany({ warehouse: new Types.ObjectId(warehouseId) })
+          .exec(),
+      );
+    }
+
+    if (warehouseModel && distributorId) {
+      cleanupTasks.push(
+        warehouseModel
+          .deleteMany({ distributor: new Types.ObjectId(distributorId) })
+          .exec(),
       );
     }
 
@@ -135,7 +161,9 @@ describe('DMS critical workflows (e2e)', () => {
       cleanupTasks.push(
         userModel
           .deleteMany({
-            email: { $in: [adminEmail, sellerEmail, lockoutEmail] },
+            email: {
+              $in: [adminEmail, distributorEmail, sellerEmail, lockoutEmail],
+            },
           })
           .exec(),
       );
@@ -342,7 +370,7 @@ describe('DMS critical workflows (e2e)', () => {
     expect(unlockedUser?.lastLoginAt).toBeTruthy();
   });
 
-  it('seller order approval subtracts stock, return approval restores stock', async () => {
+  it('seller order approval subtracts distributor stock, return approval restores stock', async () => {
     const createdOrder = await request(app.getHttpServer())
       .post('/orders')
       .set('Authorization', `Bearer ${sellerToken}`)
@@ -365,13 +393,7 @@ describe('DMS critical workflows (e2e)', () => {
 
     expect(approvedOrder.status).toBe(OrderStatus.APPROVED);
 
-    await expectProductStock(7);
-    await expectInventoryTransaction({
-      type: InventoryTransactionType.ORDER,
-      quantity: 3,
-      beforeStock: 10,
-      afterStock: 7,
-    });
+    await expectDistributorWarehouseStock(7);
 
     await request(app.getHttpServer())
       .patch(`/orders/${createdOrder._id}/deliver`)
@@ -398,13 +420,7 @@ describe('DMS critical workflows (e2e)', () => {
         expect(body.status).toBe(OrderStatus.RETURNED);
       });
 
-    await expectProductStock(10);
-    await expectInventoryTransaction({
-      type: InventoryTransactionType.RETURN,
-      quantity: 3,
-      beforeStock: 7,
-      afterStock: 10,
-    });
+    await expectDistributorWarehouseStock(10);
   });
 
   it('seller-created customer enters approval flow and admin can approve it', async () => {
@@ -512,7 +528,7 @@ describe('DMS critical workflows (e2e)', () => {
 
   async function seedUsers() {
     const hashedPassword = await bcrypt.hash(password, 10);
-    const [admin, seller] = await userModel.create([
+    const [admin, distributor] = await userModel.create([
       {
         fullName: 'E2E Admin',
         email: adminEmail,
@@ -521,15 +537,27 @@ describe('DMS critical workflows (e2e)', () => {
         isActive: true,
       },
       {
+        fullName: 'E2E Distributor',
+        email: distributorEmail,
+        password: hashedPassword,
+        role: UserRole.DISTRIBUTOR,
+        isActive: true,
+      },
+    ]);
+
+    const [seller] = await userModel.create([
+      {
         fullName: 'E2E Seller',
         email: sellerEmail,
         password: hashedPassword,
         role: UserRole.SELLER,
+        manager: distributor._id,
         isActive: true,
       },
     ]);
 
     adminId = admin._id.toString();
+    distributorId = distributor._id.toString();
     sellerId = seller._id.toString();
   }
 
@@ -567,6 +595,34 @@ describe('DMS critical workflows (e2e)', () => {
 
     productId = product._id.toString();
     customerId = customer._id.toString();
+
+    const warehouse = await warehouseModel.create({
+      name: `E2E Distributor Warehouse ${runId}`,
+      code: `E2E-WH-${runId}`.slice(0, 32),
+      type: WarehouseType.DISTRIBUTOR,
+      distributor: new Types.ObjectId(distributorId),
+      isActive: true,
+    });
+
+    warehouseId = warehouse._id.toString();
+
+    await warehouseStockModel.create({
+      warehouse: warehouse._id,
+      product: product._id,
+      quantity: 10,
+      averageCost: 100000,
+      sellingPrice: 120000,
+    });
+
+    await visitModel.create({
+      seller: new Types.ObjectId(sellerId),
+      customer: customer._id,
+      checkInTime: new Date(),
+      checkInLatitude: 10.762622,
+      checkInLongitude: 106.660172,
+      status: VisitStatus.CHECKED_IN,
+      note: 'E2E active visit for order creation',
+    });
   }
 
   async function loginUsers() {
@@ -621,43 +677,15 @@ describe('DMS critical workflows (e2e)', () => {
       .then((response) => response.body as LeaveRequest & { _id: string });
   }
 
-  async function expectProductStock(expectedStock: number) {
-    const product = await productModel.findById(productId).lean().exec();
-    expect(product?.stock).toBe(expectedStock);
-  }
-
-  async function expectInventoryTransaction(expected: {
-    type: InventoryTransactionType;
-    quantity: number;
-    beforeStock: number;
-    afterStock: number;
-  }) {
-    const transaction = await inventoryTransactionModel
-      .findOne({ product: new Types.ObjectId(productId), type: expected.type })
-      .sort({ createdAt: -1 })
+  async function expectDistributorWarehouseStock(expectedStock: number) {
+    const stock = await warehouseStockModel
+      .findOne({
+        warehouse: new Types.ObjectId(warehouseId),
+        product: new Types.ObjectId(productId),
+      })
       .lean()
       .exec();
 
-    if (!transaction) {
-      const existingTransactions = await inventoryTransactionModel
-        .find({ product: new Types.ObjectId(productId) })
-        .sort({ createdAt: 1 })
-        .lean()
-        .exec();
-
-      throw new Error(
-        `Missing inventory transaction ${expected.type}. Existing: ${JSON.stringify(
-          existingTransactions.map((item) => ({
-            type: item.type,
-            quantity: item.quantity,
-            beforeStock: item.beforeStock,
-            afterStock: item.afterStock,
-          })),
-        )}`,
-      );
-    }
-
-    expect(transaction).toMatchObject(expected);
-    expect(transaction?.createdBy.toString()).toBe(adminId);
+    expect(stock?.quantity).toBe(expectedStock);
   }
 });

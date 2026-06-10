@@ -8,7 +8,6 @@ import {
   FilterTabs,
   ListCard,
   ListScreen,
-  MockupHeader,
   SearchBar,
   StatusPill,
   SummaryMetric,
@@ -49,19 +48,31 @@ export function CustomersList({
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<CustomerFilter>("all");
 
-  const stats = useMemo(() => ({
-    total: customers.length,
-    pending: customers.filter((customer) => customer.status === "pending").length,
-    approved: customers.filter((customer) => customer.status === "approved").length,
-    rejected: customers.filter((customer) => customer.status === "rejected").length,
-  }), [customers]);
+  const stats = useMemo(
+    () => ({
+      total: customers.length,
+      pending: customers.filter((customer) => customer.status === "pending")
+        .length,
+      approved: customers.filter((customer) => customer.status === "approved")
+        .length,
+      rejected: customers.filter((customer) => customer.status === "rejected")
+        .length,
+    }),
+    [customers],
+  );
 
   const filteredCustomers = useMemo(() => {
     const keyword = query.trim().toLowerCase();
     return customers.filter((customer) => {
       if (filter !== "all" && customer.status !== filter) return false;
       if (!keyword) return true;
-      return [customer.name, customer.address, customer.phone, customer.ownerName, customer.customerType]
+      return [
+        customer.name,
+        customer.address,
+        customer.phone,
+        customer.ownerName,
+        customer.customerType,
+      ]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(keyword));
     });
@@ -71,23 +82,72 @@ export function CustomersList({
 
   return (
     <ListScreen>
-      <MockupHeader
-        eyebrow="Danh sách khách hàng"
-        title="Điểm bán"
-        subtitle={`${filteredCustomers.length} kết quả`}
-        onBack={onBack}
-        action={
-          <Pressable onPress={onCreate} accessibilityRole="button" accessibilityLabel="Thêm điểm bán" style={({ pressed }) => [styles.createButton, pressed && styles.pressed]}>
-            <MaterialCommunityIcons name="account-plus-outline" size={22} color="#FFFFFF" />
-          </Pressable>
-        }
-      />
+      <View style={styles.header}>
+        <Pressable
+          onPress={onBack}
+          accessibilityRole="button"
+          accessibilityLabel="Quay lại"
+          style={({ pressed }) => [
+            styles.backButton,
+            pressed && styles.pressed,
+          ]}
+        >
+          <MaterialCommunityIcons
+            name="chevron-left"
+            size={24}
+            color="#FFFFFF"
+          />
+        </Pressable>
+
+        <View style={styles.headerText}>
+          <Text style={styles.title}>Khách hàng</Text>
+          <Text style={styles.subtitle}>
+            {filteredCustomers.length} kết quả
+          </Text>
+        </View>
+
+        <Pressable
+          onPress={onCreate}
+          accessibilityRole="button"
+          accessibilityLabel="Thêm khách hàng"
+          style={({ pressed }) => [
+            styles.createButton,
+            pressed && styles.pressed,
+          ]}
+        >
+          <MaterialCommunityIcons
+            name="account-plus-outline"
+            size={22}
+            color="#FFFFFF"
+          />
+        </Pressable>
+      </View>
 
       <SummaryStrip>
-        <SummaryMetric icon="storefront-outline" label="Tổng" value={stats.total} tone="primary" />
-        <SummaryMetric icon="check-decagram-outline" label="Đã duyệt" value={stats.approved} tone="success" />
-        <SummaryMetric icon="clock-outline" label="Chờ duyệt" value={stats.pending} tone="warning" />
-        <SummaryMetric icon="close-circle-outline" label="Từ chối" value={stats.rejected} tone="danger" />
+        <SummaryMetric
+          icon="storefront-outline"
+          label="Tổng"
+          value={stats.total}
+          tone="primary"
+        />
+        <SummaryMetric
+          icon="check-decagram-outline"
+          label="Đã duyệt"
+          value={stats.approved}
+          tone="success"
+        />
+        <SummaryMetric
+          icon="clock-outline"
+          label="Chờ duyệt"
+          value={stats.pending}
+          tone="warning"
+        />
+        <SummaryMetric
+          icon="close-circle-outline"
+          label="Từ chối"
+          value={stats.rejected}
+          tone="danger"
+        />
       </SummaryStrip>
 
       <SearchBar
@@ -104,23 +164,40 @@ export function CustomersList({
       <View style={styles.sectionHeader}>
         <View>
           <Text style={styles.sectionTitle}>Khách hàng</Text>
-          <Text style={styles.sectionHint}>{filteredCustomers.length} kết quả</Text>
+          <Text style={styles.sectionHint}>
+            {filteredCustomers.length} kết quả
+          </Text>
         </View>
         <Text style={styles.sectionMeta}>{stats.approved} hoạt động</Text>
       </View>
 
       {filteredCustomers.length === 0 ? (
         <EmptyState
-          title={customers.length === 0 ? "Chưa có điểm bán" : "Không tìm thấy điểm bán"}
-          message={customers.length === 0 ? "Thêm điểm bán đầu tiên để bắt đầu ghé thăm và tạo đơn hàng." : hasActiveSearch ? "Thử đổi từ khóa tìm kiếm hoặc chọn bộ lọc khác." : "Hiện chưa có dữ liệu phù hợp để hiển thị."}
+          title={
+            customers.length === 0
+              ? "Chưa có khách hàng"
+              : "Không tìm thấy khách hàng"
+          }
+          message={
+            customers.length === 0
+              ? "Thêm khách hàng đầu tiên để bắt đầu ghé thăm và tạo đơn hàng."
+              : hasActiveSearch
+                ? "Thử đổi từ khóa tìm kiếm hoặc chọn bộ lọc khác."
+                : "Hiện chưa có dữ liệu phù hợp để hiển thị."
+          }
           icon="storefront-plus-outline"
-          actionLabel={customers.length === 0 ? "Thêm điểm bán" : undefined}
+          actionLabel={customers.length === 0 ? "Thêm khách hàng" : undefined}
           onAction={customers.length === 0 ? onCreate : undefined}
         />
       ) : (
         <View style={styles.list}>
           {filteredCustomers.map((customer, index) => (
-            <CustomerCard key={customer._id} customer={customer} index={index} onPress={() => onDetail(customer)} />
+            <CustomerCard
+              key={customer._id}
+              customer={customer}
+              index={index}
+              onPress={() => onDetail(customer)}
+            />
           ))}
         </View>
       )}
@@ -128,42 +205,100 @@ export function CustomersList({
   );
 }
 
-function CustomerCard({ customer, index, onPress }: { customer: Customer; index: number; onPress: () => void }) {
+function CustomerCard({
+  customer,
+  index,
+  onPress,
+}: {
+  customer: Customer;
+  index: number;
+  onPress: () => void;
+}) {
   const status = statusTone(customer.status);
   const avatar = avatarTone(index);
 
   return (
-    <ListCard onPress={onPress}>
+    <ListCard
+      onPress={onPress}
+      style={{ borderColor: status.border, borderLeftColor: status.text }}
+    >
       <View style={styles.customerTop}>
-        <View style={[styles.avatar, { backgroundColor: avatar.bg, borderColor: avatar.border }]}>
-          <Text style={[styles.avatarText, { color: avatar.text }]}>{customerInitial(customer)}</Text>
+        <View
+          style={[
+            styles.avatar,
+            { backgroundColor: avatar.text, borderColor: avatar.text },
+          ]}
+        >
+          <Text style={[styles.avatarText, { color: "#FFFFFF" }]}>
+            {customerInitial(customer)}
+          </Text>
         </View>
         <View style={styles.customerInfo}>
           <View style={styles.nameLine}>
-            <Text style={styles.customerName} numberOfLines={1}>{customer.name}</Text>
-            <StatusPill label={statusLabel(customer.status)} tone={status.pillTone} compact />
+            <Text style={styles.customerName} numberOfLines={1}>
+              {customer.name}
+            </Text>
+            <StatusPill
+              label={statusLabel(customer.status)}
+              tone={status.pillTone}
+              compact
+            />
           </View>
           <View style={styles.addressRow}>
-            <MaterialCommunityIcons name="map-marker-outline" size={15} color={bento.textMuted} />
-            <Text style={styles.address} numberOfLines={1}>{customer.address || "Chưa có địa chỉ"}</Text>
+            <MaterialCommunityIcons
+              name="map-marker-outline"
+              size={15}
+              color={bento.textMuted}
+            />
+            <Text style={styles.address} numberOfLines={1}>
+              {customer.address || "Chưa có địa chỉ"}
+            </Text>
           </View>
         </View>
       </View>
 
       <View style={styles.metaRow}>
-        <Meta icon="phone-outline" value={customer.phone || "Chưa có SĐT"} primary />
-        <Meta icon="tag-outline" value={customer.customerType || customer.ownerName || "Điểm bán"} />
-        <MaterialCommunityIcons name="chevron-right" size={19} color={bento.textMuted} />
+        <Meta
+          icon="phone-outline"
+          value={customer.phone || "Chưa có SĐT"}
+          primary
+        />
+        <Meta
+          icon="storefront-outline"
+          value={customer.ownerName || "Chưa có cửa hàng"}
+        />
+        <MaterialCommunityIcons
+          name="chevron-right"
+          size={19}
+          color={bento.textMuted}
+        />
       </View>
     </ListCard>
   );
 }
 
-function Meta({ icon, value, primary }: { icon: IconName; value: string; primary?: boolean }) {
+function Meta({
+  icon,
+  value,
+  primary,
+}: {
+  icon: IconName;
+  value: string;
+  primary?: boolean;
+}) {
   return (
     <View style={styles.metaItem}>
-      <MaterialCommunityIcons name={icon} size={14} color={primary ? bento.primaryDark : bento.textMuted} />
-      <Text style={[styles.metaText, primary && styles.metaTextPrimary]} numberOfLines={1}>{value}</Text>
+      <MaterialCommunityIcons
+        name={icon}
+        size={14}
+        color={primary ? bento.primaryDark : bento.textMuted}
+      />
+      <Text
+        style={[styles.metaText, primary && styles.metaTextPrimary]}
+        numberOfLines={1}
+      >
+        {value}
+      </Text>
     </View>
   );
 }
@@ -177,37 +312,97 @@ function customerInitial(customer: Customer) {
 
 function avatarTone(index: number) {
   const tones = [
-    { text: bento.primaryDark, bg: bento.primarySoft, border: bento.borderStrong },
+    {
+      text: bento.primaryDark,
+      bg: bento.primarySoft,
+      border: bento.borderStrong,
+    },
     { text: bento.route, bg: bento.routeSoft, border: "#CFE0FF" },
-    { text: bento.success, bg: bento.successSoft, border: "#BDEEDB" },
+    { text: bento.success, bg: bento.successSoft, border: bento.borderStrong },
     { text: bento.warning, bg: bento.warningSoft, border: "#FFE0A8" },
   ];
   return tones[index % tones.length];
 }
 
 function statusTone(status: Customer["status"]) {
-  if (status === "approved") return { ...toneColors("success"), pillTone: "success" as const };
-  if (status === "rejected") return { ...toneColors("danger"), pillTone: "danger" as const };
+  if (status === "approved")
+    return { ...toneColors("success"), pillTone: "success" as const };
+  if (status === "rejected")
+    return { ...toneColors("danger"), pillTone: "danger" as const };
   return { ...toneColors("warning"), pillTone: "warning" as const };
 }
 
 function toneColors(tone: ToneName) {
-  if (tone === "success") return { text: bento.success, bg: bento.successSoft, border: "#BDEEDB" };
-  if (tone === "warning") return { text: bento.warning, bg: bento.warningSoft, border: "#FFE0A8" };
-  if (tone === "danger") return { text: bento.danger, bg: bento.dangerSoft, border: "#FFCACA" };
-  if (tone === "blue") return { text: bento.route, bg: bento.routeSoft, border: "#CFE0FF" };
-  if (tone === "muted") return { text: bento.textSecondary, bg: bento.surfaceAlt, border: bento.border };
-  return { text: bento.primaryDark, bg: bento.primarySoft, border: bento.borderStrong };
+  if (tone === "success")
+    return { text: "#059669", bg: "#ECFDF5", border: "#A7F3D0" };
+  if (tone === "warning")
+    return { text: "#D97706", bg: "#FFFBEB", border: "#FDE68A" };
+  if (tone === "danger")
+    return { text: "#DC2626", bg: "#FEF2F2", border: "#FECACA" };
+  if (tone === "blue")
+    return { text: "#0891B2", bg: "#ECFEFF", border: "#A5F3FC" };
+  if (tone === "muted")
+    return {
+      text: "#64748B",
+      bg: "#F8FAFC",
+      border: "#CBD5E1",
+    };
+  return {
+    text: "#2563EB",
+    bg: "#EFF6FF",
+    border: "#BFDBFE",
+  };
 }
 
 const styles = StyleSheet.create({
+  header: {
+    alignItems: "center",
+    backgroundColor: "#103494",
+    flexDirection: "row",
+    gap: 10,
+    marginHorizontal: -16,
+    marginTop: -14,
+    minHeight: 70,
+    paddingBottom: 14,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+  },
+  backButton: {
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.16)",
+    borderColor: "rgba(255,255,255,0.32)",
+    borderRadius: 8,
+    borderWidth: 1,
+    height: 46,
+    justifyContent: "center",
+    width: 46,
+  },
+  headerText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  title: {
+    color: "#FFFFFF",
+    fontSize: 22,
+    fontWeight: "700",
+    letterSpacing: 0,
+    lineHeight: 26,
+  },
+  subtitle: {
+    color: "rgba(255,255,255,0.84)",
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 2,
+  },
   createButton: {
     alignItems: "center",
-    backgroundColor: bento.primary,
-    borderRadius: 15,
-    height: 44,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderColor: "rgba(255,255,255,0.38)",
+    borderRadius: 8,
+    borderWidth: 1,
+    height: 46,
     justifyContent: "center",
-    width: 44,
+    width: 46,
   },
   sectionHeader: {
     alignItems: "center",
@@ -217,7 +412,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: bento.text,
     fontSize: 16,
-    fontWeight: "900",
+    fontWeight: "700",
   },
   sectionHint: {
     color: bento.textSecondary,
@@ -228,7 +423,7 @@ const styles = StyleSheet.create({
   sectionMeta: {
     color: bento.primaryDark,
     fontSize: 12,
-    fontWeight: "900",
+    fontWeight: "700",
   },
   list: {
     gap: 12,
@@ -241,7 +436,7 @@ const styles = StyleSheet.create({
   },
   avatar: {
     alignItems: "center",
-    borderRadius: 17,
+    borderRadius: 8,
     borderWidth: 1,
     height: 54,
     justifyContent: "center",
@@ -249,7 +444,7 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     fontSize: 17,
-    fontWeight: "900",
+    fontWeight: "700",
   },
   customerInfo: {
     flex: 1,
@@ -264,7 +459,7 @@ const styles = StyleSheet.create({
     color: bento.text,
     flex: 1,
     fontSize: 16,
-    fontWeight: "900",
+    fontWeight: "700",
   },
   addressRow: {
     alignItems: "center",
@@ -282,11 +477,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: bento.surfaceAlt,
     borderColor: bento.border,
-    borderRadius: 16,
+    borderRadius: 8,
     borderWidth: 1,
     flexDirection: "row",
     gap: 9,
-    padding: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
   },
   metaItem: {
     alignItems: "center",
@@ -299,7 +495,7 @@ const styles = StyleSheet.create({
     color: bento.textSecondary,
     flex: 1,
     fontSize: 11,
-    fontWeight: "800",
+    fontWeight: "600",
   },
   metaTextPrimary: {
     color: bento.primaryDark,

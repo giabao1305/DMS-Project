@@ -30,8 +30,19 @@ export class UsersController {
     return this.usersService.create(createUserDto);
   }
 
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR)
   @Post('sellers')
-  createSeller(@Body() createUserDto: CreateUserDto) {
+  createSeller(
+    @Body() createUserDto: CreateUserDto,
+    @CurrentUser() user: UserDocument,
+  ) {
+    if (user.role === UserRole.DISTRIBUTOR) {
+      return this.usersService.createSellerForDistributor(
+        createUserDto,
+        user._id.toString(),
+      );
+    }
+
     return this.usersService.create({
       ...createUserDto,
       role: UserRole.SELLER,
@@ -49,19 +60,39 @@ export class UsersController {
     return this.usersService.findSellersForUser(user._id.toString(), user.role);
   }
 
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR)
   @Get(':id')
-  findById(@Param('id') id: string) {
-    return this.usersService.findById(id);
+  findById(@Param('id') id: string, @CurrentUser() user: UserDocument) {
+    return this.usersService.findByIdForUser(
+      id,
+      user._id.toString(),
+      user.role,
+    );
   }
 
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR)
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.usersService.update(id, updateUserDto);
+  update(
+    @Param('id') id: string,
+    @Body() updateUserDto: UpdateUserDto,
+    @CurrentUser() user: UserDocument,
+  ) {
+    return this.usersService.updateForUser(
+      id,
+      updateUserDto,
+      user._id.toString(),
+      user.role,
+    );
   }
 
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR)
   @Patch(':id/status')
-  toggleStatus(@Param('id') id: string) {
-    return this.usersService.toggleStatus(id);
+  toggleStatus(@Param('id') id: string, @CurrentUser() user: UserDocument) {
+    return this.usersService.toggleStatusForUser(
+      id,
+      user._id.toString(),
+      user.role,
+    );
   }
 
   @Delete(':id')

@@ -14,17 +14,22 @@ import {
   Empty,
   Flex,
   Input,
+  Alert,
   Table,
   Tag,
   Typography,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 
 import AdminBreadcrumb from "@/components/ui/AdminBreadcrumb";
 import AdminPageHeader from "@/components/ui/AdminPageHeader";
-import { useGetInventoryTransactionsQuery } from "@/features/inventory/inventoryService";
+import {
+  inventoryService,
+  useGetInventoryTransactionsQuery,
+} from "@/features/inventory/inventoryService";
 import type {
   InventoryTransaction,
   InventoryType,
@@ -46,8 +51,8 @@ const typeMap: Record<InventoryType, { label: string; color: string }> = {
   import: { label: "Nhập kho", color: "green" },
   export: { label: "Xuất kho", color: "orange" },
   order: { label: "Đơn hàng", color: "blue" },
-  return: { label: "Trả hàng", color: "purple" },
-  adjustment: { label: "Điều chỉnh", color: "purple" },
+  return: { label: "Trả hàng", color: "blue" },
+  adjustment: { label: "Điều chỉnh", color: "blue" },
 };
 
 type InventoryRealtimePayload = {
@@ -70,7 +75,9 @@ const getCreatedByName = (user: InventoryTransaction["createdBy"]) =>
 
 export default function AdminInventoryPage() {
   const dispatch = useAppDispatch();
+  const searchParams = useSearchParams();
   const [keyword, setKeyword] = useState("");
+  const exported = searchParams.get("exported") === "1";
 
   const {
     data: products = [],
@@ -105,6 +112,15 @@ export default function AdminInventoryPage() {
       refetchTransactions();
     },
   );
+
+  useEffect(() => {
+    if (!exported) return;
+
+    dispatch(productService.util.invalidateTags(["Products"]));
+    dispatch(inventoryService.util.invalidateTags(["Inventory"]));
+    refetchProducts();
+    refetchTransactions();
+  }, [dispatch, exported, refetchProducts, refetchTransactions]);
 
   const overview = useMemo(() => {
     const lowStock = products.filter(
@@ -158,7 +174,14 @@ export default function AdminInventoryPage() {
   const handleExportProducts = () => {
     exportCsv(
       `ton-kho-${new Date().toISOString().slice(0, 10)}.csv`,
-      ["Mã SP", "Tên sản phẩm", "Đơn vị", "Tồn kho", "Tồn tối thiểu", "Trạng thái"],
+      [
+        "Mã SP",
+        "Tên sản phẩm",
+        "Đơn vị",
+        "Tồn kho",
+        "Tồn tối thiểu",
+        "Trạng thái",
+      ],
       filteredProducts.map((product) => [
         product.code,
         product.name,
@@ -266,7 +289,9 @@ export default function AdminInventoryPage() {
       width: 260,
       ellipsis: true,
       render: (product) => (
-        <Text className="admin-inventory-strong">{getProductName(product)}</Text>
+        <Text className="admin-inventory-strong">
+          {getProductName(product)}
+        </Text>
       ),
     },
     {
@@ -275,7 +300,10 @@ export default function AdminInventoryPage() {
       width: 150,
       align: "center",
       render: (type: InventoryType) => (
-        <Tag color={typeMap[type]?.color} className="admin-inventory-status-tag">
+        <Tag
+          color={typeMap[type]?.color}
+          className="admin-inventory-status-tag"
+        >
           {typeMap[type]?.label}
         </Tag>
       ),
@@ -346,6 +374,16 @@ export default function AdminInventoryPage() {
         }
       />
 
+      {exported && (
+        <Alert
+          showIcon
+          type="success"
+          style={{ marginBottom: 16 }}
+          message="Đã xuất kho sang kho NPP"
+          description="Tồn kho chính đã được trừ và tồn kho NPP đã được cộng. Danh sách tồn kho đang hiển thị dữ liệu mới nhất."
+        />
+      )}
+
       <section className="admin-inventory-shell">
         <div className="admin-inventory-hero">
           <div>
@@ -401,7 +439,11 @@ export default function AdminInventoryPage() {
               </Text>
             </div>
 
-            <Flex gap={12} wrap="wrap" className="admin-inventory-filter-actions">
+            <Flex
+              gap={12}
+              wrap="wrap"
+              className="admin-inventory-filter-actions"
+            >
               <Input
                 allowClear
                 size="large"
@@ -458,7 +500,9 @@ export default function AdminInventoryPage() {
             columns={productColumns}
             scroll={{ x: 1050 }}
             rowClassName={(record) =>
-              record._id === highlightedProductId ? "realtime-highlight-row" : ""
+              record._id === highlightedProductId
+                ? "realtime-highlight-row"
+                : ""
             }
             pagination={{
               pageSize: 10,
@@ -467,7 +511,9 @@ export default function AdminInventoryPage() {
               showTotal: (total) => `Tổng ${total} sản phẩm`,
             }}
             locale={{
-              emptyText: <Empty description="Không tìm thấy sản phẩm phù hợp" />,
+              emptyText: (
+                <Empty description="Không tìm thấy sản phẩm phù hợp" />
+              ),
             }}
           />
         </Card>
@@ -508,7 +554,9 @@ export default function AdminInventoryPage() {
               showTotal: (total) => `Tổng ${total} giao dịch kho`,
             }}
             locale={{
-              emptyText: <Empty description="Không tìm thấy giao dịch phù hợp" />,
+              emptyText: (
+                <Empty description="Không tìm thấy giao dịch phù hợp" />
+              ),
             }}
           />
         </Card>
@@ -531,7 +579,11 @@ export default function AdminInventoryPage() {
           border: 1px solid rgba(125, 211, 252, 0.2);
           border-radius: 8px;
           background:
-            radial-gradient(circle at 86% 18%, rgba(16, 185, 129, 0.24), transparent 28%),
+            radial-gradient(
+              circle at 86% 18%,
+              rgba(16, 185, 129, 0.24),
+              transparent 28%
+            ),
             linear-gradient(135deg, #071a24 0%, #102b3a 52%, #12394a 100%);
           box-shadow: 0 22px 46px rgba(7, 26, 36, 0.18);
         }

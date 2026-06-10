@@ -17,6 +17,7 @@ import {
   Flex,
   Input,
   Segmented,
+  Select,
   Table,
   Tag,
   Typography,
@@ -29,9 +30,10 @@ import { useMemo, useState } from "react";
 import AdminBreadcrumb from "@/components/ui/AdminBreadcrumb";
 import AdminPageHeader from "@/components/ui/AdminPageHeader";
 import type { Customer } from "@/features/customers/customerTypes";
+import { useGetUsersQuery } from "@/features/users/userService";
+import type { User } from "@/features/users/userTypes";
 import { useGetVisitsPageQuery } from "@/features/visits/visitService";
 import type { Visit, VisitStatus } from "@/features/visits/visitTypes";
-import type { User } from "@/features/users/userTypes";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useRealtimeRefetch } from "@/hooks/useRealtimeRefetch";
 
@@ -75,9 +77,15 @@ const splitDateTime = (value?: string) => {
 export default function AdminVisitsPage() {
   const [keyword, setKeyword] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [distributor, setDistributor] = useState<string>();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(8);
   const searchKeyword = useDebouncedValue(keyword);
+  const { data: users = [] } = useGetUsersQuery();
+  const distributors = useMemo(
+    () => users.filter((user) => user.role === "distributor" && user.isActive),
+    [users],
+  );
 
   const queryArgs = useMemo(
     () => ({
@@ -85,10 +93,11 @@ export default function AdminVisitsPage() {
       limit,
       search: searchKeyword.trim() || undefined,
       status: statusFilter === "all" ? undefined : statusFilter,
+      distributor,
       sortBy: "createdAt",
       sortOrder: "desc" as const,
     }),
-    [limit, page, searchKeyword, statusFilter],
+    [distributor, limit, page, searchKeyword, statusFilter],
   );
 
   const {
@@ -137,6 +146,11 @@ export default function AdminVisitsPage() {
     setPage(1);
   };
 
+  const handleDistributorChange = (value?: string) => {
+    setDistributor(value);
+    setPage(1);
+  };
+
   const handleTableChange = (pagination: TablePaginationConfig) => {
     setPage(pagination.current ?? 1);
     setLimit(pagination.pageSize ?? 8);
@@ -151,11 +165,17 @@ export default function AdminVisitsPage() {
         fixed: "left",
         render: (seller) => (
           <Flex align="center" gap={12} className="admin-visits-person">
-            <Flex align="center" justify="center" className="admin-visits-avatar">
+            <Flex
+              align="center"
+              justify="center"
+              className="admin-visits-avatar"
+            >
               <UserOutlined />
             </Flex>
             <div className="admin-visits-cell-copy">
-              <Text className="admin-visits-strong">{getSellerName(seller)}</Text>
+              <Text className="admin-visits-strong">
+                {getSellerName(seller)}
+              </Text>
               <Text className="admin-visits-muted">Nhân viên phụ trách</Text>
             </div>
           </Flex>
@@ -254,7 +274,10 @@ export default function AdminVisitsPage() {
         width: 260,
         ellipsis: true,
         render: (value?: string) => (
-          <Text className="admin-visits-note" type={value ? undefined : "secondary"}>
+          <Text
+            className="admin-visits-note"
+            type={value ? undefined : "secondary"}
+          >
             {value || "-"}
           </Text>
         ),
@@ -316,7 +339,9 @@ export default function AdminVisitsPage() {
               <div>
                 <AimOutlined />
                 <span>Khoảng cách TB</span>
-                <strong>{overview.averageDistance.toLocaleString("vi-VN")}m</strong>
+                <strong>
+                  {overview.averageDistance.toLocaleString("vi-VN")}m
+                </strong>
               </div>
             </div>
           </div>
@@ -362,6 +387,22 @@ export default function AdminVisitsPage() {
                   { value: "checked_in", label: "Đã check-in" },
                   { value: "checked_out", label: "Đã check-out" },
                 ]}
+              />
+              <Select
+                allowClear
+                showSearch
+                size="large"
+                placeholder="Lọc nhà phân phối"
+                optionFilterProp="label"
+                value={distributor}
+                onChange={handleDistributorChange}
+                className="admin-visits-distributor-select"
+                options={distributors.map((item) => ({
+                  value: item._id,
+                  label: `${item.code ? `${item.code} - ` : ""}${
+                    item.companyName || item.fullName || item.email
+                  }`,
+                }))}
               />
             </Flex>
           </Flex>
@@ -429,7 +470,11 @@ export default function AdminVisitsPage() {
           border: 1px solid rgba(125, 211, 252, 0.2);
           border-radius: 8px;
           background:
-            radial-gradient(circle at 86% 18%, rgba(16, 185, 129, 0.24), transparent 28%),
+            radial-gradient(
+              circle at 86% 18%,
+              rgba(16, 185, 129, 0.24),
+              transparent 28%
+            ),
             linear-gradient(135deg, #071a24 0%, #102b3a 52%, #12394a 100%);
           box-shadow: 0 22px 46px rgba(7, 26, 36, 0.18);
         }
@@ -611,8 +656,13 @@ export default function AdminVisitsPage() {
           width: 210px !important;
         }
 
+        .admin-visits-distributor-select {
+          width: 260px !important;
+        }
+
         .admin-visits-search,
-        .admin-visits-select .ant-select-selector {
+        .admin-visits-select .ant-select-selector,
+        .admin-visits-distributor-select .ant-select-selector {
           border-radius: 8px !important;
         }
 
@@ -841,7 +891,8 @@ export default function AdminVisitsPage() {
 
           .admin-visits-filter-actions,
           .admin-visits-search,
-          .admin-visits-select {
+          .admin-visits-select,
+          .admin-visits-distributor-select {
             width: 100% !important;
           }
         }

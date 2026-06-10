@@ -42,6 +42,18 @@ export class Route {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   seller!: Types.ObjectId;
 
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  substituteSeller?: Types.ObjectId;
+
+  @Prop({ trim: true })
+  substituteReason?: string;
+
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  substituteAssignedBy?: Types.ObjectId;
+
+  @Prop()
+  substituteAssignedAt?: Date;
+
   @Prop({ required: true })
   workDate!: Date;
 

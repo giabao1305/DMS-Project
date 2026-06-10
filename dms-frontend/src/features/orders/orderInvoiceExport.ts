@@ -121,8 +121,36 @@ const numberToVietnameseWords = (value: number) => {
 };
 
 const getCustomerInfo = (order: Order, options: InvoiceExportOptions) => {
+  if (order.orderType === "manufacturer_to_distributor") {
+    const distributor =
+      typeof order.distributor === "string"
+        ? undefined
+        : (order.distributor as User);
+
+    return {
+      name:
+        options.customerName ||
+        order.deliveryRecipientName ||
+        distributor?.companyName ||
+        distributor?.fullName ||
+        (typeof order.distributor === "string" ? order.distributor : "-"),
+      phone:
+        options.customerPhone ||
+        order.deliveryPhone ||
+        distributor?.phone ||
+        "-",
+      address:
+        options.customerAddress ||
+        order.deliveryAddress ||
+        distributor?.address ||
+        "-",
+    };
+  }
+
   const customer =
-    typeof order.customer === "string" ? undefined : (order.customer as Customer);
+    typeof order.customer === "string"
+      ? undefined
+      : (order.customer as Customer);
 
   return {
     name:
@@ -135,6 +163,10 @@ const getCustomerInfo = (order: Order, options: InvoiceExportOptions) => {
 };
 
 const getSellerName = (order: Order, options: InvoiceExportOptions) => {
+  if (order.orderType === "manufacturer_to_distributor") {
+    return "Nestlé";
+  }
+
   if (options.sellerName) return options.sellerName;
   if (typeof order.seller === "string") return order.seller;
   return (order.seller as User)?.fullName || "-";
@@ -147,10 +179,20 @@ const getProductUnit = (item: Order["items"][number]) => {
 
 const buildInvoiceHtml = (options: InvoiceExportOptions) => {
   const { order, amounts } = options;
+  const isSupplyOrder = order.orderType === "manufacturer_to_distributor";
   const customer = getCustomerInfo(order, options);
   const sellerName = getSellerName(order, options);
   const invoiceDate = formatDateTime(order.deliveredAt || order.createdAt);
   const issuedAt = formatDateTime();
+  const requestedDeliveryDate = order.requestedDeliveryDate
+    ? formatDateTime(order.requestedDeliveryDate)
+    : "-";
+  const documentTitle = isSupplyOrder
+    ? "Phiếu đề xuất nhập hàng"
+    : "Hóa đơn bán hàng";
+  const documentSubtitle = isSupplyOrder
+    ? "Nhà phân phối đề xuất nhập hàng từ kho chính"
+    : "Thông tin đơn hàng, hàng hóa và tổng thanh toán";
 
   const rows = order.items
     .map(
@@ -171,7 +213,7 @@ const buildInvoiceHtml = (options: InvoiceExportOptions) => {
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Hóa đơn ${htmlEscape(order.orderCode)}</title>
+  <title>${htmlEscape(documentTitle)} ${htmlEscape(order.orderCode)}</title>
   <style>
     @page { size: A4; margin: 16mm; }
     * { box-sizing: border-box; }
@@ -365,27 +407,32 @@ const buildInvoiceHtml = (options: InvoiceExportOptions) => {
         <div>Mã số thuế: ................................</div>
       </div>
       <div class="meta">
-        <strong>Số hóa đơn: ${htmlEscape(order.orderCode)}</strong>
-        <div>Ngày hóa đơn: ${htmlEscape(invoiceDate)}</div>
+        <strong>Số chứng từ: ${htmlEscape(order.orderCode)}</strong>
+        <div>Ngày chứng từ: ${htmlEscape(invoiceDate)}</div>
         <div>Ngày xuất file: ${htmlEscape(issuedAt)}</div>
       </div>
     </section>
 
     <section class="title">
-      <h1>Hóa đơn bán hàng</h1>
-      <p>Thông tin đơn hàng, hàng hóa và tổng thanh toán</p>
+      <h1>${htmlEscape(documentTitle)}</h1>
+      <p>${htmlEscape(documentSubtitle)}</p>
     </section>
 
     <section class="info">
       <div class="box">
-        <h3>Người mua hàng</h3>
-        <div class="line"><span class="label">Khách hàng:</span> ${htmlEscape(customer.name)}</div>
+        <h3>${isSupplyOrder ? "Nhà phân phối đề xuất" : "Người mua hàng"}</h3>
+        <div class="line"><span class="label">${isSupplyOrder ? "NPP:" : "Khách hàng:"}</span> ${htmlEscape(customer.name)}</div>
         <div class="line"><span class="label">Điện thoại:</span> ${htmlEscape(customer.phone)}</div>
         <div class="line"><span class="label">Địa chỉ:</span> ${htmlEscape(customer.address)}</div>
       </div>
       <div class="box">
-        <h3>Thông tin bán hàng</h3>
-        <div class="line"><span class="label">Nhân viên:</span> ${htmlEscape(sellerName)}</div>
+        <h3>${isSupplyOrder ? "Thông tin cấp hàng" : "Thông tin bán hàng"}</h3>
+        <div class="line"><span class="label">${isSupplyOrder ? "Nguồn cấp:" : "Nhân viên:"}</span> ${htmlEscape(sellerName)}</div>
+        ${
+          isSupplyOrder
+            ? `<div class="line"><span class="label">Ngày muốn nhận:</span> ${htmlEscape(requestedDeliveryDate)}</div>`
+            : ""
+        }
         <div class="line"><span class="label">Khuyến mãi:</span> ${htmlEscape(amounts.promotion?.name || "-")}</div>
         <div class="line"><span class="label">Thanh toán:</span> Tiền mặt / Chuyển khoản</div>
         <div class="line"><span class="label">Người xuất:</span> ${htmlEscape(options.issuedBy || "-")}</div>
@@ -429,9 +476,9 @@ const buildInvoiceHtml = (options: InvoiceExportOptions) => {
     </div>
 
     <section class="signatures">
-      <div class="signature">Người lập hóa đơn<span>Ký, ghi rõ họ tên</span></div>
-      <div class="signature">Người giao hàng<span>Ký, ghi rõ họ tên</span></div>
-      <div class="signature">Khách hàng<span>Ký, ghi rõ họ tên</span></div>
+      <div class="signature">Người lập phiếu<span>Ký, ghi rõ họ tên</span></div>
+      <div class="signature">${isSupplyOrder ? "Admin duyệt" : "Người giao hàng"}<span>Ký, ghi rõ họ tên</span></div>
+      <div class="signature">${isSupplyOrder ? "Nhà phân phối" : "Khách hàng"}<span>Ký, ghi rõ họ tên</span></div>
     </section>
   </main>
 </body>
@@ -452,8 +499,12 @@ const downloadFile = (filename: string, content: string, type: string) => {
 
 export function exportOrderInvoiceExcel(options: InvoiceExportOptions) {
   const safeOrderCode = getSafeName(options.order.orderCode) || "hoa-don";
+  const prefix =
+    options.order.orderType === "manufacturer_to_distributor"
+      ? "phieu-de-xuat-nhap-hang"
+      : "hoa-don";
   downloadFile(
-    `hoa-don-${safeOrderCode}.xls`,
+    `${prefix}-${safeOrderCode}.xls`,
     `\uFEFF${buildInvoiceHtml(options)}`,
     "application/vnd.ms-excel;charset=utf-8",
   );

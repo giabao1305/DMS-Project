@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Card, Col, Flex, Progress, Row, Statistic, Typography } from "antd";
 import type { ReactNode } from "react";
@@ -26,7 +26,30 @@ export type DistributorStatusItem = {
   icon: ReactNode;
 };
 
+export function DistributorBreadcrumb() {
+  return <SellerBreadcrumb />;
+}
+
+export function DistributorPageHeader({
+  eyebrow: _eyebrow,
+  title,
+  description,
+  extra,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+  extra?: ReactNode;
+}) {
+  void _eyebrow;
+
+  return (
+    <SellerPageHeader title={title} description={description} extra={extra} />
+  );
+}
+
 export function DistributorPageShell({
+  eyebrow,
   title,
   description,
   stats = [],
@@ -42,8 +65,9 @@ export function DistributorPageShell({
 }) {
   return (
     <>
-      <SellerBreadcrumb />
-      <SellerPageHeader
+      <DistributorBreadcrumb />
+      <DistributorPageHeader
+        eyebrow={eyebrow}
         title={title}
         description={description}
         extra={extra}
@@ -52,9 +76,13 @@ export function DistributorPageShell({
       <Flex vertical gap={20} className="distributor-page-stack">
         {stats.length > 0 && (
           <Row gutter={[14, 14]}>
-            {stats.map((item) => (
+            {stats.map((item, index) => (
               <Col xs={24} sm={12} xl={6} key={item.title}>
-                <Card className="distributor-stat-card">
+                <Card
+                  className={`distributor-stat-card distributor-stat-card-tone-${
+                    (index % 6) + 1
+                  }`}
+                >
                   <Flex align="center" gap={13}>
                     <span className="distributor-stat-icon">{item.icon}</span>
                     <Statistic title={item.title} value={item.value} />
@@ -79,28 +107,25 @@ export function DistributorPageShell({
 export function DistributorTableCard({
   title,
   description,
+  extra,
   children,
 }: {
   title: string;
   description?: string;
+  extra?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <Card
       className="distributor-panel-card distributor-table-card"
-      title={
-        <Flex vertical gap={2}>
-          <Text strong className="distributor-table-card-title">
-            {title}
-          </Text>
-          {description && (
-            <Text className="distributor-table-card-description">
-              {description}
-            </Text>
-          )}
-        </Flex>
-      }
+      title={<Text className="distributor-table-card-title">{title}</Text>}
+      extra={extra}
     >
+      {description && (
+        <Text className="distributor-table-card-description">
+          {description}
+        </Text>
+      )}
       {children}
     </Card>
   );
@@ -175,8 +200,8 @@ export function DistributorCommandCenter({
                   </Flex>
                   <Progress
                     percent={progressPercent}
-                    strokeColor="#0d9488"
-                    trailColor="#d9eee9"
+                    strokeColor="#2563eb"
+                    trailColor="#dbeafe"
                     showInfo={false}
                   />
                 </div>
@@ -202,3 +227,8 @@ export function DistributorCommandCenter({
     </Card>
   );
 }
+
+
+
+
+

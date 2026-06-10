@@ -25,7 +25,7 @@ const routeStatusMap: Record<RouteStatus, { color: string; text: string }> = {
 const customerStatusMap: Record<RouteCustomerStatus, { color: string; text: string }> = {
   pending: { color: "default", text: "Chưa ghé" },
   checked_in: { color: "processing", text: "Đang ghé" },
-  visited: { color: "green", text: "Đã ghé" },
+  visited: { color: "blue", text: "Đã ghé" },
   skipped: { color: "red", text: "Bỏ qua" },
 };
 
@@ -43,6 +43,15 @@ const getCustomer = (customer: RouteCustomer["customer"]) => {
   };
 };
 
+const sortRouteCustomers = (customers: RouteCustomer[]) =>
+  [...customers].sort(
+    (left, right) =>
+      getRouteOrder(left.orderIndex) - getRouteOrder(right.orderIndex),
+  );
+
+const getRouteOrder = (value?: number) =>
+  Number.isFinite(value) && value ? value : Number.MAX_SAFE_INTEGER;
+
 export default function DistributorRouteDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { data: route, isLoading } = useGetRouteByIdQuery(id);
@@ -55,7 +64,7 @@ export default function DistributorRouteDetailPage() {
       dataIndex: "orderIndex",
       width: 80,
       align: "center",
-      render: (value: number) => value + 1,
+      render: (value: number) => value || "-",
     },
     {
       title: "Khách hàng",
@@ -137,7 +146,7 @@ export default function DistributorRouteDetailPage() {
               className="distributor-detail-table"
               rowKey={(_, index) => String(index)}
               columns={columns}
-              dataSource={[...route.customers].sort((a, b) => a.orderIndex - b.orderIndex)}
+              dataSource={sortRouteCustomers(route.customers)}
               pagination={false}
               scroll={{ x: 940 }}
             />

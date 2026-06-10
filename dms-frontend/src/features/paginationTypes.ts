@@ -8,6 +8,8 @@ export type PaginationQuery = {
   sortOrder?: SortOrder;
   status?: string;
   module?: string;
+  type?: string;
+  distributor?: string;
   fromDate?: string;
   toDate?: string;
 };

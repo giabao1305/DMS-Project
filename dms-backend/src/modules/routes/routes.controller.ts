@@ -17,6 +17,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { UserRole } from '../users/schemas/user.schema';
 import type { UserDocument } from '../users/schemas/user.schema';
+import { AssignSubstituteRouteDto } from './dto/assign-substitute-route.dto';
 import { CreateRouteDto } from './dto/create-route.dto';
 import { UpdateRouteStatusDto } from './dto/update-route-status.dto';
 import { UpdateRouteDto } from './dto/update-route.dto';
@@ -81,6 +82,31 @@ export class RoutesController {
     return this.routesService.update(
       id,
       updateRouteDto,
+      user._id.toString(),
+      user.role,
+    );
+  }
+
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR)
+  @Patch(':id/substitute')
+  assignSubstitute(
+    @Param('id') id: string,
+    @Body() assignSubstituteRouteDto: AssignSubstituteRouteDto,
+    @CurrentUser() user: UserDocument,
+  ) {
+    return this.routesService.assignSubstitute(
+      id,
+      assignSubstituteRouteDto,
+      user._id.toString(),
+      user.role,
+    );
+  }
+
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR)
+  @Delete(':id/substitute')
+  clearSubstitute(@Param('id') id: string, @CurrentUser() user: UserDocument) {
+    return this.routesService.clearSubstitute(
+      id,
       user._id.toString(),
       user.role,
     );

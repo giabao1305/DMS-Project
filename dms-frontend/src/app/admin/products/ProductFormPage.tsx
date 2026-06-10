@@ -46,6 +46,18 @@ type ProductFormMode = "create" | "edit";
 type ProductFormValues = CreateProductRequest & UpdateProductRequest;
 const DEFAULT_PRODUCT_CODE_EXAMPLE = "NES-COF-NCF-001";
 
+const formatProductCodeSuffix = (value: string) => {
+  const raw = value
+    .toUpperCase()
+    .replace(/^NES-[A-Z0-9]{2,6}-/i, "")
+    .replace(/[^A-Z0-9]/g, "");
+  const match = raw.match(/^(.+?)(\d{1,3})$/);
+
+  if (!match || raw.length <= 3) return raw;
+
+  return `${match[1]}-${match[2]}`;
+};
+
 function ProductCodeInput({
   value,
   onChange,
@@ -68,10 +80,7 @@ function ProductCodeInput({
         value={suffix}
         disabled={prefix === "NES-"}
         onChange={(event) => {
-          const nextSuffix = event.target.value
-            .toUpperCase()
-            .replace(/^NES-[A-Z0-9]{2,6}-/i, "")
-            .replace(/[^A-Z0-9-]/g, "");
+          const nextSuffix = formatProductCodeSuffix(event.target.value);
           onChange?.(`${prefix}${nextSuffix}`);
         }}
       />

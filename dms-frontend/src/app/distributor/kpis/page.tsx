@@ -1,13 +1,25 @@
-"use client";
+﻿"use client";
 
 import {
   AimOutlined,
   DollarOutlined,
+  EditOutlined,
+  PlusOutlined,
+  ReloadOutlined,
   ShoppingCartOutlined,
   TrophyOutlined,
 } from "@ant-design/icons";
-import { Empty, Progress, Table, Typography } from "antd";
+import {
+  App,
+  Button,
+  Empty,
+  Progress,
+  Space,
+  Table,
+  Typography,
+} from "antd";
 import type { ColumnsType } from "antd/es/table";
+import Link from "next/link";
 import { useMemo } from "react";
 
 import {
@@ -15,16 +27,20 @@ import {
   DistributorPageShell,
   DistributorTableCard,
 } from "@/components/distributor/DistributorPageShell";
-import { useGetMyKpisQuery } from "@/features/reports/reportService";
+import {
+  useGetMyKpisQuery,
+  useRefreshKpiMutation,
+} from "@/features/reports/reportService";
 import type { Kpi } from "@/features/reports/reportTypes";
 
 const { Text } = Typography;
 const money = new Intl.NumberFormat("vi-VN");
-
 export default function DistributorKpisPage() {
   const { data = [], isLoading } = useGetMyKpisQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
+  const { message } = App.useApp();
+  const [refreshKpi, { isLoading: refreshing }] = useRefreshKpiMutation();
 
   const stats = useMemo(() => {
     const averagePerformance = data.length
@@ -54,6 +70,15 @@ export default function DistributorKpisPage() {
     if (!data.length) return undefined;
     return [...data].sort((a, b) => b.performanceRate - a.performanceRate)[0];
   }, [data]);
+
+  const handleRefresh = async (record: Kpi) => {
+    try {
+      await refreshKpi(record._id).unwrap();
+      message.success("Đã làm mới KPI");
+    } catch {
+      message.error("Không thể làm mới KPI");
+    }
+  };
 
   const columns: ColumnsType<Kpi> = [
     {
@@ -94,6 +119,32 @@ export default function DistributorKpisPage() {
         <Progress percent={Math.round(value || 0)} size="small" />
       ),
     },
+    {
+      title: "Thao tác",
+      width: 150,
+      fixed: "right",
+      render: (_, record) => (
+        <Space size={4}>
+          <Link href={`/distributor/kpis/${record._id}/edit`}>
+            <Button
+              type="text"
+              icon={<EditOutlined />}
+              className="distributor-row-action distributor-row-action-edit"
+            >
+              Sửa
+            </Button>
+          </Link>
+          <Button
+            type="text"
+            icon={<ReloadOutlined />}
+            loading={refreshing}
+            onClick={() => handleRefresh(record)}
+          >
+            Làm mới
+          </Button>
+        </Space>
+      ),
+    },
   ];
 
   return (
@@ -101,6 +152,13 @@ export default function DistributorKpisPage() {
       eyebrow="KPI"
       title="KPI đội DSR"
       description="Theo dõi mục tiêu, doanh thu, đơn hàng và lượt ghé để phát hiện DSR cần hỗ trợ."
+      extra={
+        <Link href="/distributor/kpis/create">
+          <Button type="primary" icon={<PlusOutlined />}>
+            Tạo KPI
+          </Button>
+        </Link>
+      }
     >
       <DistributorCommandCenter
         eyebrow="Performance center"
@@ -161,6 +219,12 @@ export default function DistributorKpisPage() {
           locale={{ emptyText: <Empty description="Chưa có KPI" /> }}
         />
       </DistributorTableCard>
+
     </DistributorPageShell>
   );
 }
+
+
+
+
+

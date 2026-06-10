@@ -1,33 +1,65 @@
-﻿import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useState } from "react";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import {
   ActivityIndicator,
   Image,
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
+  TextInput as NativeTextInput,
   View,
   type KeyboardTypeOptions,
   type StyleProp,
   type TextStyle,
   type ViewStyle,
 } from "react-native";
+import {
+  Button as PaperButton,
+  TextInput as PaperTextInput,
+} from "react-native-paper";
 
-import { bento, bentoSoftShadow, spacing } from "../theme";
+import { atlas, atlasSoftShadow, spacing, radius } from "../theme";
 import { toVietnameseError } from "../utils/errorMessage";
 
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>["name"];
 type BadgeTone = "muted" | "success" | "warning" | "danger" | "info";
-type MockupTone = "primary" | "blue" | "success" | "warning" | "danger" | "muted";
+type MockupTone =
+  | "primary"
+  | "blue"
+  | "success"
+  | "warning"
+  | "danger"
+  | "muted";
 
-const mockupTones: Record<MockupTone, { color: string; bg: string; border: string }> = {
-  primary: { color: bento.primaryDark, bg: bento.primarySoft, border: bento.borderStrong },
-  blue: { color: bento.route, bg: bento.routeSoft, border: "#CFE0FF" },
-  success: { color: bento.success, bg: bento.successSoft, border: "#BDEEDB" },
-  warning: { color: bento.warning, bg: bento.warningSoft, border: "#FFE0A8" },
-  danger: { color: bento.danger, bg: bento.dangerSoft, border: "#FFCACA" },
-  muted: { color: bento.textSecondary, bg: bento.surfaceAlt, border: bento.border },
+const mockupTones: Record<
+  MockupTone,
+  { color: string; bg: string; border: string }
+> = {
+  primary: {
+    color: "#2563EB",
+    bg: "#EFF6FF",
+    border: "#BFDBFE",
+  },
+  blue: { color: "#0891B2", bg: "#ECFEFF", border: "#A5F3FC" },
+  success: {
+    color: "#059669",
+    bg: "#ECFDF5",
+    border: "#A7F3D0",
+  },
+  warning: {
+    color: "#D97706",
+    bg: "#FFFBEB",
+    border: "#FDE68A",
+  },
+  danger: {
+    color: "#DC2626",
+    bg: "#FEF2F2",
+    border: "#FECACA",
+  },
+  muted: {
+    color: "#64748B",
+    bg: "#F8FAFC",
+    border: "#CBD5E1",
+  },
 };
 
 export function Card({
@@ -39,7 +71,11 @@ export function Card({
   style?: StyleProp<ViewStyle>;
   compact?: boolean;
 }) {
-  return <View style={[styles.card, compact && styles.cardCompact, style]}>{children}</View>;
+  return (
+    <View style={[styles.card, compact && styles.cardCompact, style]}>
+      {children}
+    </View>
+  );
 }
 
 export function AppScreen({
@@ -51,7 +87,13 @@ export function AppScreen({
   style?: StyleProp<ViewStyle>;
   compact?: boolean;
 }) {
-  return <View style={[styles.mockScreen, compact && styles.mockScreenCompact, style]}>{children}</View>;
+  return (
+    <View
+      style={[styles.mockScreen, compact && styles.mockScreenCompact, style]}
+    >
+      {children}
+    </View>
+  );
 }
 
 export function MockupHeader({
@@ -70,14 +112,31 @@ export function MockupHeader({
   return (
     <View style={styles.mockHeader}>
       {onBack ? (
-        <Pressable onPress={onBack} hitSlop={8} style={({ pressed }) => [styles.mockHeaderButton, pressed && styles.buttonPressed]}>
-          <MaterialCommunityIcons name="chevron-left" size={24} color={bento.text} />
+        <Pressable
+          onPress={onBack}
+          hitSlop={8}
+          style={({ pressed }) => [
+            styles.mockHeaderButton,
+            pressed && styles.buttonPressed,
+          ]}
+        >
+          <MaterialCommunityIcons
+            name="chevron-left"
+            size={24}
+            color="#FFFFFF"
+          />
         </Pressable>
       ) : null}
       <View style={styles.mockHeaderText}>
         {eyebrow ? <Text style={styles.mockEyebrow}>{eyebrow}</Text> : null}
-        <Text style={styles.mockTitle} numberOfLines={1}>{title}</Text>
-        {subtitle ? <Text style={styles.mockSubtitle} numberOfLines={1}>{subtitle}</Text> : null}
+        <Text style={styles.mockTitle} numberOfLines={1}>
+          {title}
+        </Text>
+        {subtitle ? (
+          <Text style={styles.mockSubtitle} numberOfLines={1}>
+            {subtitle}
+          </Text>
+        ) : null}
       </View>
       {action ? <View style={styles.mockHeaderAction}>{action}</View> : null}
     </View>
@@ -106,23 +165,66 @@ export function MetricCard({
     <>
       <View style={styles.mockMetricTop}>
         {icon ? (
-          <View style={[styles.mockMetricIcon, { backgroundColor: toneStyle.bg, borderColor: toneStyle.border }]}>
-            <MaterialCommunityIcons name={icon} size={large ? 22 : 18} color={toneStyle.color} />
+          <View
+            style={[
+              styles.mockMetricIcon,
+              { backgroundColor: toneStyle.bg, borderColor: toneStyle.border },
+            ]}
+          >
+            <MaterialCommunityIcons
+              name={icon}
+              size={large ? 22 : 18}
+              color={toneStyle.color}
+            />
           </View>
         ) : null}
-        <View style={[styles.mockMetricSignal, { backgroundColor: toneStyle.color }]} />
+        <View
+          style={[
+            styles.mockMetricSignal,
+            { backgroundColor: toneStyle.color },
+          ]}
+        />
       </View>
-      <Text style={[styles.mockMetricValue, large && styles.mockMetricValueLarge]} numberOfLines={1}>{value}</Text>
-      <Text style={styles.mockMetricLabel} numberOfLines={1}>{label}</Text>
-      {note ? <Text style={[styles.mockMetricNote, { color: toneStyle.color }]} numberOfLines={1}>{note}</Text> : null}
+      <Text
+        style={[styles.mockMetricValue, large && styles.mockMetricValueLarge]}
+        numberOfLines={1}
+      >
+        {value}
+      </Text>
+      <Text style={styles.mockMetricLabel} numberOfLines={1}>
+        {label}
+      </Text>
+      {note ? (
+        <Text
+          style={[styles.mockMetricNote, { color: toneStyle.color }]}
+          numberOfLines={1}
+        >
+          {note}
+        </Text>
+      ) : null}
     </>
   );
 
   if (onPress) {
-    return <Pressable onPress={onPress} style={({ pressed }) => [styles.mockMetricCard, large && styles.mockMetricCardLarge, pressed && styles.buttonPressed]}>{content}</Pressable>;
+    return (
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.mockMetricCard,
+          large && styles.mockMetricCardLarge,
+          pressed && styles.buttonPressed,
+        ]}
+      >
+        {content}
+      </Pressable>
+    );
   }
 
-  return <View style={[styles.mockMetricCard, large && styles.mockMetricCardLarge]}>{content}</View>;
+  return (
+    <View style={[styles.mockMetricCard, large && styles.mockMetricCardLarge]}>
+      {content}
+    </View>
+  );
 }
 
 export function StatusPill({
@@ -136,8 +238,19 @@ export function StatusPill({
 }) {
   const toneStyle = mockupTones[tone];
   return (
-    <View style={[styles.mockStatusPill, compact && styles.mockStatusPillCompact, { backgroundColor: toneStyle.bg, borderColor: toneStyle.border }]}>
-      <Text style={[styles.mockStatusText, { color: toneStyle.color }]} numberOfLines={1}>{label}</Text>
+    <View
+      style={[
+        styles.mockStatusPill,
+        compact && styles.mockStatusPillCompact,
+        { backgroundColor: toneStyle.bg, borderColor: toneStyle.border },
+      ]}
+    >
+      <Text
+        style={[styles.mockStatusText, { color: toneStyle.color }]}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
     </View>
   );
 }
@@ -154,7 +267,12 @@ export function FilterTabs<T extends string>({
   variant?: "chips" | "segmented";
 }) {
   return (
-    <View style={[styles.mockFilterTabs, variant === "segmented" && styles.mockSegmentedTabs]}>
+    <View
+      style={[
+        styles.mockFilterTabs,
+        variant === "segmented" && styles.mockSegmentedTabs,
+      ]}
+    >
       {items.map((item) => {
         const active = item.key === value;
         return (
@@ -168,7 +286,15 @@ export function FilterTabs<T extends string>({
               pressed && styles.buttonPressed,
             ]}
           >
-            <Text style={[styles.mockFilterText, active && styles.mockFilterTextActive]} numberOfLines={1}>{item.label}</Text>
+            <Text
+              style={[
+                styles.mockFilterText,
+                active && styles.mockFilterTextActive,
+              ]}
+              numberOfLines={1}
+            >
+              {item.label}
+            </Text>
           </Pressable>
         );
       })}
@@ -189,10 +315,30 @@ export function Avatar({
 }) {
   const toneStyle = mockupTones[tone];
   const sizeStyle = { height: size, width: size, borderRadius: size / 2 };
-  if (uri) return <Image source={{ uri }} style={[styles.mockAvatarImage, sizeStyle]} resizeMode="cover" />;
+  if (uri)
+    return (
+      <Image
+        source={{ uri }}
+        style={[styles.mockAvatarImage, sizeStyle]}
+        resizeMode="cover"
+      />
+    );
   return (
-    <View style={[styles.mockAvatar, sizeStyle, { backgroundColor: toneStyle.bg, borderColor: toneStyle.border }]}>
-      <Text style={[styles.mockAvatarText, { color: toneStyle.color, fontSize: Math.max(13, size * 0.34) }]}>{initials(name || "D")}</Text>
+    <View
+      style={[
+        styles.mockAvatar,
+        sizeStyle,
+        { backgroundColor: toneStyle.bg, borderColor: toneStyle.border },
+      ]}
+    >
+      <Text
+        style={[
+          styles.mockAvatarText,
+          { color: toneStyle.color, fontSize: Math.max(13, size * 0.34) },
+        ]}
+      >
+        {initials(name || "D")}
+      </Text>
     </View>
   );
 }
@@ -215,8 +361,17 @@ export function InfoCard({
     <View style={styles.mockInfoCard}>
       <View style={styles.mockInfoHeader}>
         {icon ? (
-          <View style={[styles.mockInfoIcon, { backgroundColor: toneStyle.bg, borderColor: toneStyle.border }]}>
-            <MaterialCommunityIcons name={icon} size={19} color={toneStyle.color} />
+          <View
+            style={[
+              styles.mockInfoIcon,
+              { backgroundColor: toneStyle.bg, borderColor: toneStyle.border },
+            ]}
+          >
+            <MaterialCommunityIcons
+              name={icon}
+              size={19}
+              color={toneStyle.color}
+            />
           </View>
         ) : null}
         <Text style={styles.mockInfoTitle}>{title}</Text>
@@ -239,7 +394,12 @@ export function InfoRow({
   return (
     <View style={styles.mockInfoRow}>
       <Text style={styles.mockInfoLabel}>{label}</Text>
-      <Text style={[styles.mockInfoValue, strong && styles.mockInfoValueStrong]} numberOfLines={2}>{value}</Text>
+      <Text
+        style={[styles.mockInfoValue, strong && styles.mockInfoValueStrong]}
+        numberOfLines={2}
+      >
+        {value}
+      </Text>
     </View>
   );
 }
@@ -259,10 +419,18 @@ export function QuantityStepper({
   const canPlus = typeof max === "number" ? value < max : true;
   return (
     <View style={styles.mockStepper}>
-      <Pressable disabled={!canMinus} onPress={() => onChange(value - 1)} style={({ pressed }) => [styles.mockStepperButton, pressed && styles.buttonPressed, !canMinus && styles.buttonDisabled]}>
-        <MaterialCommunityIcons name="minus" size={16} color={bento.text} />
+      <Pressable
+        disabled={!canMinus}
+        onPress={() => onChange(value - 1)}
+        style={({ pressed }) => [
+          styles.mockStepperButton,
+          pressed && styles.buttonPressed,
+          !canMinus && styles.buttonDisabled,
+        ]}
+      >
+        <MaterialCommunityIcons name="minus" size={16} color={atlas.text} />
       </Pressable>
-      <TextInput
+      <NativeTextInput
         value={String(value)}
         onChangeText={(text) => {
           const parsed = Number(text.replace(/\D/g, ""));
@@ -274,8 +442,16 @@ export function QuantityStepper({
         maxLength={4}
         style={styles.mockStepperInput}
       />
-      <Pressable disabled={!canPlus} onPress={() => onChange(value + 1)} style={({ pressed }) => [styles.mockStepperButton, pressed && styles.buttonPressed, !canPlus && styles.buttonDisabled]}>
-        <MaterialCommunityIcons name="plus" size={16} color={bento.text} />
+      <Pressable
+        disabled={!canPlus}
+        onPress={() => onChange(value + 1)}
+        style={({ pressed }) => [
+          styles.mockStepperButton,
+          pressed && styles.buttonPressed,
+          !canPlus && styles.buttonDisabled,
+        ]}
+      >
+        <MaterialCommunityIcons name="plus" size={16} color={atlas.text} />
       </Pressable>
     </View>
   );
@@ -302,13 +478,33 @@ export function ProductRow({
 }) {
   const content = (
     <>
-      {imageUri ? <Image source={{ uri: imageUri }} style={styles.mockProductImage} resizeMode="cover" /> : <View style={styles.mockProductFallback}><MaterialCommunityIcons name="package-variant-closed" size={22} color={bento.primaryDark} /></View>}
+      {imageUri ? (
+        <Image
+          source={{ uri: imageUri }}
+          style={styles.mockProductImage}
+          resizeMode="cover"
+        />
+      ) : (
+        <View style={styles.mockProductFallback}>
+          <MaterialCommunityIcons
+            name="package-variant-closed"
+            size={22}
+            color={atlas.primaryDark}
+          />
+        </View>
+      )}
       <View style={styles.mockProductBody}>
         <View style={styles.mockProductTitleLine}>
-          <Text style={styles.mockProductTitle} numberOfLines={1}>{title}</Text>
+          <Text style={styles.mockProductTitle} numberOfLines={1}>
+            {title}
+          </Text>
           {tag ? <StatusPill label={tag} tone="danger" compact /> : null}
         </View>
-        {subtitle ? <Text style={styles.mockProductSubtitle} numberOfLines={1}>{subtitle}</Text> : null}
+        {subtitle ? (
+          <Text style={styles.mockProductSubtitle} numberOfLines={1}>
+            {subtitle}
+          </Text>
+        ) : null}
         <View style={styles.mockProductMeta}>
           {price ? <Text style={styles.mockProductPrice}>{price}</Text> : null}
           {stock ? <Text style={styles.mockProductStock}>{stock}</Text> : null}
@@ -319,7 +515,17 @@ export function ProductRow({
   );
 
   if (onPress) {
-    return <Pressable onPress={onPress} style={({ pressed }) => [styles.mockProductRow, pressed && styles.buttonPressed]}>{content}</Pressable>;
+    return (
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.mockProductRow,
+          pressed && styles.buttonPressed,
+        ]}
+      >
+        {content}
+      </Pressable>
+    );
   }
 
   return <View style={styles.mockProductRow}>{content}</View>;
@@ -342,39 +548,40 @@ export function PrimaryButton({
   icon?: IconName;
   style?: StyleProp<ViewStyle>;
 }) {
-  const mutedText = variant === "ghost" || variant === "muted";
+  const mode =
+    variant === "primary" || variant === "danger" ? "contained" : "outlined";
+  const buttonStyle = [
+    styles.paperButton,
+    styles[`${variant}Button`],
+    (disabled || loading) && styles.buttonDisabled,
+    style,
+  ];
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
+    <PaperButton
+      mode={mode}
+      icon={icon}
+      loading={loading}
       onPress={onPress}
       disabled={disabled || loading}
-      style={({ pressed }) => [
-        styles.button,
-        styles[`${variant}Button`],
-        pressed && styles.buttonPressed,
-        (disabled || loading) && styles.buttonDisabled,
-        style,
-      ]}
+      buttonColor={
+        variant === "danger"
+          ? atlas.danger
+          : variant === "primary"
+            ? atlas.primary
+            : undefined
+      }
+      textColor={
+        variant === "danger" || variant === "primary"
+          ? "#FFFFFF"
+          : atlas.primaryDark
+      }
+      style={buttonStyle}
+      contentStyle={styles.paperButtonContent}
+      labelStyle={[styles.buttonText, styles[`${variant}ButtonText`]]}
     >
-      {loading ? (
-        <ActivityIndicator color={mutedText ? bento.primary : "#fff"} />
-      ) : (
-        <>
-          {icon ? (
-            <MaterialCommunityIcons
-              name={icon}
-              size={17}
-              color={mutedText ? bento.primary : "#fff"}
-            />
-          ) : null}
-          <Text style={[styles.buttonText, styles[`${variant}ButtonText`]]} numberOfLines={1}>
-            {label}
-          </Text>
-        </>
-      )}
-    </Pressable>
+      {label}
+    </PaperButton>
   );
 }
 
@@ -386,6 +593,7 @@ export function Field({
   secureTextEntry,
   keyboardType,
   multiline,
+  editable = true,
 }: {
   label: string;
   value: string;
@@ -394,23 +602,30 @@ export function Field({
   secureTextEntry?: boolean;
   keyboardType?: KeyboardTypeOptions;
   multiline?: boolean;
+  editable?: boolean;
 }) {
-  const [focused, setFocused] = useState(false);
-
   return (
     <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput
+      <PaperTextInput
+        label={label}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={bento.textMuted}
         secureTextEntry={secureTextEntry}
         keyboardType={keyboardType}
         multiline={multiline}
-        onBlur={() => setFocused(false)}
-        onFocus={() => setFocused(true)}
-        style={[styles.input, focused && styles.inputFocused, multiline && styles.textArea]}
+        editable={editable}
+        mode="outlined"
+        outlineColor={atlas.border}
+        activeOutlineColor={atlas.primary}
+        textColor={atlas.text}
+        placeholderTextColor={atlas.textMuted}
+        style={[
+          styles.paperInput,
+          multiline && styles.textArea,
+          !editable && styles.inputDisabled,
+        ]}
+        contentStyle={styles.paperInputContent}
       />
     </View>
   );
@@ -438,18 +653,35 @@ export function ScreenHeader({
             accessibilityRole="button"
             accessibilityLabel="Quay lại"
             hitSlop={8}
-            style={({ pressed }) => [styles.headerBack, pressed && styles.headerBackPressed]}
+            style={({ pressed }) => [
+              styles.headerBack,
+              pressed && styles.headerBackPressed,
+            ]}
           >
-            <MaterialCommunityIcons name="chevron-left" size={27} color="#fff" />
+            <MaterialCommunityIcons
+              name="chevron-left"
+              size={27}
+              color="#fff"
+            />
           </Pressable>
         ) : (
           <View style={styles.headerIcon}>
-            <MaterialCommunityIcons name={icon} size={20} color={bento.primary} />
+            <MaterialCommunityIcons
+              name={icon}
+              size={20}
+              color={atlas.primary}
+            />
           </View>
         )}
         <View style={styles.headerText}>
-          <Text style={[styles.title, onBack && styles.titleWithBack]}>{title}</Text>
-          {subtitle ? <Text style={[styles.subtitle, onBack && styles.subtitleWithBack]}>{subtitle}</Text> : null}
+          <Text style={[styles.title, onBack && styles.titleWithBack]}>
+            {title}
+          </Text>
+          {subtitle ? (
+            <Text style={[styles.subtitle, onBack && styles.subtitleWithBack]}>
+              {subtitle}
+            </Text>
+          ) : null}
         </View>
       </View>
       {action ? <View style={styles.headerAction}>{action}</View> : null}
@@ -457,10 +689,19 @@ export function ScreenHeader({
   );
 }
 
-export function StatusBadge({ label, tone = "muted" }: { label: string; tone?: BadgeTone }) {
+export function StatusBadge({
+  label,
+  tone = "muted",
+}: {
+  label: string;
+  tone?: BadgeTone;
+}) {
   return (
     <View style={[styles.badge, badgeStyles[tone].container]}>
-      <Text style={[styles.badgeText, badgeStyles[tone].text]} numberOfLines={1}>
+      <Text
+        style={[styles.badgeText, badgeStyles[tone].text]}
+        numberOfLines={1}
+      >
         {label}
       </Text>
     </View>
@@ -512,12 +753,18 @@ export function EmptyState({
   return (
     <View style={styles.empty}>
       <View style={styles.emptyIcon}>
-        <MaterialCommunityIcons name={icon} size={28} color={bento.primary} />
+        <MaterialCommunityIcons name={icon} size={28} color={atlas.primary} />
       </View>
       <Text style={styles.emptyTitle}>{title}</Text>
       {message ? <Text style={styles.emptyMessage}>{message}</Text> : null}
       {actionLabel && onAction ? (
-        <Pressable onPress={onAction} style={({ pressed }) => [styles.emptyAction, pressed && styles.buttonPressed]}>
+        <Pressable
+          onPress={onAction}
+          style={({ pressed }) => [
+            styles.emptyAction,
+            pressed && styles.buttonPressed,
+          ]}
+        >
           <Text style={styles.emptyActionText}>{actionLabel}</Text>
           <MaterialCommunityIcons name="arrow-right" size={16} color="#fff" />
         </Pressable>
@@ -534,7 +781,10 @@ export function FloatingActionButton({
   icon?: IconName;
 }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.fab, pressed && styles.buttonPressed]}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.fab, pressed && styles.buttonPressed]}
+    >
       <MaterialCommunityIcons name={icon} size={32} color="#fff" />
     </Pressable>
   );
@@ -556,23 +806,44 @@ export function SearchBar({
   return (
     <View style={styles.searchRow}>
       <View style={styles.searchBox}>
-        <MaterialCommunityIcons name="magnify" size={21} color={bento.textMuted} />
-        <TextInput
+        <MaterialCommunityIcons
+          name="magnify"
+          size={21}
+          color={atlas.textMuted}
+        />
+        <NativeTextInput
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor={bento.textMuted}
+          placeholderTextColor={atlas.textMuted}
           style={styles.searchInput}
         />
         {value ? (
-          <Pressable onPress={() => onChangeText("")} hitSlop={8} style={({ pressed }) => [styles.searchClear, pressed && styles.buttonPressed]}>
-            <MaterialCommunityIcons name="close" size={16} color={bento.textSecondary} />
+          <Pressable
+            onPress={() => onChangeText("")}
+            hitSlop={8}
+            style={({ pressed }) => [
+              styles.searchClear,
+              pressed && styles.buttonPressed,
+            ]}
+          >
+            <MaterialCommunityIcons
+              name="close"
+              size={16}
+              color={atlas.textSecondary}
+            />
           </Pressable>
         ) : null}
       </View>
       {actionIcon ? (
-        <Pressable onPress={onActionPress} style={({ pressed }) => [styles.searchAction, pressed && styles.buttonPressed]}>
-          <MaterialCommunityIcons name={actionIcon} size={20} color={bento.primary} />
+        <Pressable
+          onPress={onActionPress}
+          style={({ pressed }) => [
+            styles.searchAction,
+            pressed && styles.buttonPressed,
+          ]}
+        >
+          <MaterialCommunityIcons name={actionIcon} size={20} color="#FFFFFF" />
         </Pressable>
       ) : null}
     </View>
@@ -589,8 +860,18 @@ export function FilterChip({
   onPress: () => void;
 }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.filterChip, active && styles.filterChipActive, pressed && styles.buttonPressed]}>
-      <Text style={[styles.filterChipText, active && styles.filterChipTextActive]} numberOfLines={1}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.filterChip,
+        active && styles.filterChipActive,
+        pressed && styles.buttonPressed,
+      ]}
+    >
+      <Text
+        style={[styles.filterChipText, active && styles.filterChipTextActive]}
+        numberOfLines={1}
+      >
         {label}
       </Text>
     </Pressable>
@@ -613,7 +894,11 @@ export function SkeletonRows({ count = 4 }: { count?: number }) {
   );
 }
 
-export function LoadingState({ variant = "spinner" }: { variant?: "spinner" | "list" }) {
+export function LoadingState({
+  variant = "spinner",
+}: {
+  variant?: "spinner" | "list";
+}) {
   if (variant === "list") {
     return (
       <View style={styles.loadingList}>
@@ -624,7 +909,7 @@ export function LoadingState({ variant = "spinner" }: { variant?: "spinner" | "l
 
   return (
     <View style={styles.loading}>
-      <ActivityIndicator color={bento.primary} />
+      <ActivityIndicator color={atlas.primary} />
       <Text style={styles.loadingText}>Đang đồng bộ dữ liệu...</Text>
     </View>
   );
@@ -634,7 +919,11 @@ export function ErrorBanner({ message }: { message?: string }) {
   if (!message) return null;
   return (
     <View accessibilityRole="alert" style={styles.errorBanner}>
-      <MaterialCommunityIcons name="alert-circle-outline" size={18} color={bento.danger} />
+      <MaterialCommunityIcons
+        name="alert-circle-outline"
+        size={18}
+        color={atlas.danger}
+      />
       <Text style={styles.errorText}>{toVietnameseError(message)}</Text>
     </View>
   );
@@ -644,7 +933,11 @@ export function SuccessBanner({ message }: { message?: string }) {
   if (!message) return null;
   return (
     <View style={styles.successBanner}>
-      <MaterialCommunityIcons name="check-circle-outline" size={18} color={bento.success} />
+      <MaterialCommunityIcons
+        name="check-circle-outline"
+        size={18}
+        color={atlas.success}
+      />
       <Text style={styles.successText}>{message}</Text>
     </View>
   );
@@ -696,12 +989,23 @@ export function SummaryMetric({
 }) {
   const color = mockupTones[tone];
   return (
-    <View style={styles.summaryMetric}>
-      <View style={[styles.summaryMetricIcon, { backgroundColor: color.bg, borderColor: color.border }]}>
-        <MaterialCommunityIcons name={icon} size={18} color={color.color} />
+    <View
+      style={[
+        styles.summaryMetric,
+        { backgroundColor: color.color, borderColor: color.color },
+      ]}
+    >
+      <View style={styles.summaryMetricTop}>
+        <Text style={styles.summaryMetricLabel} numberOfLines={1}>
+          {label}
+        </Text>
+        <View style={styles.summaryMetricIcon}>
+          <MaterialCommunityIcons name={icon} size={14} color="#FFFFFF" />
+        </View>
       </View>
-      <Text style={styles.summaryMetricValue} numberOfLines={1}>{value}</Text>
-      <Text style={styles.summaryMetricLabel} numberOfLines={1}>{label}</Text>
+      <Text style={styles.summaryMetricValue} numberOfLines={1}>
+        {value}
+      </Text>
     </View>
   );
 }
@@ -716,7 +1020,18 @@ export function ListCard({
   style?: StyleProp<ViewStyle>;
 }) {
   if (onPress) {
-    return <Pressable onPress={onPress} style={({ pressed }) => [styles.listCard, pressed && styles.buttonPressed, style]}>{children}</Pressable>;
+    return (
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.listCard,
+          pressed && styles.buttonPressed,
+          style,
+        ]}
+      >
+        {children}
+      </Pressable>
+    );
   }
   return <View style={[styles.listCard, style]}>{children}</View>;
 }
@@ -725,18 +1040,14 @@ export function InfoGrid({ children }: { children: React.ReactNode }) {
   return <View style={styles.infoGrid}>{children}</View>;
 }
 
-export function Timeline({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export function Timeline({ children }: { children: React.ReactNode }) {
   return <View style={styles.timelineList}>{children}</View>;
 }
 
 export function TimelineItem({
   children,
-  color = bento.primary,
-  bg = bento.primarySoft,
+  color = atlas.primary,
+  bg = atlas.primarySoft,
   index,
   icon,
   isLast,
@@ -751,11 +1062,18 @@ export function TimelineItem({
   return (
     <View style={styles.timelineItem}>
       <View style={styles.timelineRail}>
-        <View style={[styles.timelineDot, { backgroundColor: bg, borderColor: color }]}>
+        <View
+          style={[
+            styles.timelineDot,
+            { backgroundColor: atlas.surface, borderColor: color },
+          ]}
+        >
           {icon ? (
             <MaterialCommunityIcons name={icon} size={15} color={color} />
           ) : (
-            <Text style={[styles.timelineIndex, { color }]}>{typeof index === "number" ? index + 1 : ""}</Text>
+            <Text style={[styles.timelineIndex, { color }]}>
+              {typeof index === "number" ? index + 1 : ""}
+            </Text>
           )}
         </View>
         {!isLast ? <View style={styles.timelineLine} /> : null}
@@ -778,10 +1096,22 @@ export function MiniTimelineRow({
 }) {
   return (
     <View style={styles.miniTimelineRow}>
-      <View style={[styles.miniTimelineDot, done && styles.miniTimelineDotDone]} />
-      {typeof index === "number" ? <Text style={styles.miniTimelineIndex}>{index + 1}</Text> : null}
-      <Text style={styles.miniTimelineTitle} numberOfLines={1}>{title}</Text>
-      {meta ? <Text style={[styles.miniTimelineMeta, done && styles.miniTimelineMetaDone]}>{meta}</Text> : null}
+      <View
+        style={[styles.miniTimelineDot, done && styles.miniTimelineDotDone]}
+      />
+      {typeof index === "number" ? (
+        <Text style={styles.miniTimelineIndex}>{index + 1}</Text>
+      ) : null}
+      <Text style={styles.miniTimelineTitle} numberOfLines={1}>
+        {title}
+      </Text>
+      {meta ? (
+        <Text
+          style={[styles.miniTimelineMeta, done && styles.miniTimelineMetaDone]}
+        >
+          {meta}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -799,14 +1129,40 @@ export function StepTimeline({
   return (
     <View style={styles.stepTimeline}>
       {steps.map((step, index) => {
-        const tone = step.state === "done" ? mockupTones.success : step.state === "active" ? mockupTones.primary : mockupTones.muted;
+        const tone =
+          step.state === "done"
+            ? mockupTones.success
+            : step.state === "active"
+              ? mockupTones.primary
+              : mockupTones.muted;
         return (
           <View key={step.key} style={styles.stepTimelineItem}>
-            <View style={[styles.stepTimelineIcon, { backgroundColor: tone.bg, borderColor: tone.border }]}>
-              <MaterialCommunityIcons name={step.icon} size={17} color={tone.color} />
+            <View
+              style={[
+                styles.stepTimelineIcon,
+                { backgroundColor: tone.color, borderColor: tone.color },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name={step.icon}
+                size={17}
+                color="#FFFFFF"
+              />
             </View>
-            <Text style={[styles.stepTimelineText, { color: tone.color }]} numberOfLines={1}>{step.label}</Text>
-            {index < steps.length - 1 ? <View style={[styles.stepTimelineLine, step.state !== "todo" && styles.stepTimelineLineActive]} /> : null}
+            <Text
+              style={[styles.stepTimelineText, { color: tone.color }]}
+              numberOfLines={1}
+            >
+              {step.label}
+            </Text>
+            {index < steps.length - 1 ? (
+              <View
+                style={[
+                  styles.stepTimelineLine,
+                  step.state !== "todo" && styles.stepTimelineLineActive,
+                ]}
+              />
+            ) : null}
           </View>
         );
       })}
@@ -814,44 +1170,70 @@ export function StepTimeline({
   );
 }
 
-const badgeStyles: Record<BadgeTone, { container: ViewStyle; text: TextStyle }> = {
+const badgeStyles: Record<
+  BadgeTone,
+  { container: ViewStyle; text: TextStyle }
+> = {
   muted: {
-    container: { backgroundColor: bento.surfaceAlt, borderColor: bento.border },
-    text: { color: bento.textSecondary },
+    container: { backgroundColor: atlas.surfaceAlt, borderColor: atlas.border },
+    text: { color: atlas.textSecondary },
   },
   success: {
-    container: { backgroundColor: bento.successSoft, borderColor: "#BBF7D0" },
-    text: { color: bento.success },
+    container: {
+      backgroundColor: atlas.successSoft,
+      borderColor: atlas.successSoft,
+    },
+    text: { color: atlas.success },
   },
   warning: {
-    container: { backgroundColor: bento.warningSoft, borderColor: "#FDE68A" },
-    text: { color: bento.warning },
+    container: {
+      backgroundColor: atlas.warningSoft,
+      borderColor: atlas.warningSoft,
+    },
+    text: { color: atlas.warning },
   },
   danger: {
-    container: { backgroundColor: bento.dangerSoft, borderColor: "#FECACA" },
-    text: { color: bento.danger },
+    container: {
+      backgroundColor: atlas.dangerSoft,
+      borderColor: atlas.dangerSoft,
+    },
+    text: { color: atlas.danger },
   },
   info: {
-    container: { backgroundColor: bento.primarySoft, borderColor: bento.borderStrong },
-    text: { color: bento.primary },
+    container: {
+      backgroundColor: atlas.primarySoft,
+      borderColor: atlas.borderStrong,
+    },
+    text: { color: atlas.primary },
   },
 };
 
 const metricTones = {
-  primary: { backgroundColor: bento.primary },
-  accent: { backgroundColor: bento.info },
-  route: { backgroundColor: bento.route },
-  success: { backgroundColor: bento.success },
+  primary: { backgroundColor: "#2563EB" },
+  accent: { backgroundColor: "#7C3AED" },
+  route: { backgroundColor: "#0891B2" },
+  success: { backgroundColor: "#059669" },
 };
 
 export function toneForStatus(status?: string): BadgeTone {
-  if (status === "approved" || status === "delivered" || status === "completed" || status === "checked_out") {
+  if (
+    status === "approved" ||
+    status === "delivered" ||
+    status === "completed" ||
+    status === "checked_out"
+  ) {
     return "success";
   }
-  if (status === "pending" || status === "planned" || status === "in_progress" || status === "checked_in") {
+  if (
+    status === "pending" ||
+    status === "planned" ||
+    status === "in_progress" ||
+    status === "checked_in"
+  ) {
     return "warning";
   }
-  if (status === "rejected" || status === "cancelled" || status === "returned") return "danger";
+  if (status === "rejected" || status === "cancelled" || status === "returned")
+    return "danger";
   if (status === "return_requested") return "info";
   return "muted";
 }
@@ -866,60 +1248,67 @@ function initials(value: string) {
 const styles = StyleSheet.create({
   listScreen: {
     alignSelf: "center",
-    gap: 16,
-    maxWidth: 430,
-    paddingHorizontal: 20,
-    paddingTop: 18,
+    gap: 14,
+    maxWidth: 760,
+    paddingHorizontal: 16,
+    paddingTop: 14,
     width: "100%",
   },
   summaryStrip: {
-    backgroundColor: bento.surface,
-    borderColor: bento.border,
-    borderRadius: 18,
-    borderWidth: 1,
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    padding: 10,
+    flexWrap: "nowrap",
+    gap: 6,
   },
   summaryMetric: {
-    backgroundColor: bento.surfaceAlt,
-    borderColor: bento.border,
-    borderRadius: 15,
+    alignItems: "flex-start",
+    borderRadius: radius.lg,
     borderWidth: 1,
-    flexBasis: "22%",
-    flexGrow: 1,
-    minWidth: 86,
-    padding: 10,
+    flex: 1,
+    gap: 3,
+    justifyContent: "space-between",
+    minHeight: 66,
+    minWidth: 0,
+    paddingHorizontal: 7,
+    paddingVertical: 7,
+    ...atlasSoftShadow,
+  },
+  summaryMetricTop: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
   },
   summaryMetricIcon: {
     alignItems: "center",
-    borderRadius: 12,
-    borderWidth: 1,
-    height: 34,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    borderRadius: 5,
+    height: 23,
     justifyContent: "center",
-    width: 34,
+    width: 23,
   },
   summaryMetricValue: {
-    color: bento.text,
-    fontSize: 18,
-    fontWeight: "900",
-    marginTop: 8,
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "700",
+    lineHeight: 18,
   },
   summaryMetricLabel: {
-    color: bento.textSecondary,
-    fontSize: 11,
-    fontWeight: "800",
-    marginTop: 2,
+    color: "rgba(255,255,255,0.92)",
+    flex: 1,
+    fontSize: 9.5,
+    fontWeight: "600",
   },
   listCard: {
-    backgroundColor: bento.surface,
-    borderColor: bento.border,
-    borderRadius: 22,
+    backgroundColor: atlas.surface,
+    borderColor: atlas.border,
+    borderLeftColor: atlas.primary,
+    borderRadius: radius.lg,
     borderWidth: 1,
+    borderLeftWidth: 3,
     gap: 13,
-    padding: 14,
-    ...bentoSoftShadow,
+    paddingHorizontal: 13,
+    paddingVertical: 14,
+    ...atlasSoftShadow,
   },
   infoGrid: {
     flexDirection: "row",
@@ -939,7 +1328,7 @@ const styles = StyleSheet.create({
   },
   timelineDot: {
     alignItems: "center",
-    borderRadius: 14,
+    borderRadius: radius.md,
     borderWidth: 2,
     height: 28,
     justifyContent: "center",
@@ -947,10 +1336,10 @@ const styles = StyleSheet.create({
   },
   timelineIndex: {
     fontSize: 10,
-    fontWeight: "900",
+    fontWeight: "700",
   },
   timelineLine: {
-    backgroundColor: bento.border,
+    backgroundColor: atlas.border,
     flex: 1,
     minHeight: 80,
     width: 2,
@@ -965,33 +1354,33 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   miniTimelineDot: {
-    backgroundColor: bento.border,
+    backgroundColor: atlas.border,
     borderRadius: 5,
     height: 10,
     width: 10,
   },
   miniTimelineDotDone: {
-    backgroundColor: bento.success,
+    backgroundColor: atlas.success,
   },
   miniTimelineIndex: {
-    color: bento.textMuted,
+    color: atlas.textMuted,
     fontSize: 11,
-    fontWeight: "900",
+    fontWeight: "700",
     width: 20,
   },
   miniTimelineTitle: {
-    color: bento.text,
+    color: atlas.text,
     flex: 1,
     fontSize: 12,
-    fontWeight: "800",
+    fontWeight: "600",
   },
   miniTimelineMeta: {
-    color: bento.warning,
+    color: atlas.warning,
     fontSize: 10,
-    fontWeight: "900",
+    fontWeight: "700",
   },
   miniTimelineMetaDone: {
-    color: bento.success,
+    color: atlas.success,
   },
   stepTimeline: {
     flexDirection: "row",
@@ -1005,7 +1394,7 @@ const styles = StyleSheet.create({
   },
   stepTimelineIcon: {
     alignItems: "center",
-    borderRadius: 15,
+    borderRadius: radius.lg,
     borderWidth: 1,
     height: 36,
     justifyContent: "center",
@@ -1014,11 +1403,11 @@ const styles = StyleSheet.create({
   },
   stepTimelineText: {
     fontSize: 10,
-    fontWeight: "900",
+    fontWeight: "700",
     textAlign: "center",
   },
   stepTimelineLine: {
-    backgroundColor: bento.border,
+    backgroundColor: atlas.border,
     height: 2,
     left: "58%",
     position: "absolute",
@@ -1026,14 +1415,14 @@ const styles = StyleSheet.create({
     top: 17,
   },
   stepTimelineLineActive: {
-    backgroundColor: bento.primary,
+    backgroundColor: atlas.primary,
   },
   mockScreen: {
     alignSelf: "center",
-    gap: 18,
-    maxWidth: 430,
-    paddingHorizontal: 22,
-    paddingTop: 18,
+    gap: 14,
+    maxWidth: 760,
+    paddingHorizontal: 16,
+    paddingTop: 14,
     width: "100%",
   },
   mockScreenCompact: {
@@ -1042,20 +1431,25 @@ const styles = StyleSheet.create({
   },
   mockHeader: {
     alignItems: "center",
+    backgroundColor: "#103494",
     flexDirection: "row",
-    gap: 12,
-    minHeight: 50,
+    gap: 10,
+    marginHorizontal: -16,
+    marginTop: -14,
+    minHeight: 70,
+    paddingBottom: 14,
+    paddingHorizontal: 16,
+    paddingTop: 14,
   },
   mockHeaderButton: {
     alignItems: "center",
-    backgroundColor: bento.surface,
-    borderColor: bento.border,
-    borderRadius: 15,
+    backgroundColor: "rgba(255,255,255,0.16)",
+    borderColor: "rgba(255,255,255,0.32)",
+    borderRadius: radius.lg,
     borderWidth: 1,
-    height: 44,
+    height: 46,
     justifyContent: "center",
-    width: 44,
-    ...bentoSoftShadow,
+    width: 46,
   },
   mockHeaderText: {
     flex: 1,
@@ -1065,35 +1459,35 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
   },
   mockEyebrow: {
-    color: bento.textMuted,
-    fontSize: 11,
-    fontWeight: "800",
+    color: "rgba(255,255,255,0.76)",
+    fontSize: 10,
+    fontWeight: "600",
     letterSpacing: 0,
     marginBottom: 2,
     textTransform: "uppercase",
   },
   mockTitle: {
-    color: bento.text,
-    fontSize: 24,
-    fontWeight: "800",
+    color: "#FFFFFF",
+    fontSize: 20,
+    fontWeight: "700",
     letterSpacing: 0,
   },
   mockSubtitle: {
-    color: bento.textSecondary,
+    color: "rgba(255,255,255,0.84)",
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
     marginTop: 3,
   },
   mockMetricCard: {
-    backgroundColor: bento.surface,
-    borderColor: bento.border,
-    borderRadius: 22,
+    backgroundColor: atlas.surface,
+    borderColor: atlas.border,
+    borderRadius: radius.lg,
     borderWidth: 1,
     flex: 1,
     minHeight: 112,
     minWidth: 0,
     padding: 14,
-    ...bentoSoftShadow,
+    ...atlasSoftShadow,
   },
   mockMetricCardLarge: {
     minHeight: 140,
@@ -1106,7 +1500,7 @@ const styles = StyleSheet.create({
   },
   mockMetricIcon: {
     alignItems: "center",
-    borderRadius: 15,
+    borderRadius: radius.lg,
     borderWidth: 1,
     height: 40,
     justifyContent: "center",
@@ -1119,23 +1513,23 @@ const styles = StyleSheet.create({
     width: 28,
   },
   mockMetricValue: {
-    color: bento.text,
+    color: atlas.text,
     fontSize: 22,
-    fontWeight: "800",
+    fontWeight: "600",
     marginTop: 12,
   },
   mockMetricValueLarge: {
     fontSize: 30,
   },
   mockMetricLabel: {
-    color: bento.textSecondary,
+    color: atlas.textSecondary,
     fontSize: 12,
     fontWeight: "700",
     marginTop: 3,
   },
   mockMetricNote: {
     fontSize: 11,
-    fontWeight: "800",
+    fontWeight: "600",
     marginTop: 6,
   },
   mockStatusPill: {
@@ -1152,7 +1546,7 @@ const styles = StyleSheet.create({
   },
   mockStatusText: {
     fontSize: 11,
-    fontWeight: "800",
+    fontWeight: "600",
   },
   mockFilterTabs: {
     flexDirection: "row",
@@ -1160,9 +1554,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   mockSegmentedTabs: {
-    backgroundColor: bento.surfaceAlt,
-    borderColor: bento.border,
-    borderRadius: 16,
+    backgroundColor: atlas.surfaceAlt,
+    borderColor: atlas.border,
+    borderRadius: radius.lg,
     borderWidth: 1,
     flexWrap: "nowrap",
     gap: 4,
@@ -1170,9 +1564,9 @@ const styles = StyleSheet.create({
   },
   mockFilterChip: {
     alignItems: "center",
-    backgroundColor: bento.surface,
-    borderColor: bento.border,
-    borderRadius: 999,
+    backgroundColor: atlas.surface,
+    borderColor: atlas.border,
+    borderRadius: radius.md,
     borderWidth: 1,
     justifyContent: "center",
     minHeight: 36,
@@ -1180,19 +1574,19 @@ const styles = StyleSheet.create({
   },
   mockSegmentedChip: {
     borderColor: "transparent",
-    borderRadius: 12,
+    borderRadius: radius.md,
     borderWidth: 0,
     flex: 1,
     paddingHorizontal: 8,
   },
   mockFilterChipActive: {
-    backgroundColor: bento.primary,
-    borderColor: bento.primary,
+    backgroundColor: atlas.primary,
+    borderColor: atlas.primary,
   },
   mockFilterText: {
-    color: bento.textSecondary,
+    color: atlas.textSecondary,
     fontSize: 12,
-    fontWeight: "800",
+    fontWeight: "600",
   },
   mockFilterTextActive: {
     color: "#fff",
@@ -1203,19 +1597,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   mockAvatarImage: {
-    backgroundColor: bento.surfaceAlt,
+    backgroundColor: atlas.surfaceAlt,
   },
   mockAvatarText: {
-    fontWeight: "800",
+    fontWeight: "600",
   },
   mockInfoCard: {
-    backgroundColor: bento.surface,
-    borderColor: bento.border,
-    borderRadius: 22,
+    backgroundColor: atlas.surface,
+    borderColor: atlas.border,
+    borderRadius: radius.lg,
     borderWidth: 1,
     gap: 14,
     padding: 16,
-    ...bentoSoftShadow,
+    ...atlasSoftShadow,
   },
   mockInfoHeader: {
     alignItems: "center",
@@ -1224,17 +1618,17 @@ const styles = StyleSheet.create({
   },
   mockInfoIcon: {
     alignItems: "center",
-    borderRadius: 14,
+    borderRadius: radius.md,
     borderWidth: 1,
     height: 40,
     justifyContent: "center",
     width: 40,
   },
   mockInfoTitle: {
-    color: bento.text,
+    color: atlas.text,
     flex: 1,
     fontSize: 16,
-    fontWeight: "800",
+    fontWeight: "600",
   },
   mockInfoAction: {
     alignItems: "flex-end",
@@ -1244,7 +1638,7 @@ const styles = StyleSheet.create({
   },
   mockInfoRow: {
     alignItems: "flex-start",
-    borderTopColor: bento.border,
+    borderTopColor: atlas.border,
     borderTopWidth: 1,
     flexDirection: "row",
     gap: 12,
@@ -1252,20 +1646,20 @@ const styles = StyleSheet.create({
     paddingTop: 10,
   },
   mockInfoLabel: {
-    color: bento.textSecondary,
+    color: atlas.textSecondary,
     flex: 1,
     fontSize: 12,
     fontWeight: "700",
   },
   mockInfoValue: {
-    color: bento.text,
+    color: atlas.text,
     flex: 1.3,
     fontSize: 13,
-    fontWeight: "800",
+    fontWeight: "600",
     textAlign: "right",
   },
   mockInfoValueStrong: {
-    color: bento.primaryDark,
+    color: atlas.primaryDark,
     fontSize: 15,
   },
   mockStepper: {
@@ -1275,22 +1669,22 @@ const styles = StyleSheet.create({
   },
   mockStepperButton: {
     alignItems: "center",
-    backgroundColor: bento.surface,
-    borderColor: bento.border,
-    borderRadius: 11,
+    backgroundColor: atlas.surface,
+    borderColor: atlas.border,
+    borderRadius: radius.md,
     borderWidth: 1,
     height: 34,
     justifyContent: "center",
     width: 34,
   },
   mockStepperInput: {
-    backgroundColor: bento.surface,
-    borderColor: bento.border,
-    borderRadius: 11,
+    backgroundColor: atlas.surface,
+    borderColor: atlas.border,
+    borderRadius: radius.md,
     borderWidth: 1,
-    color: bento.text,
+    color: atlas.text,
     fontSize: 14,
-    fontWeight: "800",
+    fontWeight: "600",
     height: 34,
     minWidth: 44,
     paddingHorizontal: 7,
@@ -1299,26 +1693,26 @@ const styles = StyleSheet.create({
   },
   mockProductRow: {
     alignItems: "center",
-    backgroundColor: bento.surface,
-    borderColor: bento.border,
-    borderRadius: 20,
+    backgroundColor: atlas.surface,
+    borderColor: atlas.border,
+    borderRadius: radius.lg,
     borderWidth: 1,
     flexDirection: "row",
     gap: 12,
     minHeight: 82,
     padding: 12,
-    ...bentoSoftShadow,
+    ...atlasSoftShadow,
   },
   mockProductImage: {
-    borderRadius: 15,
+    borderRadius: radius.lg,
     height: 56,
     width: 56,
   },
   mockProductFallback: {
     alignItems: "center",
-    backgroundColor: bento.primarySoft,
-    borderColor: bento.borderStrong,
-    borderRadius: 15,
+    backgroundColor: atlas.primarySoft,
+    borderColor: atlas.borderStrong,
+    borderRadius: radius.lg,
     borderWidth: 1,
     height: 56,
     justifyContent: "center",
@@ -1334,13 +1728,13 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   mockProductTitle: {
-    color: bento.text,
+    color: atlas.text,
     flex: 1,
     fontSize: 14,
-    fontWeight: "800",
+    fontWeight: "600",
   },
   mockProductSubtitle: {
-    color: bento.textSecondary,
+    color: atlas.textSecondary,
     fontSize: 12,
     fontWeight: "700",
     marginTop: 4,
@@ -1352,12 +1746,12 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   mockProductPrice: {
-    color: bento.text,
+    color: atlas.text,
     fontSize: 13,
-    fontWeight: "800",
+    fontWeight: "600",
   },
   mockProductStock: {
-    color: bento.textMuted,
+    color: atlas.textMuted,
     fontSize: 11,
     fontWeight: "700",
   },
@@ -1365,41 +1759,50 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   card: {
-    backgroundColor: bento.surface,
-    borderColor: bento.border,
-    borderRadius: 16,
+    backgroundColor: atlas.surface,
+    borderColor: atlas.border,
+    borderRadius: radius.lg,
     borderWidth: 1,
     padding: spacing.lg,
-    ...bentoSoftShadow,
+    ...atlasSoftShadow,
   },
   cardCompact: {
     padding: spacing.md,
   },
   button: {
     alignItems: "center",
-    borderRadius: 13,
+    borderRadius: radius.md,
     flexDirection: "row",
     gap: spacing.sm,
     justifyContent: "center",
     minHeight: 46,
     paddingHorizontal: spacing.lg,
     paddingVertical: 10,
-    ...bentoSoftShadow,
+    ...atlasSoftShadow,
+  },
+  paperButton: {
+    borderRadius: radius.md,
+    minHeight: 46,
+    ...atlasSoftShadow,
+  },
+  paperButtonContent: {
+    minHeight: 46,
+    paddingHorizontal: 6,
   },
   primaryButton: {
-    backgroundColor: bento.primary,
+    backgroundColor: atlas.primary,
   },
   dangerButton: {
-    backgroundColor: bento.danger,
+    backgroundColor: atlas.danger,
   },
   ghostButton: {
-    backgroundColor: bento.surface,
-    borderColor: bento.border,
+    backgroundColor: atlas.surface,
+    borderColor: atlas.border,
     borderWidth: 1,
   },
   mutedButton: {
-    backgroundColor: bento.primarySoft,
-    borderColor: bento.borderStrong,
+    backgroundColor: atlas.primarySoft,
+    borderColor: atlas.borderStrong,
     borderWidth: 1,
   },
   buttonPressed: {
@@ -1415,34 +1818,46 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: { color: "#fff" },
   dangerButtonText: { color: "#fff" },
-  ghostButtonText: { color: bento.text },
-  mutedButtonText: { color: bento.primary },
+  ghostButtonText: { color: atlas.text },
+  mutedButtonText: { color: atlas.primary },
   field: {
     gap: 7,
   },
   label: {
-    color: bento.text,
+    color: atlas.text,
     fontSize: 12,
-    fontWeight: "800",
+    fontWeight: "600",
     letterSpacing: 0,
   },
   input: {
-    backgroundColor: bento.surfaceAlt,
-    borderColor: bento.border,
-    borderRadius: 13,
+    backgroundColor: atlas.surface,
+    borderColor: atlas.border,
+    borderRadius: radius.md,
     borderWidth: 1,
-    color: bento.text,
+    color: atlas.text,
     fontSize: 14,
     lineHeight: 21,
     minHeight: 48,
     paddingHorizontal: spacing.md,
     paddingVertical: 10,
-    ...bentoSoftShadow,
+    ...atlasSoftShadow,
+  },
+  paperInput: {
+    backgroundColor: atlas.surface,
+    fontSize: 14,
+    minHeight: 48,
+  },
+  paperInputContent: {
+    fontSize: 14,
+    fontWeight: "600",
   },
   inputFocused: {
-    borderColor: bento.primary,
+    borderColor: atlas.primary,
     backgroundColor: "#fff",
     shadowOpacity: 0.12,
+  },
+  inputDisabled: {
+    opacity: 0.52,
   },
   textArea: {
     minHeight: 92,
@@ -1457,7 +1872,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   headerWithBack: {
-    backgroundColor: bento.chrome,
+    backgroundColor: atlas.primary,
     flexWrap: "nowrap",
     marginBottom: 0,
     minHeight: 74,
@@ -1473,9 +1888,9 @@ const styles = StyleSheet.create({
   },
   headerIcon: {
     alignItems: "center",
-    backgroundColor: bento.primarySoft,
-    borderColor: bento.borderStrong,
-    borderRadius: 13,
+    backgroundColor: atlas.primarySoft,
+    borderColor: atlas.borderStrong,
+    borderRadius: radius.md,
     borderWidth: 1,
     height: 38,
     justifyContent: "center",
@@ -1484,7 +1899,7 @@ const styles = StyleSheet.create({
   headerBack: {
     alignItems: "center",
     backgroundColor: "transparent",
-    borderRadius: 14,
+    borderRadius: radius.md,
     height: 42,
     justifyContent: "center",
     width: 42,
@@ -1502,9 +1917,9 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   title: {
-    color: bento.text,
+    color: atlas.text,
     fontSize: 20,
-    fontWeight: "900",
+    fontWeight: "700",
     letterSpacing: 0,
     lineHeight: 24,
   },
@@ -1514,7 +1929,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   subtitle: {
-    color: bento.textSecondary,
+    color: atlas.textSecondary,
     fontSize: 13,
     lineHeight: 16,
     marginTop: 1,
@@ -1533,7 +1948,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: 11,
-    fontWeight: "900",
+    fontWeight: "700",
     letterSpacing: 0,
   },
   metric: {
@@ -1545,7 +1960,7 @@ const styles = StyleSheet.create({
   },
   metricIcon: {
     alignItems: "center",
-    borderRadius: 14,
+    borderRadius: radius.md,
     height: 38,
     justifyContent: "center",
     width: 38,
@@ -1555,27 +1970,27 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   metricLabel: {
-    color: bento.textSecondary,
+    color: atlas.textSecondary,
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 0,
   },
   metricValue: {
-    color: bento.text,
+    color: atlas.text,
     fontSize: 20,
-    fontWeight: "900",
+    fontWeight: "700",
     marginTop: 1,
   },
   metricNote: {
-    color: bento.textSecondary,
+    color: atlas.textSecondary,
     fontSize: 12,
     marginTop: 1,
   },
   empty: {
     alignItems: "center",
-    backgroundColor: bento.surfaceAlt,
-    borderColor: bento.border,
-    borderRadius: 18,
+    backgroundColor: atlas.surfaceAlt,
+    borderColor: atlas.border,
+    borderRadius: radius.lg,
     borderStyle: "dashed",
     borderWidth: 1,
     gap: spacing.md,
@@ -1584,29 +1999,29 @@ const styles = StyleSheet.create({
   },
   emptyIcon: {
     alignItems: "center",
-    backgroundColor: bento.primarySoft,
-    borderColor: bento.borderStrong,
-    borderRadius: 28,
+    backgroundColor: atlas.primarySoft,
+    borderColor: atlas.borderStrong,
+    borderRadius: radius.lg,
     borderWidth: 1,
     height: 58,
     justifyContent: "center",
     width: 58,
   },
   emptyTitle: {
-    color: bento.text,
+    color: atlas.text,
     fontSize: 17,
-    fontWeight: "900",
+    fontWeight: "700",
   },
   emptyMessage: {
-    color: bento.textSecondary,
+    color: atlas.textSecondary,
     fontSize: 13,
     lineHeight: 19,
     textAlign: "center",
   },
   emptyAction: {
     alignItems: "center",
-    backgroundColor: bento.primary,
-    borderRadius: 999,
+    backgroundColor: atlas.primary,
+    borderRadius: radius.md,
     flexDirection: "row",
     gap: 6,
     marginTop: 2,
@@ -1616,7 +2031,7 @@ const styles = StyleSheet.create({
   emptyActionText: {
     color: "#fff",
     fontSize: 12,
-    fontWeight: "900",
+    fontWeight: "700",
   },
   loading: {
     alignItems: "center",
@@ -1626,7 +2041,7 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   loadingText: {
-    color: bento.textSecondary,
+    color: atlas.textSecondary,
     fontSize: 13,
     fontWeight: "600",
   },
@@ -1635,15 +2050,17 @@ const styles = StyleSheet.create({
   },
   fab: {
     alignItems: "center",
-    backgroundColor: bento.primary,
-    borderRadius: 31,
+    backgroundColor: atlas.primary,
+    borderColor: atlas.primaryDark,
+    borderWidth: 1,
+    borderRadius: radius.lg,
     bottom: 86,
     height: 58,
     justifyContent: "center",
     position: "absolute",
     right: 22,
     width: 58,
-    ...bentoSoftShadow,
+    ...atlasSoftShadow,
   },
   searchRow: {
     alignItems: "center",
@@ -1652,19 +2069,19 @@ const styles = StyleSheet.create({
   },
   searchBox: {
     alignItems: "center",
-    backgroundColor: bento.surface,
-    borderColor: bento.border,
-    borderRadius: 14,
+    backgroundColor: atlas.surface,
+    borderColor: atlas.border,
+    borderRadius: radius.lg,
     borderWidth: 1,
     flex: 1,
     flexDirection: "row",
     gap: spacing.sm,
     minHeight: 50,
     paddingHorizontal: spacing.md,
-    ...bentoSoftShadow,
+    ...atlasSoftShadow,
   },
   searchInput: {
-    color: bento.text,
+    color: atlas.text,
     flex: 1,
     fontSize: 14,
     fontWeight: "700",
@@ -1672,19 +2089,19 @@ const styles = StyleSheet.create({
   },
   searchAction: {
     alignItems: "center",
-    backgroundColor: bento.primarySoft,
-    borderColor: bento.borderStrong,
-    borderRadius: 14,
+    backgroundColor: atlas.primary,
+    borderColor: atlas.primaryDark,
+    borderRadius: radius.lg,
     borderWidth: 1,
     height: 50,
     justifyContent: "center",
     width: 50,
-    ...bentoSoftShadow,
+    ...atlasSoftShadow,
   },
   searchClear: {
     alignItems: "center",
-    backgroundColor: bento.surfaceAlt,
-    borderColor: bento.border,
+    backgroundColor: atlas.surfaceAlt,
+    borderColor: atlas.border,
     borderRadius: 999,
     borderWidth: 1,
     height: 26,
@@ -1693,20 +2110,20 @@ const styles = StyleSheet.create({
   },
   filterChip: {
     alignItems: "center",
-    backgroundColor: bento.surface,
-    borderColor: bento.border,
-    borderRadius: 999,
+    backgroundColor: atlas.surface,
+    borderColor: atlas.border,
+    borderRadius: radius.md,
     borderWidth: 1,
     justifyContent: "center",
     minHeight: 36,
     paddingHorizontal: spacing.md,
   },
   filterChipActive: {
-    backgroundColor: bento.primary,
-    borderColor: bento.primary,
+    backgroundColor: atlas.primary,
+    borderColor: atlas.primary,
   },
   filterChipText: {
-    color: bento.textSecondary,
+    color: atlas.textSecondary,
     fontSize: 12,
     fontWeight: "700",
   },
@@ -1718,9 +2135,9 @@ const styles = StyleSheet.create({
   },
   skeletonRow: {
     alignItems: "center",
-    backgroundColor: bento.surface,
-    borderColor: bento.border,
-    borderRadius: 16,
+    backgroundColor: atlas.surface,
+    borderColor: atlas.border,
+    borderRadius: radius.lg,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
@@ -1728,8 +2145,8 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   skeletonAvatar: {
-    backgroundColor: bento.primarySoft,
-    borderRadius: 22,
+    backgroundColor: atlas.primarySoft,
+    borderRadius: radius.lg,
     height: 44,
     width: 44,
   },
@@ -1738,22 +2155,22 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   skeletonLineWide: {
-    backgroundColor: bento.surfaceAlt,
+    backgroundColor: atlas.surfaceAlt,
     borderRadius: 999,
     height: 12,
     width: "72%",
   },
   skeletonLine: {
-    backgroundColor: bento.border,
+    backgroundColor: atlas.border,
     borderRadius: 999,
     height: 10,
     width: "48%",
   },
   errorBanner: {
     alignItems: "center",
-    backgroundColor: bento.dangerSoft,
-    borderColor: "#FECACA",
-    borderRadius: 18,
+    backgroundColor: atlas.dangerSoft,
+    borderColor: atlas.dangerSoft,
+    borderRadius: radius.lg,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.sm,
@@ -1761,7 +2178,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   errorText: {
-    color: bento.danger,
+    color: atlas.danger,
     flex: 1,
     fontSize: 13,
     fontWeight: "700",
@@ -1769,9 +2186,9 @@ const styles = StyleSheet.create({
   },
   successBanner: {
     alignItems: "center",
-    backgroundColor: bento.successSoft,
-    borderColor: "#BBF7D0",
-    borderRadius: 18,
+    backgroundColor: atlas.successSoft,
+    borderColor: atlas.successSoft,
+    borderRadius: radius.lg,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.sm,
@@ -1779,15 +2196,15 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   successText: {
-    color: bento.success,
+    color: atlas.success,
     flex: 1,
     fontSize: 13,
-    fontWeight: "800",
+    fontWeight: "600",
     lineHeight: 18,
   },
   row: {
     alignItems: "flex-start",
-    borderTopColor: bento.border,
+    borderTopColor: atlas.border,
     borderTopWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
@@ -1795,13 +2212,13 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
   },
   rowLabel: {
-    color: bento.textSecondary,
+    color: atlas.textSecondary,
     flex: 1,
     fontSize: 12,
     fontWeight: "700",
   },
   rowValue: {
-    color: bento.text,
+    color: atlas.text,
     flex: 1.35,
     fontSize: 13,
     fontWeight: "700",

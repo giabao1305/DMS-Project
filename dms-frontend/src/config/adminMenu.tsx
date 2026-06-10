@@ -15,7 +15,6 @@ import {
   LineChartOutlined,
   ProductOutlined,
   ShoppingCartOutlined,
-  TeamOutlined,
   UserOutlined,
 } from "@ant-design/icons";
 import type { ReactNode } from "react";
@@ -32,6 +31,14 @@ export type AdminRouteGroup = {
   label: string;
   keys: string[];
 };
+
+const hiddenAdminRouteKeys = new Set([
+  "/admin/visits",
+  "/admin/routes",
+  "/admin/orders",
+  "/admin/leaves",
+  "/admin/kpis",
+]);
 
 export const adminSidebarRoutes: AdminSidebarRoute[] = [
   {
@@ -63,13 +70,6 @@ export const adminSidebarRoutes: AdminSidebarRoute[] = [
     description: "Theo dõi tài khoản, vai trò và dữ liệu nhân sự.",
   },
   {
-    key: "/admin/customers",
-    label: "Khách hàng",
-    icon: <TeamOutlined />,
-    title: "Quản lý khách hàng",
-    description: "Quản lý hồ sơ, xét duyệt và chăm sóc khách hàng.",
-  },
-  {
     key: "/admin/categories",
     label: "Danh mục",
     icon: <AppstoreOutlined />,
@@ -85,10 +85,17 @@ export const adminSidebarRoutes: AdminSidebarRoute[] = [
   },
   {
     key: "/admin/orders",
-    label: "Đơn hàng",
+    label: "Đơn thị trường",
     icon: <ShoppingCartOutlined />,
-    title: "Quản lý đơn hàng",
-    description: "Theo dõi trạng thái xử lý và luồng đơn hàng.",
+    title: "Đơn thị trường",
+    description: "Giám sát đơn NPP/seller bán ra tiệm và doanh thu sell-out.",
+  },
+  {
+    key: "/admin/orders/supply",
+    label: "Duyệt nhập kho",
+    icon: <DatabaseOutlined />,
+    title: "Duyệt đơn giao kho NPP",
+    description: "Xác nhận yêu cầu nhập hàng và cấp hàng về kho nhà phân phối.",
   },
   {
     key: "/admin/inventory",
@@ -103,6 +110,13 @@ export const adminSidebarRoutes: AdminSidebarRoute[] = [
     icon: <AlertOutlined />,
     title: "Cảnh báo tồn kho",
     description: "Theo dõi sản phẩm hết hàng hoặc dưới ngưỡng tồn tối thiểu.",
+  },
+  {
+    key: "/admin/warehouses",
+    label: "Kho NPP",
+    icon: <DatabaseOutlined />,
+    title: "Kho nhà phân phối",
+    description: "Quản lý tồn hàng và giá vốn riêng của từng nhà phân phối.",
   },
   {
     key: "/admin/promotions",
@@ -153,7 +167,7 @@ export const adminSidebarRoutes: AdminSidebarRoute[] = [
     title: "Hồ sơ cá nhân",
     description: "Cập nhật thông tin tài khoản và bảo mật đăng nhập.",
   },
-];
+].filter((route) => !hiddenAdminRouteKeys.has(route.key));
 
 export const adminRouteGroups: AdminRouteGroup[] = [
   {
@@ -163,27 +177,24 @@ export const adminRouteGroups: AdminRouteGroup[] = [
   {
     label: "Vận hành",
     keys: [
-      "/admin/visits",
-      "/admin/routes",
-      "/admin/orders",
+      "/admin/orders/supply",
       "/admin/inventory",
       "/admin/inventory/alerts",
+      "/admin/warehouses",
     ],
   },
   {
     label: "Dữ liệu",
     keys: [
       "/admin/users",
-      "/admin/customers",
       "/admin/categories",
       "/admin/products",
       "/admin/promotions",
-      "/admin/leaves",
     ],
   },
   {
     label: "Phân tích",
-    keys: ["/admin/reports", "/admin/kpis"],
+    keys: ["/admin/reports"],
   },
   {
     label: "Hệ thống",
@@ -210,10 +221,12 @@ export const adminNameMap: Record<string, string> = {
   customers: "Khách hàng",
   categories: "Danh mục",
   products: "Sản phẩm",
-  orders: "Đơn hàng",
+  orders: "Đơn thị trường",
+  supply: "Duyệt nhập kho",
   routes: "Kế hoạch tuyến",
   inventory: "Kho hàng",
   alerts: "Cảnh báo kho",
+  warehouses: "Kho nhà phân phối",
   promotions: "Khuyến mãi",
   leaves: "Nghỉ phép",
   reports: "Báo cáo",

@@ -1,28 +1,63 @@
-﻿import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 
 import { sellerApi } from "../api/sellerApi";
 import type { SellerTab } from "../components/AppShell";
-import { Avatar, ErrorBanner, LoadingState, StatusPill } from "../components/Ui";
+import { ErrorBanner, LoadingState, StatusPill } from "../components/Ui";
 import { useRegisterRefresh } from "../hooks/RefreshContext";
 import { useResource } from "../hooks/useResource";
-import { bento, bentoShadow, bentoSoftShadow } from "../theme";
-import type { AuthUser, RoutePlan } from "../types/domain";
-import { currency } from "../utils/format";
+import { bento, bentoSoftShadow } from "../theme";
+import type { AuthUser, RoutePlan, Visit } from "../types/domain";
+import {
+  currency,
+  getCustomerId,
+  getCustomerName,
+  statusLabel,
+} from "../utils/format";
 
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>["name"];
+type Tone =
+  | "primary"
+  | "route"
+  | "routeAlt"
+  | "violet"
+  | "success"
+  | "warning"
+  | "danger"
+  | "muted";
+type VisitCreateIntent = { routeId?: string; customerId?: string };
 
 export function DashboardScreen({
   user,
   onOpenTab,
+  onCreateOrder,
+  onCreateVisit,
 }: {
   user: AuthUser;
   onOpenTab: (tab: SellerTab) => void;
+  onCreateOrder: (customerId?: string) => void;
+  onCreateVisit: (intent: VisitCreateIntent) => void;
 }) {
+  const { width } = useWindowDimensions();
+  const wide = width >= 760;
   const { data, loading, error, reload } = useResource(sellerApi.dashboard, []);
-  useRegisterRefresh(reload, [reload]);
+  const {
+    data: visits,
+    loading: visitsLoading,
+    error: visitsError,
+    reload: reloadVisits,
+  } = useResource(sellerApi.visits, []);
+  useRegisterRefresh(async () => {
+    await Promise.all([reload(), reloadVisits()]);
+  }, [reload, reloadVisits]);
 
-  if (loading) return <LoadingState />;
+  if (loading || visitsLoading) return <LoadingState />;
 
   const totalCustomers = data?.totalCustomers || 0;
   const approvedCustomers = data?.approvedCustomers || 0;
@@ -35,234 +70,405 @@ export function DashboardScreen({
   const unreadNotifications = data?.unreadNotifications || 0;
   const routes = data?.todayRoutes || [];
   const routeSummary = summarizeRoutes(routes);
+  const currentRoute = selectCurrentRoute(routes);
+  const nextStop = currentRoute?.customers.find(
+    (item) => !item.status || item.status === "pending",
+  );
+  const activeVisit = visits?.find((visit) => visit.status === "checked_in");
   const deliveryPercent = percent(deliveredOrders, totalOrders);
-  const customerPercent = percent(approvedCustomers, totalCustomers);
-  const todayLabel = new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date());
-  const workCount = pendingOrders + pendingCustomers + unreadNotifications;
+  const approvedPercent = percent(approvedCustomers, totalCustomers);
+  const attentionTotal =
+    pendingOrders +
+    pendingCustomers +
+    unreadNotifications +
+    routeSummary.remaining;
+  const dateLabel = new Intl.DateTimeFormat("vi-VN", {
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+  }).format(new Date());
 
   return (
-    <View style={styles.screen}>
-      <View style={styles.hero}>
-        <View style={styles.heroHeader}>
-          <View style={styles.greeting}>
-            <Text style={styles.hello}>Xin chào,</Text>
-            <Text style={styles.name} numberOfLines={1}>{shortName(user.fullName || user.email)}</Text>
+    <View style={styles.page}>
+      <View style={styles.heading}>
+        <View style={styles.heroIdentity}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>
+              {initials(user.fullName || user.email)}
+            </Text>
           </View>
-          <Pressable onPress={() => onOpenTab("notifications")} style={({ pressed }) => [styles.notificationButton, pressed && styles.pressed]}>
-            <MaterialCommunityIcons name="bell-outline" size={22} color="#FFFFFF" />
-            {unreadNotifications > 0 ? (
-              <View style={styles.notificationBadge}>
-                <Text style={styles.notificationBadgeText}>{unreadNotifications > 9 ? "9+" : unreadNotifications}</Text>
-              </View>
-            ) : null}
-          </Pressable>
+          <View style={styles.headingText}>
+            <Text style={styles.heroEyebrow}>Hôm nay</Text>
+            <Text style={styles.title}>
+              Chào {shortName(user.fullName || user.email)}
+            </Text>
+            <Text style={styles.date}>{dateLabel}</Text>
+          </View>
         </View>
-
-        <View style={styles.revenueRow}>
-          <Pressable onPress={() => onOpenTab("kpis")} style={({ pressed }) => [styles.revenueCard, pressed && styles.pressed]}>
-            <Text style={styles.cardLabelLight}>Doanh số hôm nay</Text>
-            <Text style={styles.revenueValue}>{compactMoney(totalRevenue)}</Text>
-            <View style={styles.growthPill}>
-              <MaterialCommunityIcons name="trending-up" size={14} color={bento.primary} />
-              <Text style={styles.growthText}>+{Math.max(1, deliveryPercent)}% với hôm qua</Text>
+        <Pressable
+          accessibilityLabel="Thông báo"
+          onPress={() => onOpenTab("notifications")}
+          style={(state) => [
+            styles.bell,
+            isHovered(state) && styles.headerButtonHover,
+            state.pressed && styles.pressed,
+          ]}
+        >
+          <MaterialCommunityIcons
+            name="bell-outline"
+            size={21}
+            color="#FFFFFF"
+          />
+          {unreadNotifications > 0 ? (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>
+                {unreadNotifications > 9 ? "9+" : unreadNotifications}
+              </Text>
             </View>
-          </Pressable>
-          <Pressable onPress={() => onOpenTab("orders")} style={({ pressed }) => [styles.orderMiniCard, pressed && styles.pressed]}>
-            <View style={styles.orderIcon}>
-              <MaterialCommunityIcons name="clipboard-text-outline" size={20} color={bento.primary} />
-            </View>
-            <Text style={styles.orderValue}>{totalOrders}</Text>
-            <Text style={styles.orderLabel}>Đơn hàng</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.miniGrid}>
-          <MiniStat icon="storefront-outline" label="Khách hàng" value={totalCustomers} note={`+${customerPercent}%`} onPress={() => onOpenTab("customers")} />
-          <MiniStat icon="map-marker-check-outline" label="Visit" value={totalVisits} note={`+${routeSummary.percent}%`} onPress={() => onOpenTab("visits")} />
-        </View>
-      </View>
-
-      <View style={styles.content}>
-        <ErrorBanner message={error} />
-
-        <View style={styles.focusCard}>
-          <View style={styles.sectionHeader}>
-            <View>
-              <Text style={styles.sectionTitle}>Cần làm hôm nay</Text>
-              <Text style={styles.sectionHint}>{workCount === 0 ? "Không có việc tồn đọng quan trọng" : `${workCount} việc cần xử lý`}</Text>
-            </View>
-            <StatusPill label={todayLabel} tone="blue" compact />
-          </View>
-          <View style={styles.focusGrid}>
-            <FocusAction
-              icon="cart-plus"
-              title="Tạo đơn"
-              subtitle={`${pendingOrders} đơn chờ duyệt`}
-              tone={pendingOrders > 0 ? "warning" : "primary"}
-              onPress={() => onOpenTab("orders")}
-            />
-            <FocusAction
-              icon="crosshairs-gps"
-              title="Check-in"
-              subtitle={`${routeSummary.remaining} điểm chưa ghé`}
-              tone={routeSummary.remaining > 0 ? "blue" : "success"}
-              onPress={() => onOpenTab("visits")}
-            />
-            <FocusAction
-              icon="navigation-variant-outline"
-              title="Tuyến hôm nay"
-              subtitle={routes[0]?.name || "Chưa có tuyến"}
-              tone={routes.length > 0 ? "success" : "muted"}
-              onPress={() => onOpenTab("routes")}
-            />
-            <FocusAction
-              icon="bell-outline"
-              title="Thông báo"
-              subtitle={`${unreadNotifications} chưa đọc`}
-              tone={unreadNotifications > 0 ? "warning" : "muted"}
-              onPress={() => onOpenTab("notifications")}
-            />
-          </View>
-        </View>
-
-        <View style={styles.chartCard}>
-          <View style={styles.sectionHeader}>
-            <View>
-              <Text style={styles.sectionTitle}>Doanh số 7 ngày qua</Text>
-              <Text style={styles.sectionHint}>{deliveredOrders}/{totalOrders} đơn đã giao</Text>
-            </View>
-            <StatusPill label={workCount === 0 ? "Ổn định" : `${workCount} việc`} tone={workCount === 0 ? "success" : "warning"} compact />
-          </View>
-          <SalesChart seed={totalRevenue + totalOrders + totalVisits} />
-        </View>
-
-        <View style={styles.quickSection}>
-          <View style={styles.quickGrid}>
-            <QuickAction icon="cart-plus" label="Tạo đơn" tone="primary" onPress={() => onOpenTab("orders")} />
-            <QuickAction icon="crosshairs-gps" label="Check-in" tone="blue" onPress={() => onOpenTab("visits")} />
-            <QuickAction icon="account-group-outline" label="Khách hàng" tone="success" onPress={() => onOpenTab("customers")} />
-            <QuickAction icon="chart-box-outline" label="KPI" tone="warning" onPress={() => onOpenTab("kpis")} />
-          </View>
-        </View>
-
-        <View style={styles.routeSummaryCard}>
-          <View style={styles.routeSummaryTop}>
-            <View>
-              <Text style={styles.sectionTitle}>Tuyến hôm nay</Text>
-              <Text style={styles.sectionHint}>{todayLabel}</Text>
-            </View>
-            <Pressable onPress={() => onOpenTab("routes")} style={({ pressed }) => [styles.routeAction, pressed && styles.pressed]}>
-              <MaterialCommunityIcons name="navigation-variant-outline" size={18} color="#FFFFFF" />
-            </Pressable>
-          </View>
-          <View style={styles.routeProgressLine}>
-            <View>
-              <Text style={styles.routeName} numberOfLines={1}>{routes[0]?.name || "Chưa có tuyến"}</Text>
-              <Text style={styles.routeMeta}>{routeSummary.done}/{routeSummary.total} điểm đã qua</Text>
-            </View>
-            <Text style={styles.routePercent}>{routeSummary.percent}%</Text>
-          </View>
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${routeSummary.percent}%` }]} />
-          </View>
-        </View>
-
-        <View style={styles.scheduleHeader}>
-          <Text style={styles.sectionTitle}>Lịch trình hôm nay</Text>
-          <Pressable onPress={() => onOpenTab("routes")} style={({ pressed }) => [styles.textAction, pressed && styles.pressed]}>
-            <Text style={styles.textActionLabel}>Xem tất cả</Text>
-            <MaterialCommunityIcons name="chevron-right" size={16} color={bento.primaryDark} />
-          </Pressable>
-        </View>
-
-        <View style={styles.scheduleList}>
-          {routes[0]?.customers.slice(0, 3).map((item, index) => (
-            <ScheduleItem key={`${routes[0]._id}-${index}`} item={item} index={index} onPress={() => onOpenTab("routes")} />
-          ))}
-          {!routes[0]?.customers.length ? (
-            <Pressable onPress={() => onOpenTab("routes")} style={({ pressed }) => [styles.emptySchedule, pressed && styles.pressed]}>
-              <MaterialCommunityIcons name="calendar-blank-outline" size={22} color={bento.textMuted} />
-              <View style={styles.emptyScheduleText}>
-                <Text style={styles.emptyScheduleTitle}>Chưa có lịch tuyến</Text>
-                <Text style={styles.emptyScheduleSub}>Kiểm tra tuyến hoặc tạo lượt check-in ngoài tuyến.</Text>
-              </View>
-              <MaterialCommunityIcons name="chevron-right" size={18} color={bento.textMuted} />
-            </Pressable>
           ) : null}
+        </Pressable>
+      </View>
+
+      <ErrorBanner message={error || visitsError} />
+
+      <View style={styles.metrics}>
+        <Metric
+          icon="cash-multiple"
+          label="Doanh số"
+          value={compactMoney(totalRevenue)}
+          detail={`${deliveryPercent}% đơn đã giao`}
+          tone="success"
+          onPress={() => onOpenTab("kpis")}
+        />
+        <Metric
+          icon="clipboard-text-outline"
+          label="Đơn hàng"
+          value={`${totalOrders}`}
+          detail={`${pendingOrders} chờ duyệt`}
+          tone="warning"
+          onPress={() => onOpenTab("orders")}
+        />
+        <Metric
+          icon="map-marker-check-outline"
+          label="Ghé thăm"
+          value={`${totalVisits}`}
+          detail={`${routeSummary.remaining} điểm còn lại`}
+          tone="routeAlt"
+          onPress={() => onOpenTab("visits")}
+        />
+        <Metric
+          icon="storefront-outline"
+          label="Điểm bán"
+          value={`${totalCustomers}`}
+          detail={`${approvedPercent}% đã duyệt`}
+          tone="violet"
+          onPress={() => onOpenTab("customers")}
+        />
+      </View>
+
+      <View style={[styles.columns, wide && styles.columnsWide]}>
+        <View style={[styles.primaryColumn, wide && styles.primaryColumnWide]}>
+          {activeVisit ? (
+            <ActiveVisitPanel
+              visit={activeVisit}
+              onCreateOrder={() =>
+                onCreateOrder(getCustomerId(activeVisit.customer) || undefined)
+              }
+              onOpenVisit={() => onOpenTab("visits")}
+            />
+          ) : null}
+          <RoutePanel
+            route={currentRoute}
+            onOpenRoute={() => onOpenTab("routes")}
+            onCheckIn={() => {
+              if (currentRoute?.status === "planned") {
+                onOpenTab("routes");
+                return;
+              }
+              const customerId = nextStop
+                ? getCustomerId(nextStop.customer)
+                : "";
+              if (currentRoute && customerId) {
+                onCreateVisit({ routeId: currentRoute._id, customerId });
+                return;
+              }
+              onOpenTab("visits");
+            }}
+          />
+        </View>
+
+        <View
+          style={[styles.secondaryColumn, wide && styles.secondaryColumnWide]}
+        >
+          <ActionPanel
+            activeVisit={activeVisit}
+            requiresRouteStart={currentRoute?.status === "planned"}
+            onCreateOrder={() =>
+              onCreateOrder(
+                activeVisit
+                  ? getCustomerId(activeVisit.customer) || undefined
+                  : undefined,
+              )
+            }
+            onCheckIn={() => {
+              if (currentRoute?.status === "planned") {
+                onOpenTab("routes");
+                return;
+              }
+              const customerId = nextStop
+                ? getCustomerId(nextStop.customer)
+                : "";
+              if (currentRoute && customerId) {
+                onCreateVisit({ routeId: currentRoute._id, customerId });
+                return;
+              }
+              onOpenTab("visits");
+            }}
+            onOpenTab={onOpenTab}
+          />
+          <AttentionPanel
+            total={attentionTotal}
+            pendingOrders={pendingOrders}
+            pendingCustomers={pendingCustomers}
+            unreadNotifications={unreadNotifications}
+            remainingStops={routeSummary.remaining}
+            onOpenTab={onOpenTab}
+          />
         </View>
       </View>
     </View>
   );
 }
 
-function MiniStat({ icon, label, value, note, onPress }: { icon: IconName; label: string; value: number; note: string; onPress: () => void }) {
+function Metric({
+  icon,
+  label,
+  value,
+  detail,
+  tone,
+  onPress,
+}: {
+  icon: IconName;
+  label: string;
+  value: string;
+  detail: string;
+  tone: Tone;
+  onPress: () => void;
+}) {
+  const colors = toneColors(tone);
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.miniStat, pressed && styles.pressed]}>
-      <View style={styles.miniIcon}>
-        <MaterialCommunityIcons name={icon} size={18} color={bento.primary} />
+    <Pressable
+      onPress={onPress}
+      style={(state) => [
+        styles.metric,
+        { backgroundColor: colors.solid, borderColor: colors.solid },
+        isHovered(state) && styles.solidHover,
+        state.pressed && styles.pressed,
+      ]}
+    >
+      <View style={styles.metricTop}>
+        <Text style={styles.metricLabel}>{label}</Text>
+        <View style={styles.metricIcon}>
+          <MaterialCommunityIcons name={icon} size={17} color="#FFFFFF" />
+        </View>
       </View>
-      <View style={styles.miniBody}>
-        <Text style={styles.miniLabel}>{label}</Text>
-        <Text style={styles.miniValue}>{value}</Text>
-      </View>
-      <Text style={styles.miniNote}>{note}</Text>
+      <Text style={styles.metricValue} numberOfLines={1}>
+        {value}
+      </Text>
+      <Text style={styles.metricDetail} numberOfLines={1}>
+        {detail}
+      </Text>
     </Pressable>
   );
 }
 
-function QuickAction({ icon, label, tone, onPress }: { icon: IconName; label: string; tone: "primary" | "blue" | "success" | "warning"; onPress: () => void }) {
-  const palette = toneStyle(tone);
+function ActiveVisitPanel({
+  visit,
+  onCreateOrder,
+  onOpenVisit,
+}: {
+  visit: Visit;
+  onCreateOrder: () => void;
+  onOpenVisit: () => void;
+}) {
+  const routeName = typeof visit.route === "string" ? "" : visit.route?.name;
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.quickAction, pressed && styles.pressed]}>
-      <View style={[styles.quickIcon, { backgroundColor: palette.bg }]}>
-        <MaterialCommunityIcons name={icon} size={22} color={palette.color} />
+    <View style={[styles.panel, styles.activeVisitPanel]}>
+      <View style={styles.panelHeader}>
+        <Text style={styles.panelTitle}>Đang ghé thăm</Text>
+        <StatusPill label="Đang check-in" tone="success" compact />
       </View>
-      <Text style={styles.quickText} numberOfLines={1}>{label}</Text>
-    </Pressable>
-  );
-}
-
-function FocusAction({ icon, title, subtitle, tone, onPress }: { icon: IconName; title: string; subtitle: string; tone: "primary" | "blue" | "success" | "warning" | "muted"; onPress: () => void }) {
-  const palette = toneStyle(tone);
-  return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.focusAction, pressed && styles.pressed]}>
-      <View style={[styles.focusIcon, { backgroundColor: palette.bg, borderColor: palette.border }]}>
-        <MaterialCommunityIcons name={icon} size={20} color={palette.color} />
+      <View style={styles.activeVisitBody}>
+        <View style={styles.activeVisitIcon}>
+          <MaterialCommunityIcons
+            name="store-marker-outline"
+            size={21}
+            color={bento.success}
+          />
+        </View>
+        <View style={styles.activeVisitText}>
+          <Text style={styles.activeVisitName} numberOfLines={1}>
+            {getCustomerName(visit.customer)}
+          </Text>
+          <Text style={styles.activeVisitMeta} numberOfLines={1}>
+            {checkInTimeLabel(visit.checkInTime)}
+            {routeName ? ` · ${routeName}` : ""}
+          </Text>
+        </View>
       </View>
-      <View style={styles.focusText}>
-        <Text style={styles.focusTitle} numberOfLines={1}>{title}</Text>
-        <Text style={styles.focusSubtitle} numberOfLines={1}>{subtitle}</Text>
+      <View style={styles.panelActions}>
+        <Pressable
+          onPress={onCreateOrder}
+          style={(state) => [
+            styles.primaryAction,
+            styles.activeOrderAction,
+            isHovered(state) && styles.solidHover,
+            state.pressed && styles.pressed,
+          ]}
+        >
+          <MaterialCommunityIcons name="cart-plus" size={18} color="#FFFFFF" />
+          <Text style={styles.primaryActionText}>Tạo đơn</Text>
+        </Pressable>
+        <Pressable
+          onPress={onOpenVisit}
+          style={(state) => [
+            styles.secondaryAction,
+            isHovered(state) && styles.secondaryActionHover,
+            state.pressed && styles.pressed,
+          ]}
+        >
+          <Text style={styles.secondaryActionText}>Xem lượt ghé</Text>
+          <MaterialCommunityIcons
+            name="chevron-right"
+            size={18}
+            color={bento.primary}
+          />
+        </Pressable>
       </View>
-      <MaterialCommunityIcons name="chevron-right" size={18} color={bento.textMuted} />
-    </Pressable>
-  );
-}
-
-function SalesChart({ seed }: { seed: number }) {
-  const values = chartValues(seed);
-  const max = Math.max(...values, 1);
-  const labels = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
-
-  return (
-    <View style={styles.chart}>
-      <View style={styles.chartLine} />
-      {values.map((value, index) => {
-        const height = 22 + Math.round((value / max) * 72);
-        return (
-          <View key={`${value}-${index}`} style={styles.chartColumn}>
-            <View style={styles.chartBarWrap}>
-              <View style={[styles.chartBar, { height }]} />
-              <View style={[styles.chartDot, { bottom: height - 4 }]} />
-            </View>
-            <Text style={styles.chartLabel}>{labels[index]}</Text>
-          </View>
-        );
-      })}
     </View>
   );
 }
 
-function ScheduleItem({
+function RoutePanel({
+  route,
+  onOpenRoute,
+  onCheckIn,
+}: {
+  route?: RoutePlan;
+  onOpenRoute: () => void;
+  onCheckIn: () => void;
+}) {
+  const summary = summarizeRoutes(route ? [route] : []);
+  const routeAction =
+    route?.status === "planned"
+      ? {
+          label: "Xem tuyến được giao",
+          icon: "map-marker-path" as IconName,
+          onPress: onOpenRoute,
+        }
+      : route?.status === "completed"
+        ? {
+            label: "Xem kết quả",
+            icon: "check-circle-outline" as IconName,
+            onPress: onOpenRoute,
+          }
+        : {
+            label: "Check-in tiếp",
+            icon: "crosshairs-gps" as IconName,
+            onPress: onCheckIn,
+          };
+  return (
+    <View style={styles.panel}>
+      <View style={styles.panelHeader}>
+        <View>
+          <Text style={styles.panelTitle}>Tuyến hôm nay</Text>
+          <Text style={styles.panelHint}>
+            {route
+              ? `${route.name} · ${statusLabel(route.status)}`
+              : "Chưa được phân tuyến"}
+          </Text>
+        </View>
+        <StatusPill
+          label={`${summary.percent}%`}
+          tone={summary.percent === 100 ? "success" : "primary"}
+          compact
+        />
+      </View>
+
+      <View style={styles.routeProgress}>
+        <View style={styles.progressLabels}>
+          <Text style={styles.progressText}>{summary.done} đã ghé</Text>
+          <Text style={styles.progressText}>{summary.remaining} còn lại</Text>
+        </View>
+        <View style={styles.progressTrack}>
+          <View
+            style={[styles.progressFill, { width: `${summary.percent}%` }]}
+          />
+        </View>
+      </View>
+
+      <View style={styles.stops}>
+        {route?.customers.slice(0, 4).map((item, index) => (
+          <StopRow
+            key={`${route._id}-${item.orderIndex || index}`}
+            item={item}
+            index={index}
+            onPress={onOpenRoute}
+          />
+        ))}
+        {!route?.customers.length ? (
+          <View style={styles.noRoute}>
+            <MaterialCommunityIcons
+              name="map-marker-path"
+              size={20}
+              color={bento.textMuted}
+            />
+            <Text style={styles.noRouteText}>
+              Không có điểm ghé trong lịch hôm nay
+            </Text>
+          </View>
+        ) : null}
+      </View>
+
+      <View style={styles.panelActions}>
+        <Pressable
+          onPress={routeAction.onPress}
+          style={(state) => [
+            styles.primaryAction,
+            isHovered(state) && styles.solidHover,
+            state.pressed && styles.pressed,
+          ]}
+        >
+          <MaterialCommunityIcons
+            name={routeAction.icon}
+            size={18}
+            color="#FFFFFF"
+          />
+          <Text style={styles.primaryActionText}>{routeAction.label}</Text>
+        </Pressable>
+        {routeAction.onPress !== onOpenRoute ? (
+          <Pressable
+            onPress={onOpenRoute}
+            style={(state) => [
+              styles.secondaryAction,
+              isHovered(state) && styles.secondaryActionHover,
+              state.pressed && styles.pressed,
+            ]}
+          >
+            <Text style={styles.secondaryActionText}>Xem tuyến</Text>
+            <MaterialCommunityIcons
+              name="chevron-right"
+              size={18}
+              color={bento.primary}
+            />
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+function StopRow({
   item,
   index,
   onPress,
@@ -271,16 +477,232 @@ function ScheduleItem({
   index: number;
   onPress: () => void;
 }) {
-  const customer = typeof item.customer === "string" ? undefined : item.customer;
-  const tone = routeCustomerTone(item.status);
+  const customer =
+    typeof item.customer === "string" ? undefined : item.customer;
+  const complete = item.status === "checked_in" || item.status === "visited";
+  const skipped = item.status === "skipped";
+  const status = complete ? "Đã ghé" : skipped ? "Bỏ qua" : "Chờ ghé";
+  const tone: Tone = complete ? "success" : skipped ? "warning" : "muted";
+  const colors = toneColors(tone);
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.scheduleItem, pressed && styles.pressed]}>
-      <Avatar name={customer?.name || "Diem ban"} size={44} tone={tone.avatarTone} />
-      <View style={styles.scheduleBody}>
-        <Text style={styles.scheduleName} numberOfLines={1}>{customer?.name || "Điểm bán"}</Text>
-        <Text style={styles.scheduleAddress} numberOfLines={1}>{customer?.address || `Điểm số ${item.orderIndex || index + 1}`}</Text>
+    <Pressable
+      onPress={onPress}
+      style={(state) => [
+        styles.stopRow,
+        isHovered(state) && styles.surfaceHover,
+        state.pressed && styles.pressed,
+      ]}
+    >
+      <View style={[styles.stopOrder, complete && styles.stopOrderDone]}>
+        {complete ? (
+          <MaterialCommunityIcons name="check" size={15} color="#FFFFFF" />
+        ) : (
+          <Text style={styles.stopOrderText}>
+            {item.orderIndex || index + 1}
+          </Text>
+        )}
       </View>
-      <StatusPill label={routeCustomerLabel(item.status)} tone={tone.pillTone} compact />
+      <View style={styles.stopBody}>
+        <Text style={styles.stopName} numberOfLines={1}>
+          {customer ? getCustomerName(customer) : "Điểm bán"}
+        </Text>
+        <Text style={styles.stopAddress} numberOfLines={1}>
+          {customer?.address || "Chưa có địa chỉ"}
+        </Text>
+      </View>
+      <View style={[styles.stopStatus, { backgroundColor: colors.bg }]}>
+        <Text style={[styles.stopStatusText, { color: colors.text }]}>
+          {status}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
+function ActionPanel({
+  activeVisit,
+  requiresRouteStart,
+  onCreateOrder,
+  onCheckIn,
+  onOpenTab,
+}: {
+  activeVisit?: Visit;
+  requiresRouteStart: boolean;
+  onCreateOrder: () => void;
+  onCheckIn: () => void;
+  onOpenTab: (tab: SellerTab) => void;
+}) {
+  return (
+    <View style={styles.panel}>
+      <Text style={styles.panelTitle}>Tác vụ nhanh</Text>
+      <View style={styles.actions}>
+        {activeVisit ? (
+          <ActionButton
+            icon="cart-plus"
+            label="Tạo đơn"
+            tone="warning"
+            onPress={onCreateOrder}
+          />
+        ) : requiresRouteStart ? (
+          <ActionButton
+            icon="map-marker-check-outline"
+            label="Lượt ghé"
+            tone="routeAlt"
+            onPress={() => onOpenTab("visits")}
+          />
+        ) : (
+          <ActionButton
+            icon="crosshairs-gps"
+            label="Check-in"
+            tone="routeAlt"
+            onPress={onCheckIn}
+          />
+        )}
+        <ActionButton
+          icon={activeVisit ? "map-marker-check-outline" : "map-marker-path"}
+          label={activeVisit ? "Lượt đang ghé" : "Tuyến hôm nay"}
+          tone={activeVisit ? "routeAlt" : "route"}
+          onPress={() => onOpenTab(activeVisit ? "visits" : "routes")}
+        />
+        <ActionButton
+          icon="storefront-plus-outline"
+          label="Điểm bán"
+          tone="violet"
+          onPress={() => onOpenTab("customers")}
+        />
+        <ActionButton
+          icon="chart-box-outline"
+          label="KPI"
+          tone="success"
+          onPress={() => onOpenTab("kpis")}
+        />
+      </View>
+    </View>
+  );
+}
+
+function ActionButton({
+  icon,
+  label,
+  tone,
+  onPress,
+}: {
+  icon: IconName;
+  label: string;
+  tone: Tone;
+  onPress: () => void;
+}) {
+  const colors = toneColors(tone);
+  return (
+    <Pressable
+      onPress={onPress}
+      style={(state) => [
+        styles.actionButton,
+        { backgroundColor: colors.solid, borderColor: colors.solid },
+        isHovered(state) && styles.solidHover,
+        state.pressed && styles.pressed,
+      ]}
+    >
+      <View style={styles.actionIcon}>
+        <MaterialCommunityIcons name={icon} size={18} color="#FFFFFF" />
+      </View>
+      <Text style={styles.actionLabelSolid}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function AttentionPanel({
+  total,
+  pendingOrders,
+  pendingCustomers,
+  unreadNotifications,
+  remainingStops,
+  onOpenTab,
+}: {
+  total: number;
+  pendingOrders: number;
+  pendingCustomers: number;
+  unreadNotifications: number;
+  remainingStops: number;
+  onOpenTab: (tab: SellerTab) => void;
+}) {
+  return (
+    <View style={styles.panel}>
+      <View style={styles.panelHeader}>
+        <Text style={styles.panelTitle}>Cần xử lý</Text>
+        <Text style={styles.totalPending}>{total}</Text>
+      </View>
+      <View style={styles.queue}>
+        <QueueRow
+          label="Đơn chờ duyệt"
+          value={pendingOrders}
+          tone="warning"
+          tab="orders"
+          onOpenTab={onOpenTab}
+        />
+        <QueueRow
+          label="Điểm bán chờ duyệt"
+          value={pendingCustomers}
+          tone="primary"
+          tab="customers"
+          onOpenTab={onOpenTab}
+        />
+        <QueueRow
+          label="Thông báo chưa đọc"
+          value={unreadNotifications}
+          tone="danger"
+          tab="notifications"
+          onOpenTab={onOpenTab}
+        />
+        <QueueRow
+          label="Điểm chưa ghé"
+          value={remainingStops}
+          tone="routeAlt"
+          tab="visits"
+          onOpenTab={onOpenTab}
+        />
+      </View>
+    </View>
+  );
+}
+
+function QueueRow({
+  label,
+  value,
+  tone,
+  tab,
+  onOpenTab,
+}: {
+  label: string;
+  value: number;
+  tone: Tone;
+  tab: SellerTab;
+  onOpenTab: (tab: SellerTab) => void;
+}) {
+  const colors = toneColors(tone);
+  return (
+    <Pressable
+      onPress={() => onOpenTab(tab)}
+      style={(state) => [
+        styles.queueRow,
+        isHovered(state) && styles.surfaceHover,
+        state.pressed && styles.pressed,
+      ]}
+    >
+      <Text style={styles.queueLabel}>{label}</Text>
+      <Text
+        style={[
+          styles.queueValue,
+          value > 0 && { backgroundColor: colors.iconBg, color: colors.text },
+        ]}
+      >
+        {value}
+      </Text>
+      <MaterialCommunityIcons
+        name="chevron-right"
+        size={18}
+        color={bento.textMuted}
+      />
     </Pressable>
   );
 }
@@ -291,540 +713,610 @@ function summarizeRoutes(routes: RoutePlan[]) {
     (sum, route) =>
       sum +
       route.customers.filter(
-        (item) => item.status === "checked_in" || item.status === "visited" || item.status === "skipped",
+        (item) =>
+          item.status === "checked_in" ||
+          item.status === "visited" ||
+          item.status === "skipped",
       ).length,
     0,
   );
-  return { total, done, remaining: Math.max(total - done, 0), percent: percent(done, total) };
+  return {
+    total,
+    done,
+    remaining: Math.max(total - done, 0),
+    percent: percent(done, total),
+  };
 }
 
-function percent(done: number, total: number) {
+function selectCurrentRoute(routes: RoutePlan[]) {
+  return (
+    routes.find((route) => route.status === "in_progress") ||
+    routes.find((route) => route.status === "planned") ||
+    routes[0]
+  );
+}
+
+function percent(value: number, total: number) {
   if (!total) return 0;
-  return Math.min(100, Math.round((done / total) * 100));
+  return Math.min(100, Math.round((value / total) * 100));
+}
+
+function checkInTimeLabel(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Đang hoạt động";
+  const time = new Intl.DateTimeFormat("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+  return `Bắt đầu lúc ${time}`;
 }
 
 function compactMoney(value: number) {
-  if (value >= 1_000_000_000) return `${Number((value / 1_000_000_000).toFixed(1))}B`;
-  if (value >= 1_000_000) return `${Number((value / 1_000_000).toFixed(1))}M`;
-  if (value >= 1_000) return `${Number((value / 1_000).toFixed(1))}K`;
+  if (value >= 1_000_000_000)
+    return `${Number((value / 1_000_000_000).toFixed(1))} tỷ`;
+  if (value >= 1_000_000) return `${Number((value / 1_000_000).toFixed(1))} tr`;
   return currency(value);
 }
 
 function shortName(value: string) {
-  const words = value.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return "Seller";
-  if (words.length === 1) return words[0];
-  return words.at(-1) || words[0];
+  const parts = value.trim().split(/\s+/).filter(Boolean);
+  return parts.at(-1) || "bạn";
 }
 
-function chartValues(seed: number) {
-  const base = Math.max(seed, 7);
-  return Array.from({ length: 7 }, (_, index) => {
-    const wave = ((base / (index + 2)) % 9) + index * 1.5;
-    return Math.round(28 + wave * 7 + (index % 2 === 0 ? 10 : 0));
-  });
+function initials(value: string) {
+  const parts = value.trim().split(/\s+/).filter(Boolean);
+  const letters =
+    parts.length >= 2 ? [parts[0][0], parts.at(-1)?.[0]] : [parts[0]?.[0]];
+  return letters.filter(Boolean).join("").toUpperCase() || "DS";
 }
 
-function toneStyle(tone: "primary" | "blue" | "success" | "warning" | "muted") {
-  if (tone === "blue") return { color: bento.route, bg: bento.routeSoft, border: "#CFE0FF" };
-  if (tone === "success") return { color: bento.success, bg: bento.successSoft, border: "#BDEEDB" };
-  if (tone === "warning") return { color: bento.warning, bg: bento.warningSoft, border: "#FFE0A8" };
-  if (tone === "muted") return { color: bento.textSecondary, bg: bento.surfaceAlt, border: bento.border };
-  return { color: bento.primaryDark, bg: bento.primarySoft, border: bento.borderStrong };
+function isHovered(state: { pressed: boolean }) {
+  return Boolean((state as { hovered?: boolean }).hovered);
 }
 
-function routeCustomerTone(status?: string): { pillTone: "primary" | "blue" | "success" | "warning" | "danger" | "muted"; avatarTone: "primary" | "blue" | "success" | "warning" | "danger" | "muted" } {
-  if (status === "checked_in" || status === "visited") return { pillTone: "success", avatarTone: "success" };
-  if (status === "skipped") return { pillTone: "warning", avatarTone: "warning" };
-  return { pillTone: "danger", avatarTone: "blue" };
-}
-
-function routeCustomerLabel(status?: string) {
-  if (status === "checked_in" || status === "visited") return "Đã check-in";
-  if (status === "skipped") return "Bỏ qua";
-  return "Chưa đến";
+function toneColors(tone: Tone) {
+  if (tone === "success")
+    return {
+      text: "#047857",
+      solid: "#059669",
+      bg: "#ECFDF5",
+      iconBg: "#D1FAE5",
+      border: "#A7F3D0",
+    };
+  if (tone === "warning")
+    return {
+      text: "#B45309",
+      solid: "#D97706",
+      bg: "#FFFAEF",
+      iconBg: "#FEF3C7",
+      border: "#F4DFB6",
+    };
+  if (tone === "danger")
+    return {
+      text: bento.danger,
+      solid: "#DC2626",
+      bg: "#FFF5F5",
+      iconBg: bento.dangerSoft,
+      border: "#FACFD2",
+    };
+  if (tone === "routeAlt")
+    return {
+      text: "#0369A1",
+      solid: "#0284C7",
+      bg: "#F0F9FF",
+      iconBg: "#E0F2FE",
+      border: "#BAE6FD",
+    };
+  if (tone === "violet")
+    return {
+      text: "#6D28D9",
+      solid: "#7C3AED",
+      bg: "#F5F3FF",
+      iconBg: "#EDE9FE",
+      border: "#DDD6FE",
+    };
+  if (tone === "route")
+    return {
+      text: "#0369A1",
+      solid: "#0284C7",
+      bg: "#F0F9FF",
+      iconBg: "#E0F2FE",
+      border: "#BAE6FD",
+    };
+  if (tone === "muted")
+    return {
+      text: bento.textSecondary,
+      solid: "#64748B",
+      bg: bento.surfaceAlt,
+      iconBg: bento.surface,
+      border: bento.border,
+    };
+  return {
+    text: "#1D4ED8",
+    solid: "#2563EB",
+    bg: "#F2F6FF",
+    iconBg: "#DBEAFE",
+    border: "#BFDBFE",
+  };
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    backgroundColor: bento.surface,
-    flex: 1,
+  page: {
+    alignSelf: "center",
+    backgroundColor: bento.background,
+    gap: 16,
+    maxWidth: 1080,
     minHeight: "100%",
+    paddingBottom: 20,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    width: "100%",
   },
-  hero: {
-    backgroundColor: bento.chrome,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    gap: 14,
-    overflow: "hidden",
-    paddingBottom: 24,
-    paddingHorizontal: 20,
-    paddingTop: 18,
-    position: "relative",
-  },
-  heroHeader: {
+  heading: {
     alignItems: "center",
+    backgroundColor: "#103494",
+    borderBottomLeftRadius: 18,
+    borderBottomRightRadius: 18,
     flexDirection: "row",
+    gap: 12,
     justifyContent: "space-between",
+    marginHorizontal: -16,
+    marginTop: -16,
+    overflow: "hidden",
+    paddingBottom: 34,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    position: "relative",
+
+    shadowColor: "#103494",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 14,
+    elevation: 6,
   },
-  greeting: {
+
+  heroIdentity: {
+    alignItems: "center",
+    flex: 1,
+    flexDirection: "row",
+    gap: 12,
+    minWidth: 0,
+  },
+
+  avatar: {
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.22)",
+    borderColor: "rgba(255,255,255,0.38)",
+    borderRadius: 10,
+    borderWidth: 1,
+    height: 42,
+    justifyContent: "center",
+    width: 42,
+  },
+
+  avatarText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "900",
+    letterSpacing: 0.3,
+  },
+
+  headingText: {
     flex: 1,
     minWidth: 0,
   },
-  hello: {
-    color: "rgba(255,255,255,0.72)",
-    fontSize: 12,
-    fontWeight: "700",
+
+  heroEyebrow: {
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(255,255,255,0.16)",
+    borderRadius: 999,
+    color: "rgba(255,255,255,0.86)",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.6,
+    overflow: "hidden",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    textTransform: "uppercase",
   },
-  name: {
+
+  title: {
     color: "#FFFFFF",
     fontSize: 22,
     fontWeight: "900",
-    marginTop: 2,
+    lineHeight: 28,
+    marginTop: 6,
+    letterSpacing: 0,
   },
-  notificationButton: {
+
+  date: {
+    color: "rgba(255,255,255,0.82)",
+    fontSize: 12,
+    fontWeight: "700",
+    marginTop: 2,
+    textTransform: "capitalize",
+  },
+  bell: {
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderColor: "rgba(255,255,255,0.14)",
-    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderColor: "rgba(255,255,255,0.38)",
+    borderRadius: 10,
     borderWidth: 1,
-    height: 44,
+    height: 42,
     justifyContent: "center",
     position: "relative",
-    width: 44,
+    width: 42,
   },
-  notificationBadge: {
+
+  badge: {
     alignItems: "center",
-    backgroundColor: bento.danger,
-    borderColor: bento.chrome,
-    borderRadius: 10,
+    backgroundColor: "#FF4D4F",
+    borderColor: "#FFFFFF",
+    borderRadius: 8,
     borderWidth: 2,
-    minWidth: 20,
+    minWidth: 19,
     paddingHorizontal: 4,
     position: "absolute",
-    right: -4,
+    right: -5,
     top: -5,
   },
-  notificationBadgeText: {
+
+  badgeText: {
     color: "#FFFFFF",
     fontSize: 10,
     fontWeight: "900",
   },
-  revenueRow: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  revenueCard: {
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderColor: "rgba(255,255,255,0.14)",
-    borderRadius: 24,
-    borderWidth: 1,
-    flex: 1,
-    gap: 8,
-    minHeight: 126,
-    padding: 16,
-  },
-  cardLabelLight: {
-    color: "rgba(255,255,255,0.72)",
-    fontSize: 12,
-    fontWeight: "800",
-  },
-  revenueValue: {
-    color: "#FFFFFF",
-    fontSize: 30,
-    fontWeight: "900",
-  },
-  growthPill: {
-    alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(74,222,222,0.14)",
-    borderColor: "rgba(74,222,222,0.24)",
-    borderRadius: 999,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: 5,
-    paddingHorizontal: 9,
-    paddingVertical: 6,
-  },
-  growthText: {
-    color: bento.primary,
-    fontSize: 11,
-    fontWeight: "800",
-  },
-  orderMiniCard: {
-    alignItems: "flex-start",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 22,
-    justifyContent: "space-between",
-    padding: 14,
-    width: 112,
-    ...bentoShadow,
-  },
-  orderIcon: {
-    alignItems: "center",
-    backgroundColor: bento.primarySoft,
-    borderRadius: 14,
-    height: 38,
-    justifyContent: "center",
-    width: 38,
-  },
-  orderValue: {
-    color: bento.text,
-    fontSize: 24,
-    fontWeight: "900",
-  },
-  orderLabel: {
-    color: bento.textSecondary,
-    fontSize: 12,
-    fontWeight: "800",
-  },
-  miniGrid: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  miniStat: {
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderColor: "rgba(255,255,255,0.13)",
-    borderRadius: 18,
-    borderWidth: 1,
-    flex: 1,
-    flexDirection: "row",
-    gap: 10,
-    minHeight: 62,
-    padding: 10,
-  },
-  miniIcon: {
-    alignItems: "center",
-    backgroundColor: "rgba(74,222,222,0.14)",
-    borderRadius: 13,
-    height: 38,
-    justifyContent: "center",
-    width: 38,
-  },
-  miniBody: {
-    flex: 1,
-    minWidth: 0,
-  },
-  miniLabel: {
-    color: "rgba(255,255,255,0.66)",
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  miniValue: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "900",
-    marginTop: 2,
-  },
-  miniNote: {
-    color: bento.primary,
-    fontSize: 11,
-    fontWeight: "900",
-  },
-  content: {
-    alignSelf: "center",
-    backgroundColor: bento.surface,
-    gap: 16,
-    maxWidth: 760,
-    paddingBottom: 18,
-    paddingHorizontal: 20,
-    paddingTop: 18,
-    width: "100%",
-  },
-  focusCard: {
-    backgroundColor: bento.surface,
-    borderColor: bento.border,
-    borderRadius: 24,
-    borderWidth: 1,
-    gap: 14,
-    padding: 16,
-    ...bentoSoftShadow,
-  },
-  focusGrid: {
+
+  metrics: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 10,
+    marginTop: -24,
   },
-  focusAction: {
-    alignItems: "center",
-    backgroundColor: bento.surfaceAlt,
-    borderColor: bento.border,
-    borderRadius: 18,
+  metric: {
+    borderRadius: 8,
     borderWidth: 1,
-    flexBasis: "47%",
-    flexDirection: "row",
+    flexBasis: 140,
     flexGrow: 1,
-    gap: 10,
-    minHeight: 72,
-    minWidth: 150,
-    padding: 12,
+    gap: 3,
+    minHeight: 88,
+    minWidth: 136,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    ...bentoSoftShadow,
   },
-  focusIcon: {
+  metricTop: {
     alignItems: "center",
-    borderRadius: 15,
-    borderWidth: 1,
-    height: 42,
-    justifyContent: "center",
-    width: 42,
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
-  focusText: {
+  metricIcon: {
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.18)",
+    borderRadius: 5,
+    height: 27,
+    justifyContent: "center",
+    width: 27,
+  },
+  metricLabel: {
+    color: "rgba(255,255,255,0.92)",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  metricValue: {
+    color: "#FFFFFF",
+    fontSize: 20,
+    fontWeight: "700",
+    lineHeight: 24,
+  },
+  metricDetail: {
+    color: "rgba(255,255,255,0.9)",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  columns: {
+    gap: 12,
+  },
+  columnsWide: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+  },
+  primaryColumn: {
+    gap: 12,
+    width: "100%",
+  },
+  primaryColumnWide: {
+    flex: 1.48,
+    minWidth: 0,
+  },
+  secondaryColumn: {
+    gap: 12,
+    width: "100%",
+  },
+  secondaryColumnWide: {
+    flex: 1,
+    minWidth: 290,
+  },
+  panel: {
+    backgroundColor: bento.surface,
+    borderColor: bento.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 13,
+    padding: 14,
+    ...bentoSoftShadow,
+  },
+  activeVisitPanel: {
+    borderColor: bento.borderStrong,
+  },
+  activeVisitBody: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10,
+  },
+  activeVisitIcon: {
+    alignItems: "center",
+    backgroundColor: bento.successSoft,
+    borderRadius: 8,
+    height: 44,
+    justifyContent: "center",
+    width: 44,
+  },
+  activeVisitText: {
     flex: 1,
     minWidth: 0,
   },
-  focusTitle: {
+  activeVisitName: {
     color: bento.text,
-    fontSize: 14,
-    fontWeight: "900",
+    fontSize: 15,
+    fontWeight: "700",
   },
-  focusSubtitle: {
+  activeVisitMeta: {
     color: bento.textSecondary,
     fontSize: 12,
-    fontWeight: "700",
-    marginTop: 3,
+    fontWeight: "600",
+    marginTop: 4,
   },
-  chartCard: {
-    backgroundColor: bento.surface,
-    borderColor: bento.border,
-    borderRadius: 24,
-    borderWidth: 1,
-    gap: 14,
-    padding: 16,
-    ...bentoSoftShadow,
-  },
-  sectionHeader: {
+  panelHeader: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
   },
-  sectionTitle: {
+  panelTitle: {
     color: bento.text,
     fontSize: 16,
-    fontWeight: "900",
-  },
-  sectionHint: {
-    color: bento.textSecondary,
-    fontSize: 12,
     fontWeight: "700",
-    marginTop: 3,
   },
-  chart: {
-    alignItems: "flex-end",
-    flexDirection: "row",
-    gap: 9,
-    height: 128,
-    justifyContent: "space-between",
-    overflow: "hidden",
-    position: "relative",
-  },
-  chartLine: {
-    backgroundColor: bento.border,
-    height: 1,
-    left: 0,
-    opacity: 0.8,
-    position: "absolute",
-    right: 0,
-    top: 56,
-  },
-  chartColumn: {
-    alignItems: "center",
-    flex: 1,
-    gap: 7,
-    height: "100%",
-    justifyContent: "flex-end",
-  },
-  chartBarWrap: {
-    alignItems: "center",
-    flex: 1,
-    justifyContent: "flex-end",
-    position: "relative",
-    width: "100%",
-  },
-  chartBar: {
-    backgroundColor: bento.routeSoft,
-    borderRadius: 999,
-    maxWidth: 13,
-    width: "54%",
-  },
-  chartDot: {
-    backgroundColor: bento.route,
-    borderColor: "#FFFFFF",
-    borderRadius: 7,
-    borderWidth: 2,
-    height: 14,
-    position: "absolute",
-    width: 14,
-  },
-  chartLabel: {
-    color: bento.textMuted,
-    fontSize: 10,
-    fontWeight: "800",
-  },
-  quickSection: {
-    gap: 10,
-  },
-  quickGrid: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  quickAction: {
-    alignItems: "center",
-    backgroundColor: bento.surface,
-    borderColor: bento.border,
-    borderRadius: 20,
-    borderWidth: 1,
-    flex: 1,
-    gap: 8,
-    minHeight: 84,
-    paddingHorizontal: 8,
-    paddingVertical: 12,
-    ...bentoSoftShadow,
-  },
-  quickIcon: {
-    alignItems: "center",
-    borderRadius: 16,
-    height: 42,
-    justifyContent: "center",
-    width: 42,
-  },
-  quickText: {
-    color: bento.text,
-    fontSize: 11,
-    fontWeight: "900",
-    textAlign: "center",
-  },
-  routeSummaryCard: {
-    backgroundColor: bento.surface,
-    borderColor: bento.border,
-    borderRadius: 24,
-    borderWidth: 1,
-    gap: 14,
-    padding: 16,
-    ...bentoSoftShadow,
-  },
-  routeSummaryTop: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  routeAction: {
-    alignItems: "center",
-    backgroundColor: bento.primary,
-    borderRadius: 18,
-    height: 42,
-    justifyContent: "center",
-    width: 42,
-  },
-  routeProgressLine: {
-    alignItems: "flex-end",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  routeName: {
-    color: bento.text,
-    fontSize: 18,
-    fontWeight: "900",
-    maxWidth: 250,
-  },
-  routeMeta: {
+  panelHint: {
     color: bento.textSecondary,
     fontSize: 12,
-    fontWeight: "800",
+    fontWeight: "600",
     marginTop: 3,
+    maxWidth: 270,
   },
-  routePercent: {
-    color: bento.route,
-    fontSize: 22,
-    fontWeight: "900",
+  routeProgress: {
+    gap: 8,
+  },
+  progressLabels: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  progressText: {
+    color: bento.textSecondary,
+    fontSize: 12,
+    fontWeight: "600",
   },
   progressTrack: {
     backgroundColor: bento.surfaceAlt,
-    borderRadius: 999,
-    height: 9,
+    borderRadius: 4,
+    height: 8,
     overflow: "hidden",
   },
   progressFill: {
     backgroundColor: bento.primary,
-    borderRadius: 999,
-    height: "100%",
+    borderRadius: 4,
+    height: 8,
   },
-  scheduleHeader: {
+  stops: {
+    gap: 8,
+  },
+  stopRow: {
     alignItems: "center",
+    backgroundColor: bento.surfaceAlt,
+    borderColor: bento.border,
+    borderRadius: 8,
+    borderWidth: 1,
     flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  textAction: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 2,
-  },
-  textActionLabel: {
-    color: bento.primaryDark,
-    fontSize: 12,
-    fontWeight: "900",
-  },
-  scheduleList: {
     gap: 10,
-    paddingBottom: 8,
+    minHeight: 62,
+    padding: 9,
   },
-  scheduleItem: {
+  stopOrder: {
     alignItems: "center",
     backgroundColor: bento.surface,
     borderColor: bento.border,
-    borderRadius: 22,
+    borderRadius: 6,
     borderWidth: 1,
-    flexDirection: "row",
-    gap: 11,
-    minHeight: 76,
-    padding: 12,
-    ...bentoSoftShadow,
+    height: 34,
+    justifyContent: "center",
+    width: 34,
   },
-  scheduleBody: {
-    flex: 1,
-    minWidth: 0,
+  stopOrderDone: {
+    backgroundColor: bento.success,
+    borderColor: bento.success,
   },
-  scheduleName: {
-    color: bento.text,
-    fontSize: 14,
-    fontWeight: "900",
-  },
-  scheduleAddress: {
+  stopOrderText: {
     color: bento.textSecondary,
     fontSize: 12,
     fontWeight: "700",
-    marginTop: 4,
   },
-  emptySchedule: {
+  stopBody: {
+    flex: 1,
+    minWidth: 0,
+  },
+  stopName: {
+    color: bento.text,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  stopAddress: {
+    color: bento.textSecondary,
+    fontSize: 11,
+    fontWeight: "600",
+    marginTop: 3,
+  },
+  stopStatus: {
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
+  stopStatusText: {
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  noRoute: {
     alignItems: "center",
-    backgroundColor: bento.surface,
+    backgroundColor: bento.surfaceAlt,
     borderColor: bento.border,
-    borderRadius: 22,
+    borderRadius: 8,
     borderStyle: "dashed",
     borderWidth: 1,
     flexDirection: "row",
-    gap: 12,
-    minHeight: 78,
-    padding: 14,
+    gap: 8,
+    minHeight: 62,
+    paddingHorizontal: 12,
   },
-  emptyScheduleText: {
-    flex: 1,
-    minWidth: 0,
-  },
-  emptyScheduleTitle: {
-    color: bento.text,
-    fontSize: 14,
-    fontWeight: "900",
-  },
-  emptyScheduleSub: {
+  noRouteText: {
     color: bento.textSecondary,
+    flex: 1,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  panelActions: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  primaryAction: {
+    alignItems: "center",
+    backgroundColor: bento.primary,
+    borderRadius: 8,
+    flex: 1,
+    flexDirection: "row",
+    gap: 7,
+    justifyContent: "center",
+    minHeight: 45,
+  },
+  primaryActionText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  activeOrderAction: {
+    backgroundColor: bento.order,
+  },
+  secondaryAction: {
+    alignItems: "center",
+    backgroundColor: bento.primarySoft,
+    borderColor: bento.borderStrong,
+    borderRadius: 8,
+    borderWidth: 1,
+    flex: 1,
+    flexDirection: "row",
+    justifyContent: "center",
+    minHeight: 45,
+  },
+  secondaryActionText: {
+    color: bento.primary,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  actions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 7,
+  },
+  actionButton: {
+    alignItems: "center",
+    borderRadius: 8,
+    borderWidth: 1,
+    flexBasis: "47%",
+    flexGrow: 1,
+    flexDirection: "row",
+    gap: 8,
+    minHeight: 52,
+    paddingHorizontal: 10,
+  },
+  actionIcon: {
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.18)",
+    borderRadius: 5,
+    height: 30,
+    justifyContent: "center",
+    width: 30,
+  },
+  actionLabelSolid: {
+    color: "#FFFFFF",
     fontSize: 12,
     fontWeight: "700",
-    lineHeight: 17,
-    marginTop: 3,
+  },
+  totalPending: {
+    backgroundColor: bento.warningSoft,
+    borderRadius: 6,
+    color: bento.warning,
+    fontSize: 13,
+    fontWeight: "700",
+    overflow: "hidden",
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+  },
+  queue: {
+    borderColor: bento.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  queueRow: {
+    alignItems: "center",
+    borderBottomColor: bento.border,
+    borderBottomWidth: 1,
+    flexDirection: "row",
+    minHeight: 47,
+    paddingHorizontal: 11,
+  },
+  queueLabel: {
+    color: bento.textSecondary,
+    flex: 1,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  queueValue: {
+    borderRadius: 6,
+    color: bento.textMuted,
+    fontSize: 13,
+    fontWeight: "700",
+    marginRight: 4,
+    minWidth: 28,
+    overflow: "hidden",
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    textAlign: "center",
   },
   pressed: {
     opacity: 0.72,
   },
+  headerButtonHover: {
+    backgroundColor: "rgba(255,255,255,0.28)",
+    borderColor: "rgba(255,255,255,0.5)",
+  },
+  solidHover: {
+    opacity: 0.92,
+  },
+  surfaceHover: {
+    backgroundColor: bento.primarySoft,
+    borderColor: bento.borderStrong,
+  },
+  secondaryActionHover: {
+    backgroundColor: bento.surface,
+    borderColor: bento.primary,
+  },
 });
-

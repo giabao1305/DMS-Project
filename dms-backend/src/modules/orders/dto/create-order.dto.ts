@@ -1,5 +1,7 @@
 import {
   IsArray,
+  IsDateString,
+  IsEnum,
   IsMongoId,
   IsNotEmpty,
   IsNumber,
@@ -9,6 +11,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { OrderType } from '../schemas/order.schema';
 
 export class CreateOrderItemDto {
   @IsNotEmpty()
@@ -23,12 +26,20 @@ export class CreateOrderItemDto {
 
 export class CreateOrderDto {
   @IsOptional()
+  @IsEnum(OrderType)
+  orderType?: OrderType;
+
+  @IsOptional()
+  @IsMongoId()
+  distributor?: string;
+
+  @IsOptional()
   @IsMongoId()
   seller?: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsMongoId()
-  customer!: string;
+  customer?: string;
 
   @IsArray()
   @ValidateNested({ each: true })
@@ -42,4 +53,20 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString()
   note?: string;
+
+  @IsOptional()
+  @IsString()
+  deliveryRecipientName?: string;
+
+  @IsOptional()
+  @IsString()
+  deliveryPhone?: string;
+
+  @IsOptional()
+  @IsString()
+  deliveryAddress?: string;
+
+  @IsOptional()
+  @IsDateString()
+  requestedDeliveryDate?: string;
 }

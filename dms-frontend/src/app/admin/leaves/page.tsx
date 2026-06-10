@@ -16,6 +16,7 @@ import {
   Flex,
   Input,
   Segmented,
+  Select,
   Table,
   Tag,
   Typography,
@@ -29,6 +30,7 @@ import AdminBreadcrumb from "@/components/ui/AdminBreadcrumb";
 import AdminPageHeader from "@/components/ui/AdminPageHeader";
 import { useGetLeavesPageQuery } from "@/features/leaves/leaveService";
 import type { LeaveRequest, LeaveStatus } from "@/features/leaves/leaveTypes";
+import { useGetUsersQuery } from "@/features/users/userService";
 import type { User } from "@/features/users/userTypes";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useRealtimeHighlight } from "@/hooks/useRealtimeHighlight";
@@ -88,16 +90,23 @@ const getLeaveDays = (startDate?: string, endDate?: string) => {
 };
 
 const getSellerName = (seller: LeaveRequest["seller"]) => {
-  if (typeof seller === "string") return /^[a-f\d]{24}$/i.test(seller) ? "-" : seller;
+  if (typeof seller === "string")
+    return /^[a-f\d]{24}$/i.test(seller) ? "-" : seller;
   return (seller as User)?.fullName || "-";
 };
 
 export default function AdminLeavesPage() {
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState<LeaveStatusFilter>("all");
+  const [distributor, setDistributor] = useState<string>();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const searchKeyword = useDebouncedValue(keyword);
+  const { data: users = [] } = useGetUsersQuery();
+  const distributors = useMemo(
+    () => users.filter((user) => user.role === "distributor" && user.isActive),
+    [users],
+  );
 
   const queryArgs = useMemo(
     () => ({
@@ -105,10 +114,11 @@ export default function AdminLeavesPage() {
       limit,
       search: searchKeyword.trim() || undefined,
       status: status === "all" ? undefined : status,
+      distributor,
       sortBy: "createdAt",
       sortOrder: "desc" as const,
     }),
-    [limit, page, searchKeyword, status],
+    [distributor, limit, page, searchKeyword, status],
   );
 
   const {
@@ -130,8 +140,12 @@ export default function AdminLeavesPage() {
 
   const overview = useMemo(() => {
     const pending = leaves.filter((leave) => leave.status === "pending").length;
-    const approved = leaves.filter((leave) => leave.status === "approved").length;
-    const rejected = leaves.filter((leave) => leave.status === "rejected").length;
+    const approved = leaves.filter(
+      (leave) => leave.status === "approved",
+    ).length;
+    const rejected = leaves.filter(
+      (leave) => leave.status === "rejected",
+    ).length;
     const totalDays = leaves.reduce(
       (sum, leave) => sum + getLeaveDays(leave.startDate, leave.endDate),
       0,
@@ -148,6 +162,11 @@ export default function AdminLeavesPage() {
 
   const handleStatusChange = (value: LeaveStatusFilter) => {
     setStatus(value);
+    setPage(1);
+  };
+
+  const handleDistributorChange = (value?: string) => {
+    setDistributor(value);
     setPage(1);
   };
 
@@ -336,6 +355,22 @@ export default function AdminLeavesPage() {
                 ]}
               />
 
+              <Select
+                allowClear
+                showSearch
+                size="large"
+                placeholder="Lọc nhà phân phối"
+                optionFilterProp="label"
+                value={distributor}
+                onChange={handleDistributorChange}
+                className="admin-leaves-distributor-select"
+                options={distributors.map((item) => ({
+                  value: item._id,
+                  label: `${item.code ? `${item.code} - ` : ""}${
+                    item.companyName || item.fullName || item.email
+                  }`,
+                }))}
+              />
             </Flex>
           </Flex>
         </Card>
@@ -377,7 +412,9 @@ export default function AdminLeavesPage() {
               showTotal: (total) => `Tổng ${total} đơn nghỉ phép`,
             }}
             locale={{
-              emptyText: <Empty description="Không tìm thấy đơn nghỉ phép phù hợp" />,
+              emptyText: (
+                <Empty description="Không tìm thấy đơn nghỉ phép phù hợp" />
+              ),
             }}
           />
         </Card>
@@ -400,7 +437,11 @@ export default function AdminLeavesPage() {
           border: 1px solid rgba(125, 211, 252, 0.2);
           border-radius: 8px;
           background:
-            radial-gradient(circle at 86% 18%, rgba(245, 158, 11, 0.2), transparent 28%),
+            radial-gradient(
+              circle at 86% 18%,
+              rgba(245, 158, 11, 0.2),
+              transparent 28%
+            ),
             linear-gradient(135deg, #071a24 0%, #102b3a 52%, #12394a 100%);
           box-shadow: 0 22px 46px rgba(7, 26, 36, 0.18);
         }
@@ -588,8 +629,13 @@ export default function AdminLeavesPage() {
           width: 220px !important;
         }
 
+        .admin-leaves-distributor-select {
+          width: 260px !important;
+        }
+
         .admin-leaves-search-input,
         .admin-leaves-status-select .ant-select-selector,
+        .admin-leaves-distributor-select .ant-select-selector,
         .admin-leaves-reset-button {
           border-radius: 8px !important;
         }
@@ -688,7 +734,10 @@ export default function AdminLeavesPage() {
           background-color: #f8fafc !important;
         }
 
-        .admin-leaves-table .ant-table-tbody > tr:hover > td.ant-table-cell-fix-right,
+        .admin-leaves-table
+          .ant-table-tbody
+          > tr:hover
+          > td.ant-table-cell-fix-right,
         .admin-leaves-table
           .ant-table-tbody
           > tr:hover
@@ -810,6 +859,7 @@ export default function AdminLeavesPage() {
           .admin-leaves-filter-actions,
           .admin-leaves-search-input,
           .admin-leaves-status-select,
+          .admin-leaves-distributor-select,
           .admin-leaves-reset-button {
             width: 100% !important;
           }

@@ -13,7 +13,7 @@ export default function AntdClientProvider({
     <ConfigProvider
       theme={{
         token: {
-          colorPrimary: "#315EFB",
+          colorPrimary: "#2563EB",
           colorInfo: "#2563EB",
           colorSuccess: "#16A34A",
           colorWarning: "#F59E0B",
@@ -32,7 +32,7 @@ export default function AntdClientProvider({
           Button: {
             borderRadius: 10,
             controlHeight: 40,
-            primaryShadow: "0 8px 18px rgba(49, 94, 251, 0.18)",
+            primaryShadow: "0 8px 18px rgba(37, 99, 235, 0.18)",
           },
           Card: {
             borderRadiusLG: 16,

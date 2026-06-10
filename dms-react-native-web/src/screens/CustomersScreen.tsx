@@ -42,23 +42,65 @@ export function CustomersScreen({
   }, [customers, page]);
 
   useEffect(() => {
-    if (!loading && isCustomerScopedPage(page) && !selectedCustomer) setPage({ name: "list" });
+    if (!loading && isCustomerScopedPage(page) && !selectedCustomer)
+      setPage({ name: "list" });
   }, [loading, page, selectedCustomer]);
 
   const goList = useCallback(() => setPage({ name: "list" }), []);
-  const goCreate = useCallback(() => { setMessage(""); setPage({ name: "create" }); }, []);
-  const goDetail = useCallback((customer: Customer) => setPage({ name: "detail", customerId: customer._id }), []);
-  const goEdit = useCallback((customer: Customer) => { setMessage(""); setPage({ name: "edit", customerId: customer._id }); }, []);
-  const handleCustomerCreated = useCallback(async () => { await reload(); setMessage("Đã tạo điểm bán."); goList(); }, [goList, reload]);
-  const handleCustomerUpdated = useCallback(async (customer: Customer) => { await reload(); setMessage("Đã cập nhật điểm bán."); setPage({ name: "detail", customerId: customer._id }); }, [reload]);
-  const handleCustomerDeleted = useCallback(async () => { await reload(); setMessage("Đã xóa điểm bán."); goList(); }, [goList, reload]);
+  const goCreate = useCallback(() => {
+    setMessage("");
+    setPage({ name: "create" });
+  }, []);
+  const goDetail = useCallback(
+    (customer: Customer) =>
+      setPage({ name: "detail", customerId: customer._id }),
+    [],
+  );
+  const goEdit = useCallback((customer: Customer) => {
+    setMessage("");
+    setPage({ name: "edit", customerId: customer._id });
+  }, []);
+  const handleCustomerCreated = useCallback(async () => {
+    await reload();
+    setMessage("Đã tạo khách hàng.");
+    goList();
+  }, [goList, reload]);
+  const handleCustomerUpdated = useCallback(
+    async (customer: Customer) => {
+      await reload();
+      setMessage("Đã cập nhật khách hàng.");
+      setPage({ name: "detail", customerId: customer._id });
+    },
+    [reload],
+  );
+  const handleCustomerDeleted = useCallback(async () => {
+    await reload();
+    setMessage("Đã xóa khách hàng.");
+    goList();
+  }, [goList, reload]);
 
   if (loading) return <LoadingState variant="list" />;
 
-  if (page.name === "create") return <CustomerForm title="Thêm điểm bán" onBack={goList} onSaved={handleCustomerCreated} />;
+  if (page.name === "create")
+    return (
+      <CustomerForm
+        title="Thêm khách hàng"
+        onBack={goList}
+        onSaved={handleCustomerCreated}
+      />
+    );
   if (page.name === "edit") {
     if (!selectedCustomer) return <LoadingState variant="list" />;
-    return <CustomerForm title="Sửa điểm bán" customer={selectedCustomer} onBack={() => setPage({ name: "detail", customerId: selectedCustomer._id })} onSaved={handleCustomerUpdated} />;
+    return (
+      <CustomerForm
+        title="Sửa khách hàng"
+        customer={selectedCustomer}
+        onBack={() =>
+          setPage({ name: "detail", customerId: selectedCustomer._id })
+        }
+        onSaved={handleCustomerUpdated}
+      />
+    );
   }
   if (page.name === "detail") {
     if (!selectedCustomer) return <LoadingState variant="list" />;
@@ -70,16 +112,32 @@ export function CustomersScreen({
         message={message}
         onBack={goList}
         onCreateOrder={() => onCreateOrder?.(selectedCustomer._id)}
-        onCreateVisit={() => onCreateVisit?.({ customerId: selectedCustomer._id })}
-        onEdit={() => { if (selectedCustomer.status !== "approved") goEdit(selectedCustomer); }}
+        onCreateVisit={() =>
+          onCreateVisit?.({ customerId: selectedCustomer._id })
+        }
+        onEdit={() => {
+          if (selectedCustomer.status !== "approved") goEdit(selectedCustomer);
+        }}
         onDeleted={handleCustomerDeleted}
       />
     );
   }
 
-  return <CustomersList customers={customers} error={error} message={message} onBack={() => onOpenTab("dashboard")} onCreate={goCreate} onDetail={goDetail} onEdit={goEdit} />;
+  return (
+    <CustomersList
+      customers={customers}
+      error={error}
+      message={message}
+      onBack={() => onOpenTab("dashboard")}
+      onCreate={goCreate}
+      onDetail={goDetail}
+      onEdit={goEdit}
+    />
+  );
 }
 
-function isCustomerScopedPage(page: CustomerPage): page is Extract<CustomerPage, { name: "detail" | "edit" }> {
+function isCustomerScopedPage(
+  page: CustomerPage,
+): page is Extract<CustomerPage, { name: "detail" | "edit" }> {
   return page.name === "detail" || page.name === "edit";
 }

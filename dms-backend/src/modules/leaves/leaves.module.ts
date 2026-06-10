@@ -5,6 +5,7 @@ import {
   LeaveRequest,
   LeaveRequestSchema,
 } from './schemas/leave-request.schema';
+import { Route, RouteSchema } from '../routes/schemas/route.schema';
 import { User, UserSchema } from '../users/schemas/user.schema';
 import { LeavesController } from './leaves.controller';
 import { LeavesService } from './leaves.service';
@@ -20,6 +21,10 @@ import { LeavesService } from './leaves.service';
       {
         name: User.name,
         schema: UserSchema,
+      },
+      {
+        name: Route.name,
+        schema: RouteSchema,
       },
     ]),
   ],

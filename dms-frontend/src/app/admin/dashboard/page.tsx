@@ -53,7 +53,7 @@ const statusMap: Record<OrderStatus, { label: string; color: string }> = {
   delivered: { label: "Đã giao", color: "green" },
   return_requested: { label: "Chờ duyệt trả", color: "gold" },
   cancelled: { label: "Đã hủy", color: "red" },
-  returned: { label: "Đã trả hàng", color: "purple" },
+  returned: { label: "Đã trả hàng", color: "blue" },
 };
 
 const routeStatusMap = {

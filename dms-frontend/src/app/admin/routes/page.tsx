@@ -40,6 +40,7 @@ import {
   useGetRoutesPageQuery,
 } from "@/features/routes/routeService";
 import type { Route, RouteStatus } from "@/features/routes/routeTypes";
+import { useGetUsersQuery } from "@/features/users/userService";
 import type { User } from "@/features/users/userTypes";
 import { useRealtimeRefetch } from "@/hooks/useRealtimeRefetch";
 
@@ -74,8 +75,14 @@ export default function AdminRoutesPage() {
   const { message } = App.useApp();
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState<RouteStatusFilter>("all");
+  const [distributor, setDistributor] = useState<string>();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
+  const { data: users = [] } = useGetUsersQuery();
+  const distributors = useMemo(
+    () => users.filter((user) => user.role === "distributor" && user.isActive),
+    [users],
+  );
 
   const queryArgs = useMemo(
     () => ({
@@ -83,10 +90,11 @@ export default function AdminRoutesPage() {
       limit,
       search: keyword.trim() || undefined,
       status: status === "all" ? undefined : status,
+      distributor,
       sortBy: "workDate",
       sortOrder: "desc" as const,
     }),
-    [keyword, limit, page, status],
+    [distributor, keyword, limit, page, status],
   );
 
   const {
@@ -121,8 +129,8 @@ export default function AdminRoutesPage() {
     };
   }, [routes]);
 
-
-  const hasFilter = keyword.trim().length > 0 || status !== "all";
+  const hasFilter =
+    keyword.trim().length > 0 || status !== "all" || Boolean(distributor);
 
   const handleDelete = useCallback(
     async (id: string) => {
@@ -139,6 +147,7 @@ export default function AdminRoutesPage() {
   const handleResetFilters = useCallback(() => {
     setKeyword("");
     setStatus("all");
+    setDistributor(undefined);
     setPage(1);
   }, []);
 
@@ -149,6 +158,11 @@ export default function AdminRoutesPage() {
 
   const handleStatusChange = (value: RouteStatusFilter) => {
     setStatus(value);
+    setPage(1);
+  };
+
+  const handleDistributorChange = (value?: string) => {
+    setDistributor(value);
     setPage(1);
   };
 
@@ -367,7 +381,9 @@ export default function AdminRoutesPage() {
               <div>
                 <AimOutlined />
                 <span>Điểm bán</span>
-                <strong>{overview.totalCustomers.toLocaleString("vi-VN")}</strong>
+                <strong>
+                  {overview.totalCustomers.toLocaleString("vi-VN")}
+                </strong>
               </div>
             </div>
           </div>
@@ -376,7 +392,9 @@ export default function AdminRoutesPage() {
             <CheckCircleOutlined />
             <span>Hoàn thành</span>
             <strong>{overview.completed.toLocaleString("vi-VN")}</strong>
-            <Text>{overview.cancelled.toLocaleString("vi-VN")} tuyến đã hủy</Text>
+            <Text>
+              {overview.cancelled.toLocaleString("vi-VN")} tuyến đã hủy
+            </Text>
           </div>
         </div>
 
@@ -416,6 +434,23 @@ export default function AdminRoutesPage() {
                 ]}
               />
 
+              <Select
+                allowClear
+                showSearch
+                size="large"
+                placeholder="Lọc nhà phân phối"
+                optionFilterProp="label"
+                value={distributor}
+                onChange={handleDistributorChange}
+                className="admin-routes-distributor-select"
+                options={distributors.map((item) => ({
+                  value: item._id,
+                  label: `${item.code ? `${item.code} - ` : ""}${
+                    item.companyName || item.fullName || item.email
+                  }`,
+                }))}
+              />
+
               {hasFilter ? (
                 <Button
                   size="large"
@@ -440,7 +475,8 @@ export default function AdminRoutesPage() {
                   Danh sách tuyến
                 </Text>
                 <Text className="admin-routes-panel-desc">
-                  Hiển thị {routes.length.toLocaleString("vi-VN")} / {(meta?.total ?? routes.length).toLocaleString("vi-VN")} tuyến
+                  Hiển thị {routes.length.toLocaleString("vi-VN")} /{" "}
+                  {(meta?.total ?? routes.length).toLocaleString("vi-VN")} tuyến
                 </Text>
               </div>
             </Flex>
@@ -487,7 +523,11 @@ export default function AdminRoutesPage() {
           border: 1px solid rgba(125, 211, 252, 0.2);
           border-radius: 8px;
           background:
-            radial-gradient(circle at 86% 18%, rgba(14, 165, 233, 0.26), transparent 28%),
+            radial-gradient(
+              circle at 86% 18%,
+              rgba(14, 165, 233, 0.26),
+              transparent 28%
+            ),
             linear-gradient(135deg, #071a24 0%, #102b3a 52%, #12394a 100%);
           box-shadow: 0 22px 46px rgba(7, 26, 36, 0.18);
         }
@@ -672,8 +712,13 @@ export default function AdminRoutesPage() {
           width: 210px !important;
         }
 
+        .admin-routes-distributor-select {
+          width: 260px !important;
+        }
+
         .admin-routes-search-input,
         .admin-routes-status-select .ant-select-selector,
+        .admin-routes-distributor-select .ant-select-selector,
         .admin-routes-reset-button {
           border-radius: 8px !important;
         }
@@ -863,7 +908,7 @@ export default function AdminRoutesPage() {
         .admin-routes-create-button {
           height: 42px !important;
           padding-inline: 18px !important;
-          box-shadow: 0 12px 24px rgba(49, 94, 251, 0.18);
+          box-shadow: 0 12px 24px rgba(37, 99, 235, 0.18);
         }
 
         .admin-routes-action-button {
@@ -923,6 +968,7 @@ export default function AdminRoutesPage() {
           .admin-routes-filter-actions,
           .admin-routes-search-input,
           .admin-routes-status-select,
+          .admin-routes-distributor-select,
           .admin-routes-reset-button {
             width: 100% !important;
           }

@@ -5,8 +5,10 @@ export type AuthUser = {
   fullName: string;
   email: string;
   role: UserRole;
+  manager?: string | AuthUser;
   isActive: boolean;
   phone?: string;
+  code?: string;
   companyName?: string;
   avatar?: string;
 };
@@ -19,6 +21,8 @@ export type OrderStatus =
   | "return_requested"
   | "cancelled"
   | "returned";
+export type PaymentStatus = "unpaid" | "partial" | "paid";
+export type PaymentMethod = "cash" | "bank_transfer" | "online_qr" | "other";
 export type VisitStatus = "checked_in" | "checked_out";
 export type LeaveStatus = "pending" | "approved" | "rejected";
 export type RouteStatus = "planned" | "in_progress" | "completed" | "cancelled";
@@ -63,6 +67,24 @@ export type Product = {
   isActive: boolean;
 };
 
+export type Warehouse = {
+  _id: string;
+  name: string;
+  code: string;
+  type: "manufacturer" | "distributor";
+  distributor?: string | AuthUser;
+  isActive: boolean;
+};
+
+export type WarehouseStock = {
+  _id: string;
+  warehouse: string | Warehouse;
+  product: string | Product;
+  quantity: number;
+  averageCost: number;
+  sellingPrice?: number;
+};
+
 export type PromotionType = "percent" | "amount" | "product_gift";
 
 export type Promotion = {
@@ -88,6 +110,24 @@ export type OrderItem = {
   quantity: number;
   price: number;
   subtotal: number;
+  costPrice?: number;
+  grossProfit?: number;
+};
+
+export type OrderPayment = {
+  amount: number;
+  method: PaymentMethod;
+  note?: string;
+  collectedBy: string | AuthUser;
+  collectedAt: string;
+};
+
+export type OrderRefund = {
+  amount: number;
+  method: PaymentMethod;
+  note?: string;
+  refundedBy: string | AuthUser;
+  refundedAt: string;
 };
 
 export type Order = {
@@ -99,6 +139,14 @@ export type Order = {
   totalAmount: number;
   discountAmount: number;
   finalAmount: number;
+  totalCost?: number;
+  grossProfit?: number;
+  paymentStatus?: PaymentStatus;
+  paidAmount?: number;
+  balanceDue?: number;
+  payments?: OrderPayment[];
+  refundedAmount?: number;
+  refunds?: OrderRefund[];
   promotion?: string | Promotion;
   status: OrderStatus;
   note?: string;
@@ -121,6 +169,10 @@ export type RoutePlan = {
   _id: string;
   name: string;
   seller: string | AuthUser;
+  substituteSeller?: string | AuthUser;
+  substituteReason?: string;
+  substituteAssignedBy?: string | AuthUser;
+  substituteAssignedAt?: string;
   workDate: string;
   customers: RouteCustomer[];
   status: RouteStatus;

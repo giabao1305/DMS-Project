@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useParams } from "next/navigation";
 
@@ -9,3 +9,8 @@ export default function DistributorEditRoutePage() {
 
   return <RouteFormPage mode="edit" routeId={params.id} scope="distributor" />;
 }
+
+
+
+
+

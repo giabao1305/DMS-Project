@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   IdcardOutlined,
@@ -24,7 +24,7 @@ import {
   Typography,
 } from "antd";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import AdminBreadcrumb from "@/components/ui/AdminBreadcrumb";
 import AdminPageHeader from "@/components/ui/AdminPageHeader";
@@ -55,7 +55,65 @@ type UserFormValues = {
   companyName?: string;
   taxCode?: string;
   address?: string;
+  provinceCode?: number;
+  wardName?: string;
   isActive?: boolean;
+};
+
+type Ward = {
+  name: string;
+  code: number;
+  codename: string;
+  province_code: number;
+};
+
+type Province = {
+  name: string;
+  code: number;
+  codename: string;
+  wards?: Ward[];
+};
+
+const PROVINCES_API_URL = "https://provinces.open-api.vn/api/v2/";
+
+const padCode = (value: number) => value.toString().padStart(6, "0");
+
+const provinceRegionCode = (province?: Province) => {
+  if (!province) return "";
+
+  const words = province.codename
+    .split("_")
+    .filter((word) => !["tinh", "thanh", "pho"].includes(word));
+
+  return words
+    .map((word) => word[0]?.toUpperCase() || "")
+    .join("")
+    .slice(0, 4);
+};
+
+const extractDistributorCodeParts = (code?: string) => {
+  const match = code?.match(/^NPP-([A-Z]{2,4})-(\d{3,6})$/);
+
+  if (!match) return undefined;
+
+  return {
+    region: match[1],
+    sequence: match[2],
+  };
+};
+
+const nextSequence = (
+  users: Array<{ code?: string; role: UserRole; manager?: string | { _id: string } }>,
+  pattern: RegExp,
+) => {
+  const max = users.reduce((currentMax, user) => {
+    const match = user.code?.match(pattern);
+    const value = match ? Number(match[1]) : 0;
+
+    return Number.isFinite(value) ? Math.max(currentMax, value) : currentMax;
+  }, 0);
+
+  return padCode(max + 1);
 };
 
 export default function UserFormPage({ mode }: { mode: UserFormMode }) {
@@ -68,6 +126,11 @@ export default function UserFormPage({ mode }: { mode: UserFormMode }) {
   const selectedRole = Form.useWatch("role", form);
   const selectedManagerId = Form.useWatch("manager", form);
   const selectedCompanyName = Form.useWatch("companyName", form);
+  const selectedProvinceCode = Form.useWatch("provinceCode", form);
+  const [provinces, setProvinces] = useState<Province[]>([]);
+  const [wards, setWards] = useState<Ward[]>([]);
+  const [loadingProvinces, setLoadingProvinces] = useState(false);
+  const [loadingWards, setLoadingWards] = useState(false);
 
   const { data: users = [] } = useGetUsersQuery();
   const { data: user, isLoading: loadingUser } = useGetUserByIdQuery(id || "", {
@@ -96,6 +159,107 @@ export default function UserFormPage({ mode }: { mode: UserFormMode }) {
     [selectedManagerId, users],
   );
   const distributorCompanyName = selectedDistributor?.companyName || "";
+  const selectedProvince = useMemo(
+    () => provinces.find((province) => province.code === selectedProvinceCode),
+    [provinces, selectedProvinceCode],
+  );
+
+  const provinceOptions = useMemo(
+    () =>
+      provinces.map((province) => ({
+        label: province.name,
+        value: province.code,
+      })),
+    [provinces],
+  );
+  const wardOptions = useMemo(
+    () =>
+      wards.map((ward) => ({
+        label: ward.name,
+        value: ward.name,
+      })),
+    [wards],
+  );
+  const visibleDistributorUsers = useMemo(() => {
+    const region = provinceRegionCode(selectedProvince);
+
+    if (!region) return distributorUsers;
+
+    return distributorUsers.filter((distributor) => {
+      const parts = extractDistributorCodeParts(distributor.code);
+
+      return parts?.region === region;
+    });
+  }, [distributorUsers, selectedProvince]);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadProvinces() {
+      setLoadingProvinces(true);
+
+      try {
+        const response = await fetch(PROVINCES_API_URL);
+        const data = (await response.json()) as Province[];
+
+        if (!ignore) {
+          setProvinces(Array.isArray(data) ? data : []);
+        }
+      } catch {
+        if (!ignore) {
+          setProvinces([]);
+        }
+      } finally {
+        if (!ignore) {
+          setLoadingProvinces(false);
+        }
+      }
+    }
+
+    loadProvinces();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedProvinceCode) {
+      setWards([]);
+      return;
+    }
+
+    let ignore = false;
+
+    async function loadWards() {
+      setLoadingWards(true);
+
+      try {
+        const response = await fetch(
+          `${PROVINCES_API_URL}p/${selectedProvinceCode}?depth=2`,
+        );
+        const data = (await response.json()) as Province;
+
+        if (!ignore) {
+          setWards(Array.isArray(data.wards) ? data.wards : []);
+        }
+      } catch {
+        if (!ignore) {
+          setWards([]);
+        }
+      } finally {
+        if (!ignore) {
+          setLoadingWards(false);
+        }
+      }
+    }
+
+    loadWards();
+
+    return () => {
+      ignore = true;
+    };
+  }, [selectedProvinceCode]);
 
   useEffect(() => {
     if (!user) return;
@@ -115,6 +279,48 @@ export default function UserFormPage({ mode }: { mode: UserFormMode }) {
     });
   }, [form, user]);
 
+  const generatedCode = useMemo(() => {
+    if (isEdit) return user?.code || "";
+
+    if (selectedRole === "distributor") {
+      const region = provinceRegionCode(selectedProvince);
+      if (!region) return "";
+
+      const sequence = nextSequence(
+        users,
+        new RegExp(`^NPP-${region}-(\\d{3,6})$`),
+      );
+
+      return `NPP-${region}-${sequence}`;
+    }
+
+    if (selectedRole === "seller") {
+      const distributorParts = extractDistributorCodeParts(
+        selectedDistributor?.code,
+      );
+      if (!distributorParts || !selectedDistributor?._id) return "";
+
+      const sellerUsers = users.filter((entry) => {
+        const managerId =
+          typeof entry.manager === "string"
+            ? entry.manager
+            : entry.manager?._id;
+
+        return entry.role === "seller" && managerId === selectedDistributor._id;
+      });
+      const sequence = nextSequence(
+        sellerUsers,
+        new RegExp(
+          `^DSR-${distributorParts.region}-NPP${distributorParts.sequence}-(\\d{3,6})$`,
+        ),
+      );
+
+      return `DSR-${distributorParts.region}-NPP${distributorParts.sequence}-${sequence}`;
+    }
+
+    return "";
+  }, [isEdit, selectedDistributor, selectedProvince, selectedRole, user, users]);
+
   const resolveCompanyName = (values: UserFormValues) => {
     if (values.role !== "seller") return values.companyName || undefined;
 
@@ -130,9 +336,20 @@ export default function UserFormPage({ mode }: { mode: UserFormMode }) {
 
   const handleSubmit = async (values: UserFormValues) => {
     try {
+      const address =
+        [values.wardName, selectedProvince?.name].filter(Boolean).join(", ") ||
+        user?.address ||
+        undefined;
+
       if (isEdit && id) {
+        const { provinceCode, wardName, ...editableValues } = values;
+        void provinceCode;
+        void wardName;
+
         const bodyValues = {
-          ...values,
+          ...editableValues,
+          code: generatedCode || values.code,
+          address,
           companyName: resolveCompanyName(values),
         };
         const body = Object.fromEntries(
@@ -148,7 +365,7 @@ export default function UserFormPage({ mode }: { mode: UserFormMode }) {
       }
 
       const createValues: CreateUserRequest = {
-        code: values.code || undefined,
+        code: generatedCode || values.code || undefined,
         fullName: values.fullName,
         email: values.email,
         password: values.password as string,
@@ -156,7 +373,7 @@ export default function UserFormPage({ mode }: { mode: UserFormMode }) {
         role: values.role,
         manager: values.role === "seller" ? values.manager : undefined,
         companyName: resolveCompanyName(values),
-        address: values.address || undefined,
+        address,
         taxCode: values.taxCode || undefined,
       };
 
@@ -258,56 +475,134 @@ export default function UserFormPage({ mode }: { mode: UserFormMode }) {
                     Thông tin tài khoản
                   </Text>
                   <Text className="admin-user-form-section-desc">
-                    Nhập thông tin đăng nhập và vai trò sử dụng trong hệ thống.
+                    Chọn vai trò và tỉnh/thành trước để hệ thống tự sinh mã nhân sự.
                   </Text>
                 </div>
                 <Tag color="blue" className="admin-user-form-section-tag">
-                  Required
+                  Bắt buộc
                 </Tag>
               </Flex>
 
               <Row gutter={[18, 0]}>
                 <Col xs={24} md={12}>
                   <Form.Item
-                    label="Mã nhân sự"
-                    name="code"
-                    normalize={(value?: string) => value?.toUpperCase()}
+                    label="Vai trò"
+                    name="role"
+                    rules={[{ required: true, message: "Vui lòng chọn vai trò" }]}
+                  >
+                    <Select
+                      size="large"
+                      placeholder="Chọn vai trò"
+                      onChange={() => {
+                        form.resetFields(["manager", "wardName"]);
+                      }}
+                      options={
+                        isEdit
+                          ? [
+                              { label: "Admin", value: "admin" },
+                              { label: "Nhà phân phối", value: "distributor" },
+                              { label: "DSR", value: "seller" },
+                            ]
+                          : [
+                              { label: "Nhà phân phối", value: "distributor" },
+                              { label: "DSR", value: "seller" },
+                            ]
+                      }
+                    />
+                  </Form.Item>
+                </Col>
+
+                <Col xs={24} md={12}>
+                  <Form.Item
+                    label="Tỉnh/thành"
+                    name="provinceCode"
                     rules={[
                       {
-                        required: selectedRole === "seller" || selectedRole === "distributor",
-                        message: "Vui lòng nhập mã DSR/NPP",
-                      },
-                      {
-                        validator: (_, value?: string) => {
-                          if (!value) return Promise.resolve();
-
-                          const pattern =
-                            selectedRole === "distributor"
-                              ? /^NPP-[A-Z]{2,4}-\d{3}$/
-                              : selectedRole === "seller"
-                                ? /^DSR-[A-Z]{2,4}-NPP\d{3}-\d{3}$/
-                                : /^(NPP-[A-Z]{2,4}-\d{3}|DSR-[A-Z]{2,4}-NPP\d{3}-\d{3})$/;
-
-                          return pattern.test(value)
-                            ? Promise.resolve()
-                            : Promise.reject(
-                                new Error(
-                                  selectedRole === "distributor"
-                                    ? "Mã NPP có dạng NPP-HCM-001"
-                                    : "Mã DSR có dạng DSR-HCM-NPP001-001",
-                                ),
-                              );
-                        },
+                        required:
+                          selectedRole === "distributor" ||
+                          selectedRole === "seller",
+                        message: "Vui lòng chọn tỉnh/thành",
                       },
                     ]}
                   >
+                    <Select
+                      allowClear
+                      showSearch
+                      size="large"
+                      loading={loadingProvinces}
+                      virtual={false}
+                      popupMatchSelectWidth={false}
+                      listHeight={256}
+                      optionFilterProp="label"
+                      placeholder="Chọn tỉnh/thành"
+                      options={provinceOptions}
+                      onChange={() => {
+                        form.resetFields(["manager", "wardName"]);
+                      }}
+                    />
+                  </Form.Item>
+                </Col>
+
+                <Col xs={24} md={12}>
+                  <Form.Item label="Xã/phường" name="wardName">
+                    <Select
+                      allowClear
+                      showSearch
+                      size="large"
+                      disabled={!selectedProvinceCode}
+                      loading={loadingWards}
+                      virtual={false}
+                      popupMatchSelectWidth={false}
+                      listHeight={256}
+                      optionFilterProp="label"
+                      placeholder="Chọn xã/phường"
+                      options={wardOptions}
+                    />
+                  </Form.Item>
+                </Col>
+
+                {needsAsmManager ? (
+                  <Col xs={24} md={12}>
+                    <Form.Item
+                      label="Nhà phân phối quản lý"
+                      name="manager"
+                      rules={[
+                        {
+                          required: true,
+                          message: "Vui lòng chọn nhà phân phối quản lý DSR",
+                        },
+                      ]}
+                    >
+                      <Select
+                        showSearch
+                        size="large"
+                        placeholder="Chọn nhà phân phối quản lý"
+                        optionFilterProp="label"
+                        virtual={false}
+                        popupMatchSelectWidth={false}
+                        listHeight={256}
+                        options={visibleDistributorUsers.map((distributor) => ({
+                          label: `${distributor.code ? `${distributor.code} - ` : ""}${
+                            distributor.companyName || distributor.fullName
+                          }`,
+                          value: distributor._id,
+                        }))}
+                      />
+                    </Form.Item>
+                  </Col>
+                ) : null}
+
+                <Col xs={24} md={12}>
+                  <Form.Item label="Mã nhân sự">
                     <Input
+                      readOnly
                       size="large"
                       prefix={<IdcardOutlined />}
+                      value={generatedCode}
                       placeholder={
                         selectedRole === "distributor"
-                          ? "Ví dụ: NPP-HCM-001"
-                          : "Ví dụ: DSR-HCM-NPP001-001"
+                          ? "Chọn tỉnh/thành để sinh mã NPP"
+                          : "Chọn NPP quản lý để sinh mã DSR"
                       }
                     />
                   </Form.Item>
@@ -366,57 +661,6 @@ export default function UserFormPage({ mode }: { mode: UserFormMode }) {
                   </Form.Item>
                 </Col>
 
-                <Col xs={24} md={12}>
-                  <Form.Item
-                    label="Vai trò"
-                    name="role"
-                    rules={[{ required: true, message: "Vui lòng chọn vai trò" }]}
-                  >
-                    <Select
-                      size="large"
-                      placeholder="Chọn vai trò"
-                      options={
-                        isEdit
-                          ? [
-                              { label: "Admin", value: "admin" },
-                              { label: "Nhà phân phối", value: "distributor" },
-                              { label: "DSR", value: "seller" },
-                            ]
-                          : [
-                              { label: "Nhà phân phối", value: "distributor" },
-                              { label: "DSR", value: "seller" },
-                            ]
-                      }
-                    />
-                  </Form.Item>
-                </Col>
-
-                {needsAsmManager ? (
-                  <Col xs={24} md={12}>
-                    <Form.Item
-                      label="Nhà phân phối quản lý"
-                      name="manager"
-                      rules={[
-                        {
-                          required: true,
-                          message: "Vui lòng chọn nhà phân phối quản lý DSR",
-                        },
-                      ]}
-                    >
-                      <Select
-                        showSearch
-                        size="large"
-                        placeholder="Chọn nhà phân phối quản lý"
-                        optionFilterProp="label"
-                        options={distributorUsers.map((distributor) => ({
-                          label: `${distributor.fullName} - ${distributor.email}`,
-                          value: distributor._id,
-                        }))}
-                      />
-                    </Form.Item>
-                  </Col>
-                ) : null}
-
                 {isEdit ? (
                   <Col xs={24} md={12}>
                     <Form.Item label="Trạng thái" name="isActive">
@@ -447,7 +691,7 @@ export default function UserFormPage({ mode }: { mode: UserFormMode }) {
                     Hồ sơ liên hệ
                   </Text>
                   <Text className="admin-user-form-section-desc">
-                    Bổ sung số điện thoại, công ty, mã số thuế và địa chỉ.
+                    Bổ sung số điện thoại, công ty và mã số thuế.
                   </Text>
                 </div>
               </Flex>
@@ -492,12 +736,6 @@ export default function UserFormPage({ mode }: { mode: UserFormMode }) {
                       prefix={<IdcardOutlined />}
                       placeholder="Nhập mã số thuế"
                     />
-                  </Form.Item>
-                </Col>
-
-                <Col xs={24} md={12}>
-                  <Form.Item label="Địa chỉ" name="address">
-                    <Input size="large" placeholder="Nhập địa chỉ" />
                   </Form.Item>
                 </Col>
               </Row>
@@ -652,3 +890,4 @@ function UserFormStyles() {
     `}</style>
   );
 }
+

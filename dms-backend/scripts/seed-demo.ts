@@ -34,8 +34,20 @@ import {
 import {
   Order,
   OrderSchema,
+  OrderType,
   OrderStatus,
+  PaymentMethod,
+  PaymentStatus,
 } from '../src/modules/orders/schemas/order.schema';
+import {
+  Warehouse,
+  WarehouseSchema,
+  WarehouseType,
+} from '../src/modules/warehouses/schemas/warehouse.schema';
+import {
+  WarehouseStock,
+  WarehouseStockSchema,
+} from '../src/modules/warehouses/schemas/warehouse-stock.schema';
 import {
   Route,
   RouteSchema,
@@ -63,6 +75,11 @@ const InventoryTransactionModel = mongoose.model<InventoryTransaction>(
 );
 const PromotionModel = mongoose.model<Promotion>('Promotion', PromotionSchema);
 const OrderModel = mongoose.model<Order>('Order', OrderSchema);
+const WarehouseModel = mongoose.model<Warehouse>('Warehouse', WarehouseSchema);
+const WarehouseStockModel = mongoose.model<WarehouseStock>(
+  'WarehouseStock',
+  WarehouseStockSchema,
+);
 const RouteModel = mongoose.model<Route>('Route', RouteSchema);
 const LeaveRequestModel = mongoose.model<LeaveRequest>(
   'LeaveRequest',
@@ -93,11 +110,12 @@ async function connectWithTimeout(mongoUri: string) {
 }
 
 async function upsertUsers() {
-  const [adminPassword, distributorPassword, sellerPassword] = await Promise.all([
-    bcrypt.hash(DEMO_PASSWORDS.admin, 10),
-    bcrypt.hash(DEMO_PASSWORDS.distributor, 10),
-    bcrypt.hash(DEMO_PASSWORDS.seller, 10),
-  ]);
+  const [adminPassword, distributorPassword, sellerPassword] =
+    await Promise.all([
+      bcrypt.hash(DEMO_PASSWORDS.admin, 10),
+      bcrypt.hash(DEMO_PASSWORDS.distributor, 10),
+      bcrypt.hash(DEMO_PASSWORDS.seller, 10),
+    ]);
 
   const admin = await UserModel.findOneAndUpdate(
     { email: 'admin@dms.local' },
@@ -256,48 +274,237 @@ async function upsertPromotion(productId: Types.ObjectId) {
   return { promotion };
 }
 
-async function upsertOrder(params: {
-  adminId: Types.ObjectId;
-  sellerId: Types.ObjectId;
-  customerId: Types.ObjectId;
-  productId: Types.ObjectId;
-  productName: string;
-  price: number;
-  promotionId: Types.ObjectId;
+async function upsertWarehouse(params: {
+  distributorId: Types.ObjectId;
+  products: Array<Product & { _id: unknown }>;
 }) {
-  const quantity = 3;
-  const totalAmount = params.price * quantity;
-  const discountAmount = Math.round(totalAmount * 0.05);
-  const finalAmount = totalAmount - discountAmount;
-
-  const order = await OrderModel.findOneAndUpdate(
-    { orderCode: 'DEMO-ORDER-001' },
+  const warehouse = await WarehouseModel.findOneAndUpdate(
+    { code: 'WH-NPP-HCM-001' },
     {
-      orderCode: 'DEMO-ORDER-001',
-      seller: params.sellerId,
-      customer: params.customerId,
-      items: [
-        {
-          product: params.productId,
-          productName: params.productName,
-          quantity,
-          price: params.price,
-          subtotal: totalAmount,
-        },
-      ],
-      promotion: params.promotionId,
-      totalAmount,
-      discountAmount,
-      finalAmount,
-      status: OrderStatus.APPROVED,
-      note: 'Demo seed order',
-      approvedBy: params.adminId,
-      approvedAt: new Date(),
+      name: 'Kho Demo NPP HCM',
+      code: 'WH-NPP-HCM-001',
+      type: WarehouseType.DISTRIBUTOR,
+      distributor: params.distributorId,
+      isActive: true,
     },
     { returnDocument: 'after', upsert: true },
   );
 
-  return { order };
+  const stockPlans = [
+    {
+      product: params.products[0],
+      quantity: 48,
+      averageCost: 125000,
+      sellingPrice: 155000,
+    },
+    {
+      product: params.products[1],
+      quantity: 36,
+      averageCost: 85000,
+      sellingPrice: 108000,
+    },
+  ];
+
+  await Promise.all(
+    stockPlans.map((plan) =>
+      WarehouseStockModel.findOneAndUpdate(
+        {
+          warehouse: asObjectId(warehouse._id),
+          product: asObjectId(plan.product._id),
+        },
+        {
+          warehouse: asObjectId(warehouse._id),
+          product: asObjectId(plan.product._id),
+          quantity: plan.quantity,
+          averageCost: plan.averageCost,
+          sellingPrice: plan.sellingPrice,
+        },
+        { returnDocument: 'after', upsert: true },
+      ),
+    ),
+  );
+
+  return { warehouse };
+}
+
+async function upsertFinancialDemoOrders(params: {
+  adminId: Types.ObjectId;
+  distributorId: Types.ObjectId;
+  sellerId: Types.ObjectId;
+  customerId: Types.ObjectId;
+  warehouseId: Types.ObjectId;
+  products: Array<Product & { _id: unknown }>;
+  promotionId: Types.ObjectId;
+}) {
+  const now = new Date();
+  const product = params.products[0];
+  const supplyQuantity = 24;
+  const supplySubtotal = product.price * supplyQuantity;
+
+  const supplyOrder = await OrderModel.findOneAndUpdate(
+    { orderCode: 'DEMO-SUPPLY-001' },
+    {
+      orderCode: 'DEMO-SUPPLY-001',
+      orderType: OrderType.MANUFACTURER_TO_DISTRIBUTOR,
+      distributor: params.distributorId,
+      warehouse: params.warehouseId,
+      items: [
+        {
+          product: asObjectId(product._id),
+          productName: product.name,
+          quantity: supplyQuantity,
+          price: product.price,
+          subtotal: supplySubtotal,
+          costPrice: product.price,
+          grossProfit: 0,
+        },
+      ],
+      totalAmount: supplySubtotal,
+      discountAmount: 0,
+      finalAmount: supplySubtotal,
+      totalCost: supplySubtotal,
+      grossProfit: 0,
+      paymentStatus: PaymentStatus.UNPAID,
+      paidAmount: 0,
+      balanceDue: 0,
+      payments: [],
+      refundedAmount: 0,
+      refunds: [],
+      status: OrderStatus.DELIVERED,
+      note: 'Demo supply order from Nestle to distributor',
+      approvedBy: params.adminId,
+      approvedAt: now,
+      deliveredAt: now,
+    },
+    { returnDocument: 'after', upsert: true },
+  );
+
+  const storeQuantity = 3;
+  const storePrice = 155000;
+  const storeCost = 125000;
+  const storeTotal = storePrice * storeQuantity;
+  const storeDiscount = Math.round(storeTotal * 0.05);
+  const storeFinal = storeTotal - storeDiscount;
+  const storeTotalCost = storeCost * storeQuantity;
+  const storeGrossProfit = storeFinal - storeTotalCost;
+  const paidAmount = 250000;
+
+  const storeOrder = await OrderModel.findOneAndUpdate(
+    { orderCode: 'DEMO-STORE-PARTIAL-001' },
+    {
+      orderCode: 'DEMO-STORE-PARTIAL-001',
+      orderType: OrderType.DISTRIBUTOR_TO_STORE,
+      distributor: params.distributorId,
+      warehouse: params.warehouseId,
+      seller: params.sellerId,
+      customer: params.customerId,
+      items: [
+        {
+          product: asObjectId(product._id),
+          productName: product.name,
+          quantity: storeQuantity,
+          price: storePrice,
+          subtotal: storeTotal,
+          costPrice: storeCost,
+          grossProfit: storeTotal - storeTotalCost,
+        },
+      ],
+      promotion: params.promotionId,
+      totalAmount: storeTotal,
+      discountAmount: storeDiscount,
+      finalAmount: storeFinal,
+      totalCost: storeTotalCost,
+      grossProfit: storeGrossProfit,
+      paymentStatus: PaymentStatus.PARTIAL,
+      paidAmount,
+      balanceDue: storeFinal - paidAmount,
+      payments: [
+        {
+          amount: paidAmount,
+          method: PaymentMethod.CASH,
+          note: 'Demo partial cash collection',
+          collectedBy: params.sellerId,
+          collectedAt: now,
+        },
+      ],
+      refundedAmount: 0,
+      refunds: [],
+      status: OrderStatus.DELIVERED,
+      note: 'Demo store order with partial collection',
+      approvedBy: params.adminId,
+      approvedAt: now,
+      deliveredAt: now,
+    },
+    { returnDocument: 'after', upsert: true },
+  );
+
+  const returnProduct = params.products[1];
+  const returnQuantity = 2;
+  const returnPrice = 108000;
+  const returnCost = 85000;
+  const returnTotal = returnPrice * returnQuantity;
+  const returnTotalCost = returnCost * returnQuantity;
+
+  const returnOrder = await OrderModel.findOneAndUpdate(
+    { orderCode: 'DEMO-STORE-REFUND-001' },
+    {
+      orderCode: 'DEMO-STORE-REFUND-001',
+      orderType: OrderType.DISTRIBUTOR_TO_STORE,
+      distributor: params.distributorId,
+      warehouse: params.warehouseId,
+      seller: params.sellerId,
+      customer: params.customerId,
+      items: [
+        {
+          product: asObjectId(returnProduct._id),
+          productName: returnProduct.name,
+          quantity: returnQuantity,
+          price: returnPrice,
+          subtotal: returnTotal,
+          costPrice: returnCost,
+          grossProfit: returnTotal - returnTotalCost,
+        },
+      ],
+      totalAmount: returnTotal,
+      discountAmount: 0,
+      finalAmount: returnTotal,
+      totalCost: returnTotalCost,
+      grossProfit: returnTotal - returnTotalCost,
+      paymentStatus: PaymentStatus.UNPAID,
+      paidAmount: returnTotal,
+      balanceDue: returnTotal,
+      payments: [
+        {
+          amount: returnTotal,
+          method: PaymentMethod.BANK_TRANSFER,
+          note: 'Demo full collection before return',
+          collectedBy: params.sellerId,
+          collectedAt: now,
+        },
+      ],
+      refundedAmount: returnTotal,
+      refunds: [
+        {
+          amount: returnTotal,
+          method: PaymentMethod.BANK_TRANSFER,
+          note: 'Demo full refund before return approval',
+          refundedBy: params.distributorId,
+          refundedAt: now,
+        },
+      ],
+      status: OrderStatus.RETURN_REQUESTED,
+      note: 'Demo order ready for admin return approval',
+      approvedBy: params.adminId,
+      approvedAt: now,
+      deliveredAt: now,
+      returnReason: 'Demo customer returned goods after refund',
+      returnRequestedBy: params.sellerId,
+      returnRequestedAt: now,
+    },
+    { returnDocument: 'after', upsert: true },
+  );
+
+  return { supplyOrder, storeOrder, returnOrder };
 }
 
 async function upsertRoute(params: {
@@ -392,21 +599,25 @@ async function main() {
   await connectWithTimeout(mongoUri);
   console.log('Connected to MongoDB');
 
-  const { admin, seller } = await upsertUsers();
+  const { admin, distributor, seller } = await upsertUsers();
   const { products } = await upsertCatalog();
   const { customer } = await upsertCustomers(
     asObjectId(admin._id),
     asObjectId(seller._id),
   );
   const { promotion } = await upsertPromotion(asObjectId(products[0]._id));
+  const { warehouse } = await upsertWarehouse({
+    distributorId: asObjectId(distributor._id),
+    products,
+  });
 
-  await upsertOrder({
+  await upsertFinancialDemoOrders({
     adminId: asObjectId(admin._id),
+    distributorId: asObjectId(distributor._id),
     sellerId: asObjectId(seller._id),
     customerId: asObjectId(customer._id),
-    productId: asObjectId(products[0]._id),
-    productName: products[0].name,
-    price: products[0].price,
+    warehouseId: asObjectId(warehouse._id),
+    products,
     promotionId: asObjectId(promotion._id),
   });
 
@@ -429,6 +640,12 @@ async function main() {
     `Distributor: distributor@dms.local / ${DEMO_PASSWORDS.distributor}`,
   );
   console.log(`Seller: seller@dms.local / ${DEMO_PASSWORDS.seller}`);
+  console.log(
+    'Demo flow: /admin/warehouses, /admin/orders, /admin/financial-reports',
+  );
+  console.log(
+    'Distributor flow: /distributor/warehouse, /distributor/orders, /distributor/financial-reports',
+  );
 }
 
 main()

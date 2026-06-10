@@ -25,12 +25,28 @@ import { useEffect } from "react";
 import AdminBreadcrumb from "@/components/ui/AdminBreadcrumb";
 import AdminPageHeader from "@/components/ui/AdminPageHeader";
 import {
+  inventoryService,
   useAdjustStockMutation,
-  useExportStockMutation,
   useImportStockMutation,
 } from "@/features/inventory/inventoryService";
 import type { CreateInventoryRequest } from "@/features/inventory/inventoryTypes";
-import { useGetProductsQuery } from "@/features/products/productService";
+import {
+  useApproveOrderMutation,
+  useCreateOrderMutation,
+  useDeliverOrderMutation,
+  orderService,
+} from "@/features/orders/orderService";
+import {
+  productService,
+  useGetProductsQuery,
+} from "@/features/products/productService";
+import type { User } from "@/features/users/userTypes";
+import {
+  warehouseService,
+  useGetWarehousesQuery,
+} from "@/features/warehouses/warehouseService";
+import type { Warehouse } from "@/features/warehouses/warehouseTypes";
+import { useAppDispatch } from "@/store/hooks";
 
 const { Text } = Typography;
 
@@ -46,8 +62,8 @@ const transactionGuides = [
   },
   {
     type: "export",
-    title: "Xuất kho",
-    description: "Giảm số lượng tồn kho hiện có.",
+    title: "Xuất kho NPP",
+    description: "Trừ kho chính, cộng tồn vào kho NPP và tạo hóa đơn cấp hàng.",
     icon: <MinusCircleOutlined />,
     color: "#B45309",
     bg: "#FFFBEB",
@@ -58,24 +74,55 @@ const transactionGuides = [
     title: "Điều chỉnh",
     description: "Đặt tồn kho về một giá trị mới.",
     icon: <RetweetOutlined />,
-    color: "#7C3AED",
+    color: "#2563EB",
     bg: "#F5F3FF",
     border: "#DDD6FE",
   },
 ];
 
+type InventoryFormValues = CreateInventoryRequest & {
+  warehouse?: string;
+};
+
+function getDistributor(warehouse: Warehouse): User | undefined {
+  return typeof warehouse.distributor === "string"
+    ? undefined
+    : warehouse.distributor;
+}
+
+function getDistributorId(warehouse: Warehouse) {
+  return typeof warehouse.distributor === "string"
+    ? warehouse.distributor
+    : warehouse.distributor?._id;
+}
+
 export default function CreateInventoryPage() {
+  const dispatch = useAppDispatch();
   const { message } = App.useApp();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [form] = Form.useForm<CreateInventoryRequest>();
+  const [form] = Form.useForm<InventoryFormValues>();
 
   const { data: products = [] } = useGetProductsQuery();
+  const { data: warehouses = [] } = useGetWarehousesQuery();
   const [importStock, { isLoading: isImporting }] = useImportStockMutation();
-  const [exportStock, { isLoading: isExporting }] = useExportStockMutation();
   const [adjustStock, { isLoading: isAdjusting }] = useAdjustStockMutation();
+  const [createOrder, { isLoading: isCreatingOrder }] =
+    useCreateOrderMutation();
+  const [approveOrder, { isLoading: isApprovingOrder }] =
+    useApproveOrderMutation();
+  const [deliverOrder, { isLoading: isDeliveringOrder }] =
+    useDeliverOrderMutation();
 
-  const isLoading = isImporting || isExporting || isAdjusting;
+  const distributorWarehouses = warehouses.filter(
+    (warehouse) => warehouse.type === "distributor" && warehouse.isActive,
+  );
+  const isLoading =
+    isImporting ||
+    isAdjusting ||
+    isCreatingOrder ||
+    isApprovingOrder ||
+    isDeliveringOrder;
 
   useEffect(() => {
     const product = searchParams.get("product");
@@ -84,13 +131,12 @@ export default function CreateInventoryPage() {
 
     form.setFieldsValue({
       product: product || undefined,
-      type:
-        type === "export" || type === "adjustment" ? type : "import",
+      type: type === "export" || type === "adjustment" ? type : "import",
       quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1,
     });
   }, [form, searchParams]);
 
-  const handleSubmit = async (values: CreateInventoryRequest) => {
+  const handleSubmit = async (values: InventoryFormValues) => {
     try {
       if (values.type === "import") {
         await importStock({
@@ -101,11 +147,41 @@ export default function CreateInventoryPage() {
       }
 
       if (values.type === "export") {
-        await exportStock({
-          product: values.product,
-          quantity: values.quantity,
-          note: values.note,
+        const warehouse = distributorWarehouses.find(
+          (entry) => entry._id === values.warehouse,
+        );
+        const distributorId = warehouse && getDistributorId(warehouse);
+
+        if (!warehouse || !distributorId) {
+          message.error("Vui lòng chọn kho NPP nhận hàng");
+          return;
+        }
+
+        const createdOrder = await createOrder({
+          orderType: "manufacturer_to_distributor",
+          distributor: distributorId,
+          items: [
+            {
+              product: values.product,
+              quantity: values.quantity,
+            },
+          ],
+          note:
+            values.note ||
+            `Admin xuất kho chính sang ${warehouse.name} (${warehouse.code})`,
         }).unwrap();
+
+        const approvedOrder = await approveOrder(createdOrder._id).unwrap();
+        await deliverOrder(approvedOrder._id).unwrap();
+
+        dispatch(productService.util.invalidateTags(["Products"]));
+        dispatch(inventoryService.util.invalidateTags(["Inventory"]));
+        dispatch(orderService.util.invalidateTags(["Orders"]));
+        dispatch(warehouseService.util.invalidateTags(["WarehouseStocks"]));
+
+        message.success("Đã xuất kho chính sang kho NPP");
+        router.push("/admin/inventory?exported=1");
+        return;
       }
 
       if (values.type === "adjustment") {
@@ -119,7 +195,6 @@ export default function CreateInventoryPage() {
       message.success("Tạo giao dịch kho thành công");
       router.push("/admin/inventory");
     } catch (error: unknown) {
-
       const err = error as {
         data?: {
           message?: string | string[];
@@ -153,7 +228,7 @@ export default function CreateInventoryPage() {
 
       <section className="admin-inventory-form-shell">
         <div className="admin-inventory-form-frame">
-          <Form<CreateInventoryRequest>
+          <Form<InventoryFormValues>
             form={form}
             layout="vertical"
             initialValues={{
@@ -223,9 +298,10 @@ export default function CreateInventoryPage() {
                     <Select
                       size="large"
                       placeholder="Chọn loại giao dịch"
+                      onChange={() => form.resetFields(["warehouse"])}
                       options={[
                         { label: "Nhập kho", value: "import" },
-                        { label: "Xuất kho", value: "export" },
+                        { label: "Xuất kho NPP", value: "export" },
                         { label: "Điều chỉnh", value: "adjustment" },
                       ]}
                     />
@@ -269,6 +345,43 @@ export default function CreateInventoryPage() {
                     }}
                   </Form.Item>
                 </Col>
+
+                <Form.Item shouldUpdate noStyle>
+                  {({ getFieldValue }) =>
+                    getFieldValue("type") === "export" ? (
+                      <Col xs={24} md={12}>
+                        <Form.Item
+                          label="Kho NPP nhận hàng"
+                          name="warehouse"
+                          rules={[
+                            {
+                              required: true,
+                              message: "Vui lòng chọn kho NPP nhận hàng",
+                            },
+                          ]}
+                        >
+                          <Select
+                            size="large"
+                            showSearch
+                            optionFilterProp="label"
+                            placeholder="Chọn kho NPP"
+                            options={distributorWarehouses.map((warehouse) => {
+                              const distributor = getDistributor(warehouse);
+                              return {
+                                value: warehouse._id,
+                                label: `${warehouse.name} - ${
+                                  distributor?.companyName ||
+                                  distributor?.fullName ||
+                                  warehouse.code
+                                }`,
+                              };
+                            })}
+                          />
+                        </Form.Item>
+                      </Col>
+                    ) : null
+                  }
+                </Form.Item>
               </Row>
             </section>
 
@@ -285,7 +398,8 @@ export default function CreateInventoryPage() {
                     Ý nghĩa giao dịch
                   </Text>
                   <Text className="admin-inventory-form-section-desc">
-                    Dùng đúng loại giao dịch để hệ thống cập nhật tồn kho chính xác.
+                    Dùng đúng loại giao dịch để hệ thống cập nhật tồn kho chính
+                    xác.
                   </Text>
                 </div>
               </Flex>
@@ -297,11 +411,13 @@ export default function CreateInventoryPage() {
                       gap={12}
                       align="flex-start"
                       className="admin-inventory-guide"
-                      style={{
-                        "--guide-color": item.color,
-                        "--guide-bg": item.bg,
-                        "--guide-border": item.border,
-                      } as React.CSSProperties}
+                      style={
+                        {
+                          "--guide-color": item.color,
+                          "--guide-bg": item.bg,
+                          "--guide-border": item.border,
+                        } as React.CSSProperties
+                      }
                     >
                       <Flex
                         align="center"
@@ -337,7 +453,7 @@ export default function CreateInventoryPage() {
                     Ghi chú
                   </Text>
                   <Text className="admin-inventory-form-section-desc">
-                    Lưu lại lý do nhập, xuất hoặc điều chỉnh kho.
+                    Lưu lại lý do nhập, xuất cho NPP hoặc điều chỉnh kho.
                   </Text>
                 </div>
               </Flex>

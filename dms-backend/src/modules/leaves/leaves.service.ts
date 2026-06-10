@@ -10,6 +10,7 @@ import { Model, Types } from 'mongoose';
 
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import {
+  buildSearchRegex,
   getPagination,
   getSort,
   PaginatedResult,
@@ -24,6 +25,11 @@ import {
   LeaveRequestDocument,
   LeaveStatus,
 } from './schemas/leave-request.schema';
+import {
+  Route,
+  RouteDocument,
+  RouteStatus,
+} from '../routes/schemas/route.schema';
 
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../notifications/schemas/notification.schema';
@@ -47,6 +53,9 @@ export class LeavesService {
 
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
+
+    @InjectModel(Route.name)
+    private readonly routeModel: Model<RouteDocument>,
 
     private readonly notificationsService: NotificationsService,
   ) {}
@@ -91,6 +100,66 @@ export class LeavesService {
     return sellers.map((seller) => seller._id);
   }
 
+  private async assertManagedSeller(
+    distributorId: string,
+    sellerId: string,
+  ): Promise<void> {
+    const seller = await this.userModel
+      .findOne({
+        _id: new Types.ObjectId(sellerId),
+        role: UserRole.SELLER,
+        $or: [
+          { manager: new Types.ObjectId(distributorId) },
+          { manager: distributorId },
+        ],
+        isActive: true,
+      })
+      .select('_id')
+      .exec();
+
+    if (!seller) {
+      throw new ForbiddenException('Seller is not managed by this distributor');
+    }
+  }
+
+  private async assertNoUncoveredRoutesDuringLeave(
+    sellerId: string,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<void> {
+    const leaveStart = new Date(startDate);
+    leaveStart.setHours(0, 0, 0, 0);
+
+    const leaveEnd = new Date(endDate);
+    leaveEnd.setHours(23, 59, 59, 999);
+
+    const route = await this.routeModel
+      .findOne({
+        $or: [
+          {
+            seller: new Types.ObjectId(sellerId),
+            substituteSeller: { $exists: false },
+          },
+          {
+            substituteSeller: new Types.ObjectId(sellerId),
+          },
+        ],
+        status: { $in: [RouteStatus.PLANNED, RouteStatus.IN_PROGRESS] },
+        workDate: {
+          $gte: leaveStart,
+          $lte: leaveEnd,
+        },
+      })
+      .select('_id name workDate')
+      .exec();
+
+    if (route) {
+      throw new BadRequestException(
+        'Seller has routes in this leave period. Assign substitute sellers before approving leave',
+      );
+    }
+  }
+
   async create(
     createLeaveRequestDto: CreateLeaveRequestDto,
     sellerId: string,
@@ -100,6 +169,22 @@ export class LeavesService {
 
     if (startDate > endDate) {
       throw new BadRequestException('Start date must be before end date');
+    }
+
+    const existingLeave = await this.leaveRequestModel
+      .findOne({
+        seller: new Types.ObjectId(sellerId),
+        status: { $in: [LeaveStatus.PENDING, LeaveStatus.APPROVED] },
+        startDate: { $lte: endDate },
+        endDate: { $gte: startDate },
+      })
+      .select('_id')
+      .exec();
+
+    if (existingLeave) {
+      throw new BadRequestException(
+        'Leave request overlaps with an existing leave request',
+      );
     }
 
     const leaveRequest = new this.leaveRequestModel({
@@ -146,8 +231,18 @@ export class LeavesService {
       filter.status = query.status as LeaveStatus;
     }
 
+    if (
+      query?.distributor &&
+      Types.ObjectId.isValid(query.distributor) &&
+      !filter.seller
+    ) {
+      filter.seller = {
+        $in: await this.getManagedSellerIds(query.distributor),
+      };
+    }
+
     if (query?.search) {
-      const search = new RegExp(query.search.trim(), 'i');
+      const search = buildSearchRegex(query.search);
       const sellers = await this.userModel
         .find({
           $or: [
@@ -278,7 +373,11 @@ export class LeavesService {
     return leaveRequest;
   }
 
-  async approve(id: string, adminId: string): Promise<LeaveRequest> {
+  async approve(
+    id: string,
+    reviewerId: string,
+    reviewerRole: UserRole,
+  ): Promise<LeaveRequest> {
     const leaveRequest = await this.leaveRequestModel.findById(id);
 
     if (!leaveRequest) {
@@ -291,8 +390,21 @@ export class LeavesService {
       );
     }
 
+    if (reviewerRole === UserRole.DISTRIBUTOR) {
+      await this.assertManagedSeller(
+        reviewerId,
+        leaveRequest.seller.toString(),
+      );
+    }
+
+    await this.assertNoUncoveredRoutesDuringLeave(
+      leaveRequest.seller.toString(),
+      leaveRequest.startDate,
+      leaveRequest.endDate,
+    );
+
     leaveRequest.status = LeaveStatus.APPROVED;
-    leaveRequest.approvedBy = new Types.ObjectId(adminId);
+    leaveRequest.approvedBy = new Types.ObjectId(reviewerId);
     leaveRequest.approvedAt = new Date();
     leaveRequest.adminNote = 'Approved';
 
@@ -313,7 +425,8 @@ export class LeavesService {
 
   async reject(
     id: string,
-    adminId: string,
+    reviewerId: string,
+    reviewerRole: UserRole,
     adminNote: string,
   ): Promise<LeaveRequest> {
     const leaveRequest = await this.leaveRequestModel.findById(id);
@@ -328,8 +441,15 @@ export class LeavesService {
       );
     }
 
+    if (reviewerRole === UserRole.DISTRIBUTOR) {
+      await this.assertManagedSeller(
+        reviewerId,
+        leaveRequest.seller.toString(),
+      );
+    }
+
     leaveRequest.status = LeaveStatus.REJECTED;
-    leaveRequest.approvedBy = new Types.ObjectId(adminId);
+    leaveRequest.approvedBy = new Types.ObjectId(reviewerId);
     leaveRequest.approvedAt = new Date();
     leaveRequest.adminNote = adminNote;
 

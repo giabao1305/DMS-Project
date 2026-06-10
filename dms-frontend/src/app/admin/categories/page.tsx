@@ -66,6 +66,7 @@ function CategoryCodeInput({
           const nextSuffix = event.target.value
             .toUpperCase()
             .replace(/^NES-CAT-/i, "")
+            .replace(/^NESCAT/i, "")
             .replace(/[^A-Z0-9]/g, "");
           onChange?.(`${CATEGORY_CODE_PREFIX}${nextSuffix}`);
         }}

@@ -15,6 +15,7 @@ import { reportService } from "@/features/reports/reportService";
 import { routeService } from "@/features/routes/routeService";
 import { userService } from "@/features/users/userService";
 import { visitService } from "@/features/visits/visitService";
+import { warehouseService } from "@/features/warehouses/warehouseService";
 
 const apiServices = [
   authService,
@@ -32,6 +33,7 @@ const apiServices = [
   inventoryService,
   auditService,
   dashboardService,
+  warehouseService,
 ] as const;
 
 export function resetApiState(dispatch: AppDispatch) {

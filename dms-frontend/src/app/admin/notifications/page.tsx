@@ -84,8 +84,8 @@ const typeMap: Record<
   },
   route: {
     label: "Tuyến",
-    color: "purple",
-    accent: "#7c3aed",
+    color: "blue",
+    accent: "#2563eb",
     soft: "#f5f3ff",
     icon: <EnvironmentOutlined />,
   },
@@ -129,7 +129,7 @@ const getNotificationLink = (notification: Notification) => {
     case "promotion":
       return `/admin/promotions/${notification.relatedId}/edit`;
     case "system":
-      return `/admin/customers/${notification.relatedId}`;
+      return "/admin/dashboard";
     default:
       return null;
   }

@@ -1380,7 +1380,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         .admin-content-frame .ant-btn-primary {
           background: var(--admin-primary) !important;
           border-color: var(--admin-primary) !important;
-          box-shadow: 0 8px 18px rgba(49, 94, 251, 0.18);
+          box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);
         }
 
         .admin-content-frame .ant-btn-primary:hover {
@@ -1416,7 +1416,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         .admin-content-frame .ant-input-number-focused,
         .admin-content-frame .ant-input-number-affix-wrapper-focused {
           border-color: var(--admin-primary) !important;
-          box-shadow: 0 0 0 3px rgba(49, 94, 251, 0.12) !important;
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
         }
 
         .admin-content-frame .ant-form-item-label > label {

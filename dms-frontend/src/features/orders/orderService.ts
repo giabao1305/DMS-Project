@@ -10,8 +10,12 @@ import {
 import type {
   CreateOrderRequest,
   Order,
+  RecordOrderPaymentRequest,
+  RecordOrderRefundRequest,
   RequestReturnOrderRequest,
+  UpdateSupplyPricingRequest,
   UpdateOrderRequest,
+  VnpayPaymentUrlResponse,
 } from "./orderTypes";
 
 export const orderService = createApi({
@@ -68,6 +72,20 @@ export const orderService = createApi({
       }),
       invalidatesTags: ["Orders"],
     }),
+    updateSupplyPricing: builder.mutation<
+      Order,
+      {
+        id: string;
+        body: UpdateSupplyPricingRequest;
+      }
+    >({
+      query: ({ id, body }) => ({
+        url: `/orders/${id}/supply-pricing`,
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: ["Orders"],
+    }),
     approveOrder: builder.mutation<Order, string>({
       query: (id) => ({
         url: `/orders/${id}/approve`,
@@ -114,6 +132,34 @@ export const orderService = createApi({
       }),
       invalidatesTags: ["Orders"],
     }),
+    recordOrderPayment: builder.mutation<
+      Order,
+      { id: string; body: RecordOrderPaymentRequest }
+    >({
+      query: ({ id, body }) => ({
+        url: `/orders/${id}/payments`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Orders"],
+    }),
+    createVnpayPaymentUrl: builder.mutation<VnpayPaymentUrlResponse, string>({
+      query: (id) => ({
+        url: `/orders/${id}/vnpay/payment-url`,
+        method: "POST",
+      }),
+    }),
+    recordOrderRefund: builder.mutation<
+      Order,
+      { id: string; body: RecordOrderRefundRequest }
+    >({
+      query: ({ id, body }) => ({
+        url: `/orders/${id}/refunds`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Orders"],
+    }),
   }),
 });
 
@@ -127,6 +173,10 @@ export const {
   useReturnOrderMutation,
   useRequestReturnOrderMutation,
   useCancelOrderMutation,
+  useRecordOrderPaymentMutation,
+  useCreateVnpayPaymentUrlMutation,
+  useRecordOrderRefundMutation,
+  useUpdateSupplyPricingMutation,
   useUpdateOrderMutation,
   useGetMyOrdersQuery,
   useGetMyOrdersPageQuery,

@@ -19,6 +19,7 @@ import {
   Input,
   Popconfirm,
   Segmented,
+  Select,
   Space,
   Table,
   Tag,
@@ -42,6 +43,7 @@ import { useRealtimeRefetch } from "@/hooks/useRealtimeRefetch";
 const { Text, Title } = Typography;
 
 type UserStatusFilter = "all" | "active" | "inactive";
+type UserRoleFilter = "all" | "distributor" | "seller";
 
 const getManagerName = (manager: User["manager"], users: User[]) => {
   if (!manager) return "-";
@@ -56,7 +58,9 @@ const getManagerName = (manager: User["manager"], users: User[]) => {
 export default function UsersPage() {
   const { message } = App.useApp();
   const [keyword, setKeyword] = useState("");
+  const [roleFilter, setRoleFilter] = useState<UserRoleFilter>("all");
   const [status, setStatus] = useState<UserStatusFilter>("all");
+  const [distributorFilter, setDistributorFilter] = useState<string>();
   const searchKeyword = useDeferredValue(keyword);
 
   const { data: users = [], isLoading, refetch } = useGetUsersQuery();
@@ -70,6 +74,10 @@ export default function UsersPage() {
     () => users.filter((user) => user.role !== "admin"),
     [users],
   );
+  const distributors = useMemo(
+    () => users.filter((user) => user.role === "distributor" && user.isActive),
+    [users],
+  );
 
   const overview = useMemo(() => {
     const active = sellerUsers.filter((user) => user.isActive).length;
@@ -77,6 +85,9 @@ export default function UsersPage() {
 
     return {
       total: sellerUsers.length,
+      distributors: sellerUsers.filter((user) => user.role === "distributor")
+        .length,
+      sellers: sellerUsers.filter((user) => user.role === "seller").length,
       active,
       inactive,
     };
@@ -93,14 +104,24 @@ export default function UsersPage() {
         user.email.toLowerCase().includes(normalizedKeyword) ||
         user.phone?.toLowerCase().includes(normalizedKeyword) ||
         user.companyName?.toLowerCase().includes(normalizedKeyword) ||
-        getManagerName(user.manager, users).toLowerCase().includes(normalizedKeyword);
+        getManagerName(user.manager, users)
+          .toLowerCase()
+          .includes(normalizedKeyword);
       const matchesStatus =
         status === "all" ||
         (status === "active" ? user.isActive : !user.isActive);
+      const matchesRole = roleFilter === "all" || user.role === roleFilter;
+      const matchesDistributor =
+        !distributorFilter ||
+        (user.role === "distributor"
+          ? user._id === distributorFilter
+          : typeof user.manager === "string"
+            ? user.manager === distributorFilter
+            : user.manager?._id === distributorFilter);
 
-      return matchesKeyword && matchesStatus;
+      return matchesKeyword && matchesRole && matchesStatus && matchesDistributor;
     });
-  }, [searchKeyword, sellerUsers, status, users]);
+  }, [distributorFilter, roleFilter, searchKeyword, sellerUsers, status, users]);
 
   const handleDelete = async (id: string) => {
     try {
@@ -128,7 +149,11 @@ export default function UsersPage() {
       fixed: "left",
       render: (_, record) => (
         <Flex align="center" gap={12}>
-          <Avatar size={42} src={record.avatar?.trim() || undefined} icon={<UserOutlined />} />
+          <Avatar
+            size={42}
+            src={record.avatar?.trim() || undefined}
+            icon={<UserOutlined />}
+          />
           <div className="admin-users-cell-copy">
             <Text className="admin-users-strong">{record.fullName}</Text>
             <Text className="admin-users-muted">{record.email}</Text>
@@ -174,14 +199,18 @@ export default function UsersPage() {
         </Tag>
       ),
     },
-    {
-      title: "Nhà phân phối quản lý",
-      dataIndex: "manager",
-      width: 230,
-      ellipsis: true,
-      render: (manager: User["manager"], record) =>
-        record.role === "seller" ? getManagerName(manager, users) : "-",
-    },
+    ...(roleFilter === "distributor"
+      ? []
+      : [
+          {
+            title: "Nhà phân phối quản lý",
+            dataIndex: "manager",
+            width: 230,
+            ellipsis: true,
+            render: (manager: User["manager"], record: User) =>
+              record.role === "seller" ? getManagerName(manager, users) : "-",
+          },
+        ]),
     {
       title: "Công ty",
       dataIndex: "companyName",
@@ -271,14 +300,24 @@ export default function UsersPage() {
               Điều phối nhân sự bán hàng
             </Title>
             <Text className="admin-users-hero-desc">
-              Theo dõi tài khoản nhân viên, trạng thái đăng nhập và hồ sơ công ty
-              phục vụ vận hành phân phối.
+              Theo dõi tài khoản nhân viên, trạng thái đăng nhập và hồ sơ công
+              ty phục vụ vận hành phân phối.
             </Text>
 
             <div className="admin-users-hero-metrics">
               <div>
                 <TeamOutlined />
-                <span>Tổng nhân viên</span>
+                <span>Tổng NPP</span>
+                <strong>{overview.distributors.toLocaleString("vi-VN")}</strong>
+              </div>
+              <div>
+                <UserOutlined />
+                <span>Tổng DSR</span>
+                <strong>{overview.sellers.toLocaleString("vi-VN")}</strong>
+              </div>
+              <div>
+                <TeamOutlined />
+                <span>Tổng tài khoản</span>
                 <strong>{overview.total.toLocaleString("vi-VN")}</strong>
               </div>
               <div>
@@ -309,8 +348,8 @@ export default function UsersPage() {
                 Bộ lọc nhân viên
               </Title>
               <Text className="admin-users-filter-description">
-                Tìm theo tên, email, số điện thoại, công ty hoặc lọc theo trạng
-                thái tài khoản.
+                Tách danh sách theo NPP/DSR, sau đó lọc tiếp theo NPP quản lý
+                hoặc trạng thái tài khoản.
               </Text>
             </div>
 
@@ -325,6 +364,35 @@ export default function UsersPage() {
                 onChange={(event) => setKeyword(event.target.value)}
               />
 
+              <Segmented<UserRoleFilter>
+                size="large"
+                value={roleFilter}
+                onChange={setRoleFilter}
+                className="admin-users-status-select"
+                options={[
+                  { label: "Tất cả vai trò", value: "all" },
+                  { label: "NPP", value: "distributor" },
+                  { label: "DSR", value: "seller" },
+                ]}
+              />
+
+              <Select
+                allowClear
+                showSearch
+                size="large"
+                optionFilterProp="label"
+                placeholder="Lọc theo NPP"
+                style={{ width: 240 }}
+                value={distributorFilter}
+                onChange={setDistributorFilter}
+                options={distributors.map((distributor) => ({
+                  value: distributor._id,
+                  label: `${distributor.code ? `${distributor.code} - ` : ""}${
+                    distributor.companyName || distributor.fullName
+                  }`,
+                }))}
+              />
+
               <Segmented<UserStatusFilter>
                 size="large"
                 value={status}
@@ -336,7 +404,6 @@ export default function UsersPage() {
                   { label: "Khóa", value: "inactive" },
                 ]}
               />
-
             </Flex>
           </Flex>
         </Card>
@@ -372,7 +439,9 @@ export default function UsersPage() {
               showTotal: (total) => `Tổng ${total} nhân viên`,
             }}
             locale={{
-              emptyText: <Empty description="Không tìm thấy nhân viên phù hợp" />,
+              emptyText: (
+                <Empty description="Không tìm thấy nhân viên phù hợp" />
+              ),
             }}
           />
         </Card>
@@ -395,7 +464,11 @@ export default function UsersPage() {
           border: 1px solid rgba(125, 211, 252, 0.2);
           border-radius: 8px;
           background:
-            radial-gradient(circle at 86% 18%, rgba(16, 185, 129, 0.22), transparent 28%),
+            radial-gradient(
+              circle at 86% 18%,
+              rgba(16, 185, 129, 0.22),
+              transparent 28%
+            ),
             linear-gradient(135deg, #071a24 0%, #102b3a 52%, #12394a 100%);
           box-shadow: 0 22px 46px rgba(7, 26, 36, 0.18);
         }
@@ -432,7 +505,7 @@ export default function UsersPage() {
           margin-top: 24px;
           max-width: 760px;
           display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
+          grid-template-columns: repeat(5, minmax(0, 1fr));
           overflow: hidden;
           border: 1px solid rgba(125, 211, 252, 0.18);
           border-radius: 8px;
@@ -709,8 +782,14 @@ export default function UsersPage() {
           background-color: #f8fafc !important;
         }
 
-        .admin-users-table .ant-table-tbody > tr:hover > td.ant-table-cell-fix-left,
-        .admin-users-table .ant-table-tbody > tr:hover > td.ant-table-cell-fix-right,
+        .admin-users-table
+          .ant-table-tbody
+          > tr:hover
+          > td.ant-table-cell-fix-left,
+        .admin-users-table
+          .ant-table-tbody
+          > tr:hover
+          > td.ant-table-cell-fix-right,
         .admin-users-table
           .ant-table-tbody
           > tr:hover

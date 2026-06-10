@@ -39,6 +39,15 @@ export const userService = createApi({
       invalidatesTags: ["Users"],
     }),
 
+    createSeller: builder.mutation<User, Omit<CreateUserRequest, "role" | "manager">>({
+      query: (body) => ({
+        url: "/users/sellers",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Users"],
+    }),
+
     updateUser: builder.mutation<
       User,
       {
@@ -77,6 +86,7 @@ export const {
   useGetSellerUsersQuery,
   useGetUserByIdQuery,
   useCreateUserMutation,
+  useCreateSellerMutation,
   useUpdateUserMutation,
   useDeleteUserMutation,
   useToggleUserStatusMutation,

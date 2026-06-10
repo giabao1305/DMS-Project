@@ -10,14 +10,17 @@ import {
 } from '../promotions/schemas/promotion.schema';
 import { User, UserSchema } from '../users/schemas/user.schema';
 import { Visit, VisitSchema } from '../visits/schemas/visit.schema';
+import { Route, RouteSchema } from '../routes/schemas/route.schema';
 import { Order, OrderSchema } from './schemas/order.schema';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { WarehousesModule } from '../warehouses/warehouses.module';
 @Module({
   imports: [
     InventoryModule,
     NotificationsModule,
+    WarehousesModule,
     MongooseModule.forFeature([
       { name: Order.name, schema: OrderSchema },
       { name: Product.name, schema: ProductSchema },
@@ -25,6 +28,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
       { name: Promotion.name, schema: PromotionSchema },
       { name: User.name, schema: UserSchema },
       { name: Visit.name, schema: VisitSchema },
+      { name: Route.name, schema: RouteSchema },
     ]),
   ],
   controllers: [OrdersController],

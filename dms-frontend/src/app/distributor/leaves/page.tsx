@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   CalendarOutlined,
@@ -26,7 +26,7 @@ const { Text } = Typography;
 
 const statusMap: Record<LeaveStatus, { label: string; color: string; icon: ReactNode }> = {
   pending: { label: "Chờ duyệt", color: "gold", icon: <ClockCircleOutlined /> },
-  approved: { label: "Đã duyệt", color: "green", icon: <CheckCircleOutlined /> },
+  approved: { label: "Đã duyệt", color: "blue", icon: <CheckCircleOutlined /> },
   rejected: { label: "Từ chối", color: "red", icon: <CloseCircleOutlined /> },
 };
 
@@ -101,7 +101,11 @@ export default function DistributorLeavesPage() {
       width: 140,
       render: (_, record) => (
         <Link href={`/distributor/leaves/${record._id}`}>
-          <Button size="small" icon={<EyeOutlined />} className="distributor-row-action">
+          <Button
+            size="small"
+            icon={<EyeOutlined />}
+            className="distributor-row-action distributor-row-action-view"
+          >
             Chi tiết
           </Button>
         </Link>
@@ -160,7 +164,7 @@ export default function DistributorLeavesPage() {
 
       <DistributorTableCard
         title="Danh sách đơn nghỉ"
-        description="Distributor xem trạng thái nghỉ phép của đội, quyền duyệt vẫn thuộc admin."
+        description="Distributor theo dõi và duyệt nghỉ phép của DSR trong đội."
       >
         <Table
           rowKey="_id"
@@ -179,3 +183,8 @@ export default function DistributorLeavesPage() {
     </DistributorPageShell>
   );
 }
+
+
+
+
+

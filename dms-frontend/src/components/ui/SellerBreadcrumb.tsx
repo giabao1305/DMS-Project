@@ -10,23 +10,12 @@ type SalesMenuItem = {
   label: string;
 };
 
-const sellerMenuItems: SalesMenuItem[] = [
-  { key: "/seller/dashboard", label: "Tổng quan" },
-  { key: "/seller/customers", label: "Khách hàng" },
-  { key: "/seller/orders", label: "Đơn hàng" },
-  { key: "/seller/routes", label: "Tuyến bán hàng" },
-  { key: "/seller/visits", label: "Ghé thăm" },
-  { key: "/seller/kpis", label: "KPI cá nhân" },
-  { key: "/seller/leaves", label: "Nghỉ phép" },
-  { key: "/seller/notifications", label: "Thông báo" },
-  { key: "/seller/profile", label: "Tài khoản" },
-];
-
 const distributorMenuItems: SalesMenuItem[] = [
   { key: "/distributor/dashboard", label: "Tổng quan" },
   { key: "/distributor/team", label: "Đội DSR" },
   { key: "/distributor/customers", label: "Khách hàng đội" },
-  { key: "/distributor/orders", label: "Đơn hàng đội" },
+  { key: "/distributor/orders", label: "Đơn" },
+  { key: "/distributor/warehouse", label: "Kho của tôi" },
   { key: "/distributor/routes", label: "Tuyến đội" },
   { key: "/distributor/visits", label: "Ghé thăm" },
   { key: "/distributor/kpis", label: "KPI đội" },
@@ -38,11 +27,8 @@ const distributorMenuItems: SalesMenuItem[] = [
 export default function SellerBreadcrumb() {
   const pathname = usePathname();
   const paths = pathname.split("/").filter(Boolean);
-  const isDistributor = pathname.startsWith("/distributor");
-  const menuItems = isDistributor ? distributorMenuItems : sellerMenuItems;
-  const dashboardPath = isDistributor
-    ? "/distributor/dashboard"
-    : "/seller/dashboard";
+  const menuItems = distributorMenuItems;
+  const dashboardPath = "/distributor/dashboard";
 
   let currentMenu: SalesMenuItem | undefined;
   let actionLabel = "";

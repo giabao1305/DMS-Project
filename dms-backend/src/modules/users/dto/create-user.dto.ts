@@ -13,8 +13,9 @@ import { UserRole } from '../schemas/user.schema';
 export class CreateUserDto {
   @IsOptional()
   @IsString()
-  @Matches(/^(NPP-[A-Z]{2,4}-\d{3}|DSR-[A-Z]{2,4}-NPP\d{3}-\d{3})$/, {
-    message: 'User code must match NPP-XXX-000 or DSR-XXX-NPP000-000 format',
+  @Matches(/^(NPP-[A-Z]{2,4}-\d{3,6}|DSR-[A-Z]{2,4}-NPP\d{3,6}-\d{3,6})$/, {
+    message:
+      'User code must match NPP-XXX-000000 or DSR-XXX-NPP000000-000000 format',
   })
   code?: string;
 

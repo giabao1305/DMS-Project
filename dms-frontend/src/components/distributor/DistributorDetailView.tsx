@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import { Button, Card, Empty, Flex, Spin, Typography } from "antd";
@@ -42,86 +42,112 @@ export function DistributorDetailShell({
         }
       />
 
-      <Flex vertical gap={20} className="distributor-detail-stack">
+      <Flex vertical gap={14} className="distributor-detail-stack">
         {children}
       </Flex>
 
       <style jsx global>{`
         .distributor-detail-card {
           overflow: hidden;
-          border: 1px solid #d7ebe7;
+          border: 1px solid #dbeafe;
           border-radius: 16px;
           background: #ffffff;
-          box-shadow: 0 16px 34px rgba(11, 47, 42, 0.06);
+          box-shadow: 0 16px 34px rgba(37, 99, 235, 0.06);
         }
 
         .distributor-detail-card .ant-card-head {
-          min-height: 82px;
-          padding: 18px 22px;
-          border-bottom: 1px solid #d7ebe7;
-          background: #f3fbf9;
+          min-height: 56px;
+          padding: 12px 16px;
+          border-bottom: 1px solid #dbeafe;
+          background: #f8fbff;
         }
 
         .distributor-detail-card .ant-card-body {
-          padding: 18px;
+          padding: 14px;
         }
 
         .distributor-detail-title {
-          color: #0b2f2a !important;
-          font-size: 17px;
+          color: #0f172a !important;
+          font-size: 15px;
           font-weight: 850;
           line-height: 1.45;
         }
 
         .distributor-detail-description,
         .distributor-detail-muted {
-          color: #5d7471 !important;
-          font-size: 13px;
-          line-height: 1.55;
+          color: #475569 !important;
+          font-size: 12px;
+          line-height: 1.45;
         }
 
         .distributor-detail-strong {
-          color: #0b2f2a !important;
+          color: #0f172a !important;
           font-weight: 800;
         }
 
         .distributor-detail-card .ant-descriptions-bordered .ant-descriptions-item-label {
-          color: #5d7471;
+          color: #475569;
           font-weight: 750;
-          background: #f3fbf9;
+          background: #f8fbff;
         }
 
         .distributor-detail-card .ant-descriptions-bordered .ant-descriptions-item-content {
-          color: #0b2f2a;
+          color: #0f172a;
           font-weight: 600;
           background: #ffffff;
         }
 
         .distributor-detail-table .ant-table-container {
           overflow: hidden;
-          border: 1px solid #d7ebe7;
+          border: 1px solid #dbeafe;
           border-radius: 14px;
         }
 
         .distributor-detail-table .ant-table-thead > tr > th {
-          color: #0b2f2a !important;
+          color: #0f172a !important;
           font-size: 13px !important;
           font-weight: 850 !important;
-          background: #f3fbf9 !important;
-          border-bottom: 1px solid #d7ebe7 !important;
+          background: #f8fbff !important;
+          border-bottom: 1px solid #dbeafe !important;
         }
 
         .distributor-detail-table .ant-table-tbody > tr > td {
           background: #ffffff !important;
-          border-bottom: 1px solid #ecf6f3 !important;
+          border-bottom: 1px solid #eaf2ff !important;
         }
 
         .distributor-detail-table .ant-table-tbody > tr:hover > td {
-          background: #f3fbf9 !important;
+          background: #f8fbff !important;
         }
 
         .distributor-detail-empty .ant-card-body {
-          padding: 36px;
+          padding: 24px;
+        }
+
+        .distributor-detail-empty .ant-empty-description,
+        .distributor-detail-stack .ant-empty-description {
+          color: #64748b !important;
+          font-size: 14px;
+          font-weight: 600;
+        }
+
+        .distributor-detail-empty .ant-empty-img-default-ellipse,
+        .distributor-detail-stack .ant-empty-img-default-ellipse {
+          fill: #eff6ff !important;
+          fill-opacity: 1 !important;
+        }
+
+        .distributor-detail-empty .ant-empty-img-default-path-1,
+        .distributor-detail-empty .ant-empty-img-default-path-2,
+        .distributor-detail-empty .ant-empty-img-default-path-3,
+        .distributor-detail-empty .ant-empty-img-default-path-4,
+        .distributor-detail-empty .ant-empty-img-default-path-5,
+        .distributor-detail-stack .ant-empty-img-default-path-1,
+        .distributor-detail-stack .ant-empty-img-default-path-2,
+        .distributor-detail-stack .ant-empty-img-default-path-3,
+        .distributor-detail-stack .ant-empty-img-default-path-4,
+        .distributor-detail-stack .ant-empty-img-default-path-5 {
+          fill: #bfdbfe !important;
         }
       `}</style>
     </>
@@ -163,7 +189,12 @@ export function DistributorDetailCard({
 export function DistributorDetailEmpty({ description }: { description: string }) {
   return (
     <Card variant="borderless" className="distributor-detail-card distributor-detail-empty">
-      <Empty description={description} />
+      <Empty className="distributor-detail-empty-state" description={description} />
     </Card>
   );
 }
+
+
+
+
+

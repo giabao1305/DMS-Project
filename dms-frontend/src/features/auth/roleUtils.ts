@@ -1,8 +1,6 @@
 import type { UserRole } from "@/features/auth/authTypes";
 
-export const salesPortalRoles: UserRole[] = [
-  "seller",
-];
+export const salesPortalRoles: UserRole[] = ["distributor"];
 
 export const roleLabels: Record<UserRole, string> = {
   admin: "Admin công ty",
@@ -11,10 +9,7 @@ export const roleLabels: Record<UserRole, string> = {
 };
 
 export function isSalesPortalRole(role?: string | null): role is UserRole {
-  return (
-    role === "distributor" ||
-    role === "seller"
-  );
+  return role === "distributor";
 }
 
 export function isSalesRepRole(role?: string | null): role is UserRole {
@@ -25,7 +20,7 @@ export function getRoleHomePath(role?: string | null) {
   if (role === "admin") return "/admin/dashboard";
   if (role === "distributor") return "/distributor/dashboard";
 
-  return "/seller/dashboard";
+  return "/forbidden";
 }
 
 export function getRoleLabel(role?: string | null) {

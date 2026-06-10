@@ -19,6 +19,10 @@ export interface Route {
   _id: string;
   name: string;
   seller: string | User;
+  substituteSeller?: string | User;
+  substituteReason?: string;
+  substituteAssignedBy?: string | User;
+  substituteAssignedAt?: string;
   workDate: string;
   customers: RouteCustomer[];
   status: RouteStatus;
@@ -49,4 +53,9 @@ export interface UpdateRouteRequest {
 
 export interface UpdateRouteStatusRequest {
   status: RouteStatus;
+}
+
+export interface AssignSubstituteRouteRequest {
+  substituteSeller: string;
+  reason?: string;
 }

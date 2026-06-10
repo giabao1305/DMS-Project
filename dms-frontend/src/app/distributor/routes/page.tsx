@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   CalendarOutlined,
@@ -113,7 +113,7 @@ export default function DistributorRoutesPage() {
       align: "center",
       width: 120,
       render: (value: Route["customers"]) => (
-        <Tag color="cyan" className="distributor-pill-tag">
+        <Tag color="blue" className="distributor-pill-tag">
           {value.length}
         </Tag>
       ),
@@ -139,12 +139,20 @@ export default function DistributorRoutesPage() {
       render: (_, record) => (
         <Flex gap={10} justify="center" className="distributor-route-actions">
           <Link href={`/distributor/routes/${record._id}`}>
-            <Button size="small" icon={<EyeOutlined />} className="distributor-row-action">
+            <Button
+              size="small"
+              icon={<EyeOutlined />}
+              className="distributor-row-action distributor-row-action-view"
+            >
               Chi tiết
             </Button>
           </Link>
           <Link href={`/distributor/routes/${record._id}/edit`}>
-            <Button size="small" icon={<EditOutlined />} className="distributor-row-action">
+            <Button
+              size="small"
+              icon={<EditOutlined />}
+              className="distributor-row-action distributor-row-action-edit"
+            >
               Sửa
             </Button>
           </Link>
@@ -236,16 +244,16 @@ export default function DistributorRoutesPage() {
       <style jsx global>{`
         .distributor-routes-create-button.ant-btn {
           height: 42px;
-          border-color: #0d9488 !important;
+          border-color: #2563eb !important;
           border-radius: 12px;
-          background: #0d9488 !important;
-          font-weight: 850;
-          box-shadow: 0 14px 30px rgba(13, 148, 136, 0.22);
+          background: #2563eb !important;
+          font-weight: 650;
+          box-shadow: 0 14px 30px rgba(37, 99, 235, 0.18);
         }
 
         .distributor-routes-create-button.ant-btn:hover {
-          border-color: #0f766e !important;
-          background: #0f766e !important;
+          border-color: #1d4ed8 !important;
+          background: #1d4ed8 !important;
         }
 
         .distributor-route-actions {
@@ -255,3 +263,8 @@ export default function DistributorRoutesPage() {
     </DistributorPageShell>
   );
 }
+
+
+
+
+

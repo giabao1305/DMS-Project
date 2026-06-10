@@ -62,13 +62,13 @@ export class LeavesController {
     return this.leavesService.findById(id, user._id.toString(), user.role);
   }
 
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR)
   @Patch(':id/approve')
   approve(@Param('id') id: string, @CurrentUser() user: UserDocument) {
-    return this.leavesService.approve(id, user._id.toString());
+    return this.leavesService.approve(id, user._id.toString(), user.role);
   }
 
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR)
   @Patch(':id/reject')
   reject(
     @Param('id') id: string,
@@ -78,6 +78,7 @@ export class LeavesController {
     return this.leavesService.reject(
       id,
       user._id.toString(),
+      user.role,
       rejectLeaveRequestDto.adminNote,
     );
   }

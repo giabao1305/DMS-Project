@@ -22,10 +22,12 @@ type VisitPage =
 
 export function VisitsScreen({
   onOpenTab,
+  onCreateOrder,
   initialCreateIntent,
   onInitialCreateIntentConsumed,
 }: {
   onOpenTab: (tab: SellerTab) => void;
+  onCreateOrder?: (customerId?: string) => void;
   initialCreateIntent?: VisitCreateIntent | null;
   onInitialCreateIntentConsumed?: () => void;
 }) {
@@ -141,6 +143,7 @@ export function VisitsScreen({
         visit={selectedVisit}
         onBack={goList}
         onChanged={handleVisitChanged}
+        onCreateOrder={onCreateOrder}
       />
     );
   }

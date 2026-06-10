@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -42,12 +43,38 @@ export class UsersService {
       .findOne({
         _id: new Types.ObjectId(managerId),
         role: UserRole.DISTRIBUTOR,
+        isActive: true,
       })
       .select('_id')
       .exec();
 
     if (!distributor) {
       throw new BadRequestException('Distributor manager is invalid');
+    }
+  }
+
+  private async assertManagedSeller(
+    distributorId: string,
+    sellerId: string,
+  ): Promise<void> {
+    if (!Types.ObjectId.isValid(sellerId)) {
+      throw new NotFoundException('User not found');
+    }
+
+    const seller = await this.userModel
+      .findOne({
+        _id: new Types.ObjectId(sellerId),
+        role: UserRole.SELLER,
+        $or: [
+          { manager: new Types.ObjectId(distributorId) },
+          { manager: distributorId },
+        ],
+      })
+      .select('_id')
+      .exec();
+
+    if (!seller) {
+      throw new ForbiddenException('You can only manage DSR in your team');
     }
   }
 
@@ -102,6 +129,17 @@ export class UsersService {
     return savedUser;
   }
 
+  async createSellerForDistributor(
+    createUserDto: CreateUserDto,
+    distributorId: string,
+  ): Promise<User> {
+    return this.create({
+      ...createUserDto,
+      role: UserRole.SELLER,
+      manager: distributorId,
+    });
+  }
+
   async findAll(): Promise<User[]> {
     return this.userModel.find().sort({ createdAt: -1 }).exec();
   }
@@ -135,6 +173,18 @@ export class UsersService {
     }
 
     return user;
+  }
+
+  async findByIdForUser(
+    id: string,
+    currentUserId: string,
+    currentUserRole: UserRole,
+  ): Promise<UserDocument> {
+    if (currentUserRole === UserRole.DISTRIBUTOR) {
+      await this.assertManagedSeller(currentUserId, id);
+    }
+
+    return this.findById(id);
   }
 
   async findByEmail(email: string): Promise<UserDocument | null> {
@@ -283,7 +333,10 @@ export class UsersService {
 
     const previousManager = existingUser.manager?.toString();
 
-    const updateData: Partial<UpdateUserDto> & { password?: string } = {
+    const updateData: Partial<UpdateUserDto> & {
+      password?: string;
+      $unset?: Record<string, string>;
+    } = {
       ...updateUserDto,
     };
 
@@ -299,6 +352,14 @@ export class UsersService {
       updateData.manager = new Types.ObjectId(
         updateUserDto.manager,
       ) as unknown as string;
+    }
+
+    if (nextRole !== UserRole.SELLER) {
+      updateData.$unset = {
+        ...(updateData.$unset || {}),
+        manager: '',
+      };
+      delete updateData.manager;
     }
 
     if (updateUserDto.code) {
@@ -364,6 +425,25 @@ export class UsersService {
     return updatedUser;
   }
 
+  async updateForUser(
+    id: string,
+    updateUserDto: UpdateUserDto,
+    currentUserId: string,
+    currentUserRole: UserRole,
+  ): Promise<User> {
+    if (currentUserRole === UserRole.ADMIN) {
+      return this.update(id, updateUserDto);
+    }
+
+    await this.assertManagedSeller(currentUserId, id);
+
+    return this.update(id, {
+      ...updateUserDto,
+      role: UserRole.SELLER,
+      manager: currentUserId,
+    });
+  }
+
   async toggleStatus(id: string): Promise<User> {
     const user = await this.findById(id);
 
@@ -384,17 +464,31 @@ export class UsersService {
     return updatedUser;
   }
 
+  async toggleStatusForUser(
+    id: string,
+    currentUserId: string,
+    currentUserRole: UserRole,
+  ): Promise<User> {
+    if (currentUserRole === UserRole.DISTRIBUTOR) {
+      await this.assertManagedSeller(currentUserId, id);
+    }
+
+    return this.toggleStatus(id);
+  }
+
   async remove(id: string): Promise<{ message: string }> {
-    const user = await this.userModel.findByIdAndDelete(id).exec();
+    const user = await this.userModel
+      .findByIdAndUpdate(id, { isActive: false }, { returnDocument: 'after' })
+      .exec();
 
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    this.emitUserRealtime('deleted', user);
+    this.emitUserRealtime('deactivated', user);
 
     return {
-      message: 'User deleted successfully',
+      message: 'User deactivated successfully',
     };
   }
 }

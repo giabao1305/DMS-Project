@@ -10,6 +10,7 @@ import {
   ShopOutlined,
   TeamOutlined,
   UserOutlined,
+  UserSwitchOutlined,
 } from "@ant-design/icons";
 import {
   App,
@@ -17,7 +18,10 @@ import {
   Col,
   Empty,
   Flex,
+  Input,
+  Modal,
   Row,
+  Select,
   Space,
   Table,
   Tag,
@@ -25,16 +29,18 @@ import {
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import AdminBreadcrumb from "@/components/ui/AdminBreadcrumb";
 import AdminPageHeader from "@/components/ui/AdminPageHeader";
 import type { Customer } from "@/features/customers/customerTypes";
 import {
+  useAssignSubstituteRouteMutation,
   useGetRouteByIdQuery,
   useUpdateRouteStatusMutation,
 } from "@/features/routes/routeService";
 import type { RouteCustomer, RouteStatus } from "@/features/routes/routeTypes";
+import { useGetUsersQuery } from "@/features/users/userService";
 import type { User } from "@/features/users/userTypes";
 
 const { Text, Title } = Typography;
@@ -73,15 +79,44 @@ const formatDateTime = (value?: string) => {
 const getCustomer = (record: RouteCustomer) =>
   typeof record.customer === "string" ? null : (record.customer as Customer);
 
+const getUserName = (user?: string | User) => {
+  if (!user) return "-";
+  if (typeof user === "string") return user;
+  return user.companyName || user.fullName || user.email || "-";
+};
+
+const getManagerId = (user?: User) => {
+  const manager = user?.manager;
+
+  if (!manager) return undefined;
+
+  return typeof manager === "string" ? manager : manager._id;
+};
+
+const sortRouteCustomers = (customers: RouteCustomer[]) =>
+  [...customers].sort(
+    (left, right) =>
+      getRouteOrder(left.orderIndex) - getRouteOrder(right.orderIndex),
+  );
+
+const getRouteOrder = (value?: number) =>
+  Number.isFinite(value) && value ? value : Number.MAX_SAFE_INTEGER;
+
 export default function AdminRouteDetailPage() {
   const { message } = App.useApp();
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const id = params.id;
+  const [substituteModalOpen, setSubstituteModalOpen] = useState(false);
+  const [substituteSeller, setSubstituteSeller] = useState<string>();
+  const [substituteReason, setSubstituteReason] = useState("");
 
   const { data: route, isLoading } = useGetRouteByIdQuery(id);
+  const { data: users = [] } = useGetUsersQuery();
   const [updateRouteStatus, { isLoading: updatingStatus }] =
     useUpdateRouteStatusMutation();
+  const [assignSubstituteRoute, { isLoading: assigningSubstitute }] =
+    useAssignSubstituteRouteMutation();
 
   const handleUpdateStatus = useCallback(
     async (status: RouteStatus) => {
@@ -94,6 +129,35 @@ export default function AdminRouteDetailPage() {
     },
     [id, message, updateRouteStatus],
   );
+
+  const handleAssignSubstitute = useCallback(async () => {
+    if (!substituteSeller) {
+      message.warning("Vui lòng chọn DSR đi thay");
+      return;
+    }
+
+    try {
+      await assignSubstituteRoute({
+        id,
+        body: {
+          substituteSeller,
+          reason: substituteReason.trim() || undefined,
+        },
+      }).unwrap();
+      message.success("Đã gán DSR đi thay tuyến");
+      setSubstituteModalOpen(false);
+      setSubstituteSeller(undefined);
+      setSubstituteReason("");
+    } catch {
+      message.error("Gán DSR đi thay thất bại");
+    }
+  }, [
+    assignSubstituteRoute,
+    id,
+    message,
+    substituteReason,
+    substituteSeller,
+  ]);
 
   const customerColumns: ColumnsType<RouteCustomer> = useMemo(
     () => [
@@ -256,7 +320,16 @@ export default function AdminRouteDetailPage() {
   const sellerName =
     seller?.fullName || (typeof route.seller === "string" ? route.seller : "-");
   const sellerEmail = seller?.email || "-";
+  const substituteName = getUserName(route.substituteSeller);
+  const sellerManagerId = getManagerId(seller || undefined);
+  const substituteCandidates = users.filter((user) => {
+    if (user.role !== "seller" || !user.isActive) return false;
+    if (seller && user._id === seller._id) return false;
+    if (!sellerManagerId) return true;
+    return getManagerId(user) === sellerManagerId;
+  });
   const currentStatus = statusMap[route.status];
+  const sortedRouteCustomers = sortRouteCustomers(route.customers);
   const completedCustomers = route.customers.filter(
     (item) => item.status === "visited",
   ).length;
@@ -285,6 +358,21 @@ export default function AdminRouteDetailPage() {
               className="admin-route-detail-action"
             >
               Sửa tuyến
+            </Button>
+            <Button
+              icon={<UserSwitchOutlined />}
+              onClick={() => {
+                setSubstituteSeller(
+                  typeof route.substituteSeller === "string"
+                    ? route.substituteSeller
+                    : route.substituteSeller?._id,
+                );
+                setSubstituteReason(route.substituteReason || "");
+                setSubstituteModalOpen(true);
+              }}
+              className="admin-route-detail-action"
+            >
+              Gán đi thay
             </Button>
             {route.status !== "completed" && route.status !== "cancelled" ? (
               <Button
@@ -381,8 +469,16 @@ export default function AdminRouteDetailPage() {
                   <strong>{sellerName}</strong>
                 </div>
                 <div className="admin-route-detail-info-row">
+                  <Text>Đi thay</Text>
+                  <strong>{substituteName}</strong>
+                </div>
+                <div className="admin-route-detail-info-row">
                   <Text>Email</Text>
                   <strong>{sellerEmail}</strong>
+                </div>
+                <div className="admin-route-detail-info-row">
+                  <Text>Lý do đi thay</Text>
+                  <strong>{route.substituteReason || "-"}</strong>
                 </div>
                 <div className="admin-route-detail-info-row">
                   <Text>Ngày làm việc</Text>
@@ -434,7 +530,7 @@ export default function AdminRouteDetailPage() {
                     ? record.customer
                     : record.customer._id
                 }
-                dataSource={route.customers}
+                dataSource={sortedRouteCustomers}
                 columns={customerColumns}
                 scroll={{ x: 1342 }}
                 className="admin-route-detail-table"
@@ -452,6 +548,38 @@ export default function AdminRouteDetailPage() {
           </Col>
         </Row>
       </section>
+
+      <Modal
+        title="Gán DSR đi thay"
+        open={substituteModalOpen}
+        okText="Gán đi thay"
+        cancelText="Hủy"
+        confirmLoading={assigningSubstitute}
+        onOk={handleAssignSubstitute}
+        onCancel={() => setSubstituteModalOpen(false)}
+      >
+        <Space direction="vertical" size={12} style={{ width: "100%" }}>
+          <Select
+            showSearch
+            allowClear
+            placeholder="Chọn DSR đi thay"
+            optionFilterProp="label"
+            value={substituteSeller}
+            onChange={setSubstituteSeller}
+            style={{ width: "100%" }}
+            options={substituteCandidates.map((user) => ({
+              label: `${user.fullName} - ${user.email}`,
+              value: user._id,
+            }))}
+          />
+          <Input.TextArea
+            rows={3}
+            placeholder="Lý do đi thay"
+            value={substituteReason}
+            onChange={(event) => setSubstituteReason(event.target.value)}
+          />
+        </Space>
+      </Modal>
 
       <style jsx global>{`
         .admin-route-detail-shell {

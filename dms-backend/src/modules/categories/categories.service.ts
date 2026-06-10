@@ -6,9 +6,10 @@ import {
 
 import { InjectModel } from '@nestjs/mongoose';
 
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 
 import { Category, CategoryDocument } from './schemas/category.schema';
+import { Product, ProductDocument } from '../products/schemas/product.schema';
 
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
@@ -19,6 +20,9 @@ export class CategoriesService {
   constructor(
     @InjectModel(Category.name)
     private categoryModel: Model<CategoryDocument>,
+
+    @InjectModel(Product.name)
+    private productModel: Model<ProductDocument>,
 
     private readonly socketGateway: SocketGateway,
   ) {}
@@ -52,11 +56,18 @@ export class CategoriesService {
   }
 
   async findAll() {
-    return this.categoryModel.find().sort({ createdAt: -1 });
+    return this.categoryModel.find({ isActive: true }).sort({ createdAt: -1 });
   }
 
   async findById(id: string) {
-    const category = await this.categoryModel.findById(id);
+    if (!Types.ObjectId.isValid(id)) {
+      throw new NotFoundException('Category not found');
+    }
+
+    const category = await this.categoryModel.findOne({
+      _id: new Types.ObjectId(id),
+      isActive: true,
+    });
 
     if (!category) {
       throw new NotFoundException('Category not found');
@@ -68,6 +79,10 @@ export class CategoriesService {
   }
 
   async update(id: string, updateCategoryDto: UpdateCategoryDto) {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new NotFoundException('Category not found');
+    }
+
     const updateData = { ...updateCategoryDto };
 
     if (updateCategoryDto.code) {
@@ -95,12 +110,13 @@ export class CategoriesService {
       }
     }
 
-    const category = await this.categoryModel.findByIdAndUpdate(
-      id,
-      updateData,
+    const category = await this.categoryModel.findOneAndUpdate(
       {
-        new: true,
+        _id: new Types.ObjectId(id),
+        isActive: true,
       },
+      updateData,
+      { returnDocument: 'after' },
     );
 
     if (!category) {
@@ -113,7 +129,26 @@ export class CategoriesService {
   }
 
   async remove(id: string) {
-    const category = await this.categoryModel.findByIdAndDelete(id);
+    if (!Types.ObjectId.isValid(id)) {
+      throw new NotFoundException('Category not found');
+    }
+
+    const activeProductCount = await this.productModel.countDocuments({
+      category: new Types.ObjectId(id),
+      isDeleted: { $ne: true },
+    });
+
+    if (activeProductCount > 0) {
+      throw new BadRequestException(
+        'Cannot delete category while it still has products',
+      );
+    }
+
+    const category = await this.categoryModel.findByIdAndUpdate(
+      id,
+      { isActive: false },
+      { returnDocument: 'after' },
+    );
 
     if (!category) {
       throw new NotFoundException('Category not found');
@@ -122,7 +157,7 @@ export class CategoriesService {
     this.emitCategoryRealtime('deleted', category);
 
     return {
-      message: 'Delete category successfully',
+      message: 'Category deactivated successfully',
     };
   }
 }

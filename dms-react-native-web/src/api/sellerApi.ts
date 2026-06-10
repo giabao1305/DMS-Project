@@ -13,8 +13,10 @@ import type {
   SellerDashboard,
   Visit,
   Kpi,
+  PaymentMethod,
+  WarehouseStock,
 } from "../types/domain";
-import { request } from "./http";
+import { ApiError, request } from "./http";
 import { getStoredSession } from "./authStore";
 import { toVietnameseError } from "../utils/errorMessage";
 
@@ -73,6 +75,13 @@ export type UploadImagePayload = {
   mimeType?: string;
 };
 
+export type VnpayPaymentUrlResponse = {
+  paymentUrl: string;
+  txnRef: string;
+  amount: number;
+  orderCode: string;
+};
+
 export const sellerApi = {
   login: (payload: LoginPayload) =>
     request("/auth/login", {
@@ -80,7 +89,7 @@ export const sellerApi = {
       auth: false,
       body: payload,
     }),
-  me: () => request("/auth/me"),
+  me: () => request<AuthUser>("/auth/me"),
   logout: () => request("/auth/logout", { method: "POST" }),
   changePassword: (payload: { currentPassword: string; newPassword: string }) =>
     request("/auth/change-password", { method: "PATCH", body: payload }),
@@ -89,7 +98,6 @@ export const sellerApi = {
   uploadImage: (payload: UploadImagePayload) => uploadImage(payload),
 
   dashboard: () => request<SellerDashboard>("/dashboard/seller"),
-
   customers: () => requestList<Customer>("/customers/my-customers"),
   customer: (id: string) => request<Customer>(`/customers/${id}`),
   createCustomer: (payload: CreateCustomerPayload) =>
@@ -100,6 +108,21 @@ export const sellerApi = {
     request<void>(`/customers/${id}`, { method: "DELETE" }),
 
   products: () => requestList<Product>("/products"),
+  saleProducts: async () => {
+    const currentUser = await sellerApi.me();
+    try {
+      const stocks = await requestList<WarehouseStock>(
+        `/warehouses/seller/${currentUser._id}/stocks`,
+      );
+
+      return warehouseStocksToProducts(stocks);
+    } catch (err) {
+      if (!(err instanceof ApiError) || err.status !== 404) throw err;
+      throw new Error(
+        "Backend chưa hỗ trợ lấy sản phẩm theo kho NPP của seller. Hãy deploy backend có route /warehouses/seller/:sellerId/stocks.",
+      );
+    }
+  },
   activePromotions: () => requestList<Promotion>("/promotions/active"),
 
   routes: () => requestList<RoutePlan>("/routes/my-routes"),
@@ -122,6 +145,19 @@ export const sellerApi = {
     request<Order>(`/orders/${id}/return-request`, {
       method: "PATCH",
       body: { reason },
+    }),
+  recordOrderPayment: (
+    id: string,
+    payload: { amount: number; method: PaymentMethod; note?: string },
+  ) =>
+    request<Order>(`/orders/${id}/payments`, {
+      method: "POST",
+      body: payload,
+    }),
+  createVnpayPaymentUrl: (id: string, payload: { amount: number }) =>
+    request<VnpayPaymentUrlResponse>(`/orders/${id}/vnpay/payment-url`, {
+      method: "POST",
+      body: payload,
     }),
 
   visits: () => requestList<Visit>("/visits/my-visits"),
@@ -149,9 +185,85 @@ export const sellerApi = {
 };
 
 async function requestList<T>(path: string) {
-  const payload = await request<T[] | PaginatedResponse<T>>(`${path}?limit=${PAGE_SIZE}`);
-  if (Array.isArray(payload)) return payload;
-  return payload.data || [];
+  const firstPage = await requestListPage<T>(path, 1);
+  if (Array.isArray(firstPage)) return firstPage;
+
+  const items = [...(firstPage.data || [])];
+  const totalPages = firstPage.meta?.totalPages || 1;
+
+  if (totalPages <= 1) return items;
+
+  const rest = await Promise.all(
+    Array.from({ length: totalPages - 1 }, (_, index) =>
+      requestListPage<T>(path, index + 2),
+    ),
+  );
+
+  for (const page of rest) {
+    if (Array.isArray(page)) {
+      items.push(...page);
+    } else {
+      items.push(...(page.data || []));
+    }
+  }
+
+  return items;
+}
+
+function requestListPage<T>(path: string, page: number) {
+  const separator = path.includes("?") ? "&" : "?";
+  return request<T[] | PaginatedResponse<T>>(
+    `${path}${separator}limit=${PAGE_SIZE}&page=${page}`,
+  );
+}
+
+async function warehouseStocksToProducts(stocks: WarehouseStock[]) {
+  const hasUnpopulatedProduct = stocks.some(
+    (stock) => typeof stock.product === "string",
+  );
+  const productIds = Array.from(
+    new Set(
+      stocks.flatMap((stock) =>
+        typeof stock.product === "string" ? [stock.product] : [],
+      ),
+    ),
+  );
+  const productEntries = hasUnpopulatedProduct
+    ? await Promise.all(
+        productIds.map(async (productId) => {
+          try {
+            const product = await request<Product>(`/products/${productId}`);
+            return [productId, product] as const;
+          } catch {
+            return undefined;
+          }
+        }),
+      )
+    : [];
+  const productById = new Map(
+    productEntries.filter(Boolean) as Array<readonly [string, Product]>,
+  );
+
+  return stocks.flatMap((stock) => {
+    const quantity = Number(stock.quantity) || 0;
+    if (quantity <= 0) return [];
+
+    const product =
+      typeof stock.product === "string"
+        ? productById.get(stock.product)
+        : stock.product;
+
+    if (!product) return [];
+    if (product.isActive === false) return [];
+
+    return [
+      {
+        ...product,
+        price: stock.sellingPrice ?? stock.averageCost,
+        stock: quantity,
+      },
+    ];
+  });
 }
 
 async function uploadImage({ uri, fileName, mimeType }: UploadImagePayload) {

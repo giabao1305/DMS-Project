@@ -21,19 +21,25 @@ type OrderPage =
 export function OrdersScreen({
   initialCustomerId,
   onInitialCustomerConsumed,
+  paymentReturnOrderId,
+  onPaymentReturnConsumed,
   onOpenTab,
 }: {
   initialCustomerId?: string | null;
   onInitialCustomerConsumed?: () => void;
+  paymentReturnOrderId?: string | null;
+  onPaymentReturnConsumed?: () => void;
   onOpenTab: (tab: SellerTab) => void;
 }) {
   const orders = useResource(sellerApi.orders, []);
   const customers = useResource(sellerApi.customers, []);
-  const products = useResource(sellerApi.products, []);
+  const products = useResource(sellerApi.saleProducts, []);
   const promotions = useResource(sellerApi.activePromotions, []);
+  const visits = useResource(sellerApi.visits, []);
   const [page, setPage] = useState<OrderPage>({ name: "list" });
   const [message, setMessage] = useState("");
   const [createCustomerId, setCreateCustomerId] = useState(initialCustomerId || "");
+  const activeVisit = (visits.data || []).find((visit) => visit.status === "checked_in");
 
   useEffect(() => {
     if (!initialCustomerId) return;
@@ -43,14 +49,43 @@ export function OrdersScreen({
     onInitialCustomerConsumed?.();
   }, [initialCustomerId, onInitialCustomerConsumed]);
 
+  useEffect(() => {
+    if (!paymentReturnOrderId) return;
+
+    let isMounted = true;
+
+    const openReturnedOrder = async () => {
+      try {
+        const order = await sellerApi.order(paymentReturnOrderId);
+        if (!isMounted) return;
+        await orders.reload();
+        setMessage("Thanh toán VNPay thành công. Đã cập nhật đơn hàng.");
+        setPage({ name: "detail", order });
+      } catch {
+        if (!isMounted) return;
+        setMessage("Thanh toán đã xử lý, vui lòng tải lại danh sách đơn.");
+        setPage({ name: "list" });
+      } finally {
+        onPaymentReturnConsumed?.();
+      }
+    };
+
+    void openReturnedOrder();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [onPaymentReturnConsumed, orders, paymentReturnOrderId]);
+
   useRegisterRefresh(async () => {
     await orders.reload();
     await customers.reload();
     await products.reload();
     await promotions.reload();
-  }, [orders.reload, customers.reload, products.reload, promotions.reload]);
+    await visits.reload();
+  }, [orders.reload, customers.reload, products.reload, promotions.reload, visits.reload]);
 
-  if (orders.loading || customers.loading || products.loading || promotions.loading) {
+  if (orders.loading || customers.loading || products.loading || promotions.loading || visits.loading) {
     return <LoadingState variant="list" />;
   }
 
@@ -66,6 +101,8 @@ export function OrdersScreen({
         products={products.data || []}
         promotions={promotions.data || []}
         initialCustomerId={createCustomerId || undefined}
+        activeVisit={activeVisit}
+        onCheckIn={() => onOpenTab("visits")}
         onBack={() => setPage({ name: "list" })}
         onSaved={async () => {
           await refresh();
@@ -111,10 +148,12 @@ export function OrdersScreen({
   return (
     <OrdersList
       orders={orders.data || []}
-      error={orders.error || customers.error || products.error || promotions.error}
+      error={orders.error || customers.error || products.error || promotions.error || visits.error}
       message={message}
       onBack={() => onOpenTab("dashboard")}
       onCreate={() => { setCreateCustomerId(""); setMessage(""); setPage({ name: "create" }); }}
+      onCheckIn={() => onOpenTab("visits")}
+      canCreate={Boolean(activeVisit)}
       onDetail={(order) => setPage({ name: "detail", order })}
       onEdit={(order) => setPage({ name: "edit", order })}
     />

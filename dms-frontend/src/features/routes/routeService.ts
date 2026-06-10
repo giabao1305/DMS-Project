@@ -8,6 +8,7 @@ import {
 } from "@/features/paginationTypes";
 import type {
   CreateRouteRequest,
+  AssignSubstituteRouteRequest,
   Route,
   UpdateRouteRequest,
   UpdateRouteStatusRequest,
@@ -90,6 +91,18 @@ export const routeService = createApi({
       invalidatesTags: ["Routes"],
     }),
 
+    assignSubstituteRoute: builder.mutation<
+      Route,
+      { id: string; body: AssignSubstituteRouteRequest }
+    >({
+      query: ({ id, body }) => ({
+        url: `/routes/${id}/substitute`,
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: ["Routes"],
+    }),
+
     deleteRoute: builder.mutation<void, string>({
       query: (id) => ({
         url: `/routes/${id}`,
@@ -110,5 +123,6 @@ export const {
   useCreateRouteMutation,
   useUpdateRouteMutation,
   useUpdateRouteStatusMutation,
+  useAssignSubstituteRouteMutation,
   useDeleteRouteMutation,
 } = routeService;

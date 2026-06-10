@@ -1,17 +1,19 @@
 # DMS Frontend
 
-Frontend cho hệ thống quản lý phân phối DMS, xây dựng bằng Next.js, React, Redux Toolkit Query và Ant Design.
+Frontend web cho hệ thống quản lý phân phối DMS, xây dựng bằng Next.js, React, Redux Toolkit Query và Ant Design.
 
-## Vai trò
+## Vai trò trên web
 
-- Admin: quản trị nhân viên, khách hàng, sản phẩm, kho, đơn hàng, tuyến bán hàng, KPI, báo cáo, nghỉ phép và nhật ký hệ thống.
-- Seller: xem dashboard cá nhân, quản lý khách hàng, tạo đơn hàng, xem tuyến, ghi nhận ghé thăm và gửi yêu cầu nghỉ phép.
+- Admin: quản trị nhân viên, nhà phân phối, khách hàng, sản phẩm, kho, đơn hàng, tuyến bán hàng, KPI, báo cáo, nghỉ phép và nhật ký hệ thống.
+- Distributor: quản lý đội DSR, khách hàng, đơn bán ra tiệm, kho NPP, tuyến, ghé thăm, KPI, nghỉ phép và thông báo.
+
+Seller/DSR sử dụng app mobile riêng trong `dms-react-native-web`; web seller đã được gỡ khỏi project này.
 
 ## Chức năng chính
 
-- Đăng nhập, phân quyền admin/seller, đổi mật khẩu, quên mật khẩu và đặt lại mật khẩu.
-- Dashboard quản trị và dashboard seller.
-- Quản lý nhân viên, khách hàng, danh mục, sản phẩm.
+- Đăng nhập, phân quyền admin/distributor, đổi mật khẩu, quên mật khẩu và đặt lại mật khẩu.
+- Dashboard admin và dashboard distributor.
+- Quản lý nhân viên, đội DSR, khách hàng, danh mục, sản phẩm.
 - Quản lý đơn hàng, khuyến mãi, tồn kho và cảnh báo tồn thấp.
 - Lập kế hoạch tuyến bán hàng và theo dõi ghé thăm khách hàng.
 - Quản lý nghỉ phép, KPI, báo cáo, thông báo realtime và audit logs.
@@ -52,61 +54,6 @@ npm run lint
 npm run build
 ```
 
-## Docker với MongoDB Atlas
+## Demo
 
-Docker Compose nằm ở thư mục gốc `DMS_Project` và dùng MongoDB Atlas qua `MONGODB_URI`.
-
-Từ thư mục gốc:
-
-```bash
-copy .env.docker.example .env
-```
-
-Cập nhật `.env`:
-
-```env
-MONGODB_URI=mongodb+srv://...
-JWT_SECRET=replace-with-a-strong-secret
-NEXT_PUBLIC_API_URL=http://localhost:5000
-CORS_ORIGIN=http://localhost:3000
-SOCKET_CORS_ORIGIN=http://localhost:3000
-```
-
-Chạy full stack:
-
-```bash
-docker compose up --build
-```
-
-Các URL:
-
-```text
-Frontend: http://localhost:3000
-Backend:  http://localhost:5000
-Swagger:  http://localhost:5000/api-docs
-Health:   http://localhost:5000/health
-```
-
-Seed demo qua container backend:
-
-```bash
-docker compose exec backend npm run seed:demo
-```
-
-Tài khoản demo:
-
-```text
-Admin:  admin@dms.local  / Admin@123456
-Seller: seller@dms.local / Seller@123456
-```
-
-## Luồng demo đề xuất
-
-1. Admin đăng nhập và xem dashboard.
-2. Admin tạo/sửa sản phẩm, nhập kho và kiểm tra cảnh báo tồn thấp.
-3. Admin tạo tuyến bán hàng cho seller.
-4. Seller đăng nhập, xem tuyến và ghi nhận ghé thăm.
-5. Seller tạo khách hàng hoặc đơn hàng.
-6. Admin duyệt khách hàng, duyệt đơn hàng và theo dõi thông báo realtime.
-7. Seller gửi nghỉ phép, admin duyệt hoặc từ chối.
-8. Admin xem báo cáo, KPI và audit logs.
+Luồng web hiện tại tập trung vào Admin và Distributor. Seller/DSR thao tác trên app mobile riêng.

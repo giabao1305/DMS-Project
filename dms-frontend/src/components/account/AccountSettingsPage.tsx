@@ -75,7 +75,12 @@ export default function AccountSettingsPage({
   const profileUser = currentUser as Partial<User> | null;
   const displayName = currentUser?.fullName || "Tài khoản";
   const initial = displayName.trim().charAt(0).toUpperCase() || "U";
-  const isSalesWorkspace = accent === "seller" || accent === "distributor";
+  const workspaceClass =
+    accent === "distributor"
+      ? "is-distributor"
+      : accent === "seller"
+        ? "is-seller"
+        : "is-admin";
   const roleLabel = getRoleLabel(currentUser?.role);
   const statusLabel = currentUser?.isActive ? "Đang hoạt động" : "Tạm khóa";
 
@@ -142,9 +147,7 @@ export default function AccountSettingsPage({
 
   return (
     <section
-      className={`account-settings-shell ${
-        isSalesWorkspace ? "is-seller" : "is-admin"
-      }`}
+      className={`account-settings-shell ${workspaceClass}`}
     >
       <Card className="account-settings-hero" variant="borderless">
         <div className="account-settings-hero-main">
@@ -167,7 +170,7 @@ export default function AccountSettingsPage({
               </Text>
 
               <div className="account-settings-tags">
-                <Tag color={currentUser?.role === "admin" ? "blue" : "green"}>
+                <Tag color="blue">
                   {roleLabel}
                 </Tag>
                 <Tag color={currentUser?.isActive ? "success" : "error"}>
@@ -437,14 +440,15 @@ export default function AccountSettingsPage({
           gap: 16px;
         }
 
-        .account-settings-shell.is-seller {
-          --account-primary: #0d9488;
-          --account-primary-hover: #0f766e;
-          --account-primary-soft: #e7f8f5;
-          --account-border: #d7ebe7;
-          --account-surface: #f3fbf9;
-          --account-text: #0b2f2a;
-          --account-muted: #5d7471;
+        .account-settings-shell.is-seller,
+        .account-settings-shell.is-distributor {
+          --account-primary: #2563eb;
+          --account-primary-hover: #1d4ed8;
+          --account-primary-soft: #eff6ff;
+          --account-border: #dbeafe;
+          --account-surface: #f8fbff;
+          --account-text: #0f172a;
+          --account-muted: #64748b;
         }
 
         .account-settings-hero,
@@ -459,24 +463,24 @@ export default function AccountSettingsPage({
 
         .account-settings-shell.is-seller .account-settings-hero,
         .account-settings-shell.is-seller .account-settings-summary-card,
-        .account-settings-shell.is-seller .account-settings-card {
-          box-shadow: 0 14px 30px rgba(11, 47, 42, 0.06) !important;
+        .account-settings-shell.is-seller .account-settings-card,
+        .account-settings-shell.is-distributor .account-settings-hero,
+        .account-settings-shell.is-distributor .account-settings-summary-card,
+        .account-settings-shell.is-distributor .account-settings-card {
+          box-shadow: 0 14px 30px rgba(37, 99, 235, 0.08) !important;
         }
 
         .account-settings-hero {
-          background:
-            radial-gradient(circle at 88% 16%, rgba(14, 165, 233, 0.22), transparent 28%),
-            linear-gradient(135deg, #071a24 0%, #102b3a 52%, #12394a 100%) !important;
+          background: #102b3a !important;
           border-color: rgba(125, 211, 252, 0.2) !important;
           box-shadow: 0 22px 46px rgba(7, 26, 36, 0.18) !important;
         }
 
-        .account-settings-shell.is-seller .account-settings-hero {
-          background:
-            linear-gradient(135deg, var(--account-primary-soft), #ffffff 62%)
-              !important;
+        .account-settings-shell.is-seller .account-settings-hero,
+        .account-settings-shell.is-distributor .account-settings-hero {
+          background: #ffffff !important;
           border-color: var(--account-border) !important;
-          box-shadow: 0 14px 30px rgba(11, 47, 42, 0.06) !important;
+          box-shadow: 0 14px 30px rgba(37, 99, 235, 0.08) !important;
         }
 
         .account-settings-hero .ant-card-body {
@@ -504,16 +508,17 @@ export default function AccountSettingsPage({
 
         .account-settings-avatar {
           color: #ffffff;
-          background: linear-gradient(135deg, #2563eb, #0ea5e9);
+          background: #2563eb;
           font-size: 30px;
           font-weight: 900;
           flex-shrink: 0;
           box-shadow: 0 14px 28px rgba(37, 99, 235, 0.24);
         }
 
-        .account-settings-shell.is-seller .account-settings-avatar {
+        .account-settings-shell.is-seller .account-settings-avatar,
+        .account-settings-shell.is-distributor .account-settings-avatar {
           background: var(--account-primary);
-          box-shadow: 0 14px 28px rgba(13, 148, 136, 0.22);
+          box-shadow: 0 14px 28px rgba(37, 99, 235, 0.22);
         }
 
         .account-settings-eyebrow {
@@ -525,7 +530,8 @@ export default function AccountSettingsPage({
           text-transform: uppercase;
         }
 
-        .account-settings-shell.is-seller .account-settings-eyebrow {
+        .account-settings-shell.is-seller .account-settings-eyebrow,
+        .account-settings-shell.is-distributor .account-settings-eyebrow {
           color: var(--account-primary) !important;
         }
 
@@ -537,7 +543,8 @@ export default function AccountSettingsPage({
           line-height: 1.2;
         }
 
-        .account-settings-shell.is-seller .account-settings-hero h3.ant-typography {
+        .account-settings-shell.is-seller .account-settings-hero h3.ant-typography,
+        .account-settings-shell.is-distributor .account-settings-hero h3.ant-typography {
           color: var(--account-text);
         }
 
@@ -549,7 +556,8 @@ export default function AccountSettingsPage({
           line-height: 1.45;
         }
 
-        .account-settings-shell.is-seller .account-settings-email {
+        .account-settings-shell.is-seller .account-settings-email,
+        .account-settings-shell.is-distributor .account-settings-email {
           color: var(--account-muted) !important;
         }
 
@@ -578,7 +586,8 @@ export default function AccountSettingsPage({
           background: rgba(6, 32, 44, 0.62);
         }
 
-        .account-settings-shell.is-seller .account-settings-status-card {
+        .account-settings-shell.is-seller .account-settings-status-card,
+        .account-settings-shell.is-distributor .account-settings-status-card {
           border-color: var(--account-border);
           background: rgba(255, 255, 255, 0.74);
         }
@@ -606,7 +615,8 @@ export default function AccountSettingsPage({
           color: #9ed7eb;
         }
 
-        .account-settings-shell.is-seller .account-settings-status-card span {
+        .account-settings-shell.is-seller .account-settings-status-card span,
+        .account-settings-shell.is-distributor .account-settings-status-card span {
           color: var(--account-muted);
         }
 
@@ -625,7 +635,8 @@ export default function AccountSettingsPage({
           color: #ffffff;
         }
 
-        .account-settings-shell.is-seller .account-settings-status-card strong {
+        .account-settings-shell.is-seller .account-settings-status-card strong,
+        .account-settings-shell.is-distributor .account-settings-status-card strong {
           color: var(--account-text);
         }
 
@@ -728,8 +739,9 @@ export default function AccountSettingsPage({
           box-shadow: 0 10px 22px rgba(37, 99, 235, 0.18);
         }
 
-        .account-settings-shell.is-seller .account-settings-card .ant-btn-primary {
-          box-shadow: 0 10px 22px rgba(13, 148, 136, 0.18);
+        .account-settings-shell.is-seller .account-settings-card .ant-btn-primary,
+        .account-settings-shell.is-distributor .account-settings-card .ant-btn-primary {
+          box-shadow: 0 10px 22px rgba(37, 99, 235, 0.18);
         }
 
         .account-settings-card .ant-btn-primary:hover {
@@ -785,10 +797,14 @@ export default function AccountSettingsPage({
         }
 
         .account-settings-shell.is-seller .account-settings-card .ant-input:focus,
+        .account-settings-shell.is-distributor .account-settings-card .ant-input:focus,
         .account-settings-shell.is-seller
           .account-settings-card
+          .ant-input-affix-wrapper-focused,
+        .account-settings-shell.is-distributor
+          .account-settings-card
           .ant-input-affix-wrapper-focused {
-          box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.12) !important;
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
         }
 
         .account-settings-actions {

@@ -56,7 +56,7 @@ const notificationConfig: Record<NotificationType, NotificationConfig> = {
   },
 
   system: {
-    color: "#722ed1",
+    color: "#2563eb",
     icon: <InfoCircleOutlined />,
     label: "Hệ thống",
   },

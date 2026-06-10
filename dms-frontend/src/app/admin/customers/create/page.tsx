@@ -1,5 +1,5 @@
-import CustomerFormPage from "@/app/admin/customers/CustomerFormPage";
+import { redirect } from "next/navigation";
 
 export default function CreateCustomerPage() {
-  return <CustomerFormPage mode="create" />;
+  redirect("/admin/dashboard");
 }

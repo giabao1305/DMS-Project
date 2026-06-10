@@ -18,6 +18,7 @@ import {
   Flex,
   Input,
   Progress,
+  Select,
   Table,
   Tag,
   Typography,
@@ -33,6 +34,8 @@ import {
   useRefreshKpiMutation,
 } from "@/features/reports/reportService";
 import type { Kpi } from "@/features/reports/reportTypes";
+import { useGetUsersQuery } from "@/features/users/userService";
+import type { User } from "@/features/users/userTypes";
 import { useRealtimeRefetch } from "@/hooks/useRealtimeRefetch";
 
 const { Text, Title } = Typography;
@@ -48,9 +51,15 @@ const getPerformanceColor = (value: number) => {
 export default function AdminKpisPage() {
   const { message } = App.useApp();
   const [keyword, setKeyword] = useState("");
+  const [distributor, setDistributor] = useState<string>();
 
   const { data: kpis = [], isLoading, refetch } = useGetKpisQuery();
+  const { data: users = [] } = useGetUsersQuery();
   const [refreshKpi, { isLoading: refreshing }] = useRefreshKpiMutation();
+  const distributors = useMemo(
+    () => users.filter((user) => user.role === "distributor" && user.isActive),
+    [users],
+  );
 
   useRealtimeRefetch(["kpi-updated", "reports-updated"], refetch);
 
@@ -87,14 +96,22 @@ export default function AdminKpisPage() {
     return kpis.filter((kpi) => {
       const sellerName = kpi.seller?.fullName?.toLowerCase() || "";
       const sellerEmail = kpi.seller?.email?.toLowerCase() || "";
+      const seller = users.find((user) => user._id === kpi.seller?._id);
+      const manager = seller?.manager;
+      const matchesDistributor =
+        !distributor ||
+        (typeof manager === "string"
+          ? manager === distributor
+          : (manager as User | undefined)?._id === distributor);
 
-      return (
+      const matchesKeyword =
         normalizedKeyword.length === 0 ||
         sellerName.includes(normalizedKeyword) ||
-        sellerEmail.includes(normalizedKeyword)
-      );
+        sellerEmail.includes(normalizedKeyword);
+
+      return matchesDistributor && matchesKeyword;
     });
-  }, [kpis, keyword]);
+  }, [distributor, kpis, keyword, users]);
 
   const handleRefresh = async (id: string) => {
     try {
@@ -115,7 +132,9 @@ export default function AdminKpisPage() {
           <Text className="admin-kpis-strong">
             {record.seller?.fullName || "-"}
           </Text>
-          <Text className="admin-kpis-muted">{record.seller?.email || "-"}</Text>
+          <Text className="admin-kpis-muted">
+            {record.seller?.email || "-"}
+          </Text>
         </div>
       ),
     },
@@ -135,7 +154,10 @@ export default function AdminKpisPage() {
             trailColor="#e5e7eb"
             showInfo={false}
           />
-          <Tag color={getPerformanceColor(value)} className="admin-kpis-status-tag">
+          <Tag
+            color={getPerformanceColor(value)}
+            className="admin-kpis-status-tag"
+          >
             {value}%
           </Tag>
         </div>
@@ -156,7 +178,9 @@ export default function AdminKpisPage() {
       width: 280,
       render: (_, record) => (
         <div className="admin-kpis-cell-copy">
-          <Text className="admin-kpis-money">{money(record.actualRevenue)}</Text>
+          <Text className="admin-kpis-money">
+            {money(record.actualRevenue)}
+          </Text>
           <Text className="admin-kpis-muted">
             Mục tiêu {money(record.targetRevenue)}
           </Text>
@@ -280,7 +304,7 @@ export default function AdminKpisPage() {
                 Bộ lọc KPI
               </Title>
               <Text className="admin-kpis-filter-description">
-                Tìm theo tên hoặc email seller để rà soát nhanh KPI cần xử lý.
+                Tìm seller hoặc lọc theo nhà phân phối để rà soát KPI cần xử lý.
               </Text>
             </div>
 
@@ -295,6 +319,22 @@ export default function AdminKpisPage() {
                 onChange={(event) => setKeyword(event.target.value)}
               />
 
+              <Select
+                allowClear
+                showSearch
+                size="large"
+                placeholder="Lọc nhà phân phối"
+                optionFilterProp="label"
+                value={distributor}
+                onChange={setDistributor}
+                className="admin-kpis-distributor-select"
+                options={distributors.map((item) => ({
+                  value: item._id,
+                  label: `${item.code ? `${item.code} - ` : ""}${
+                    item.companyName || item.fullName || item.email
+                  }`,
+                }))}
+              />
             </Flex>
           </Flex>
         </Card>
@@ -350,7 +390,11 @@ export default function AdminKpisPage() {
           border: 1px solid rgba(125, 211, 252, 0.2);
           border-radius: 8px;
           background:
-            radial-gradient(circle at 86% 18%, rgba(14, 165, 233, 0.26), transparent 28%),
+            radial-gradient(
+              circle at 86% 18%,
+              rgba(14, 165, 233, 0.26),
+              transparent 28%
+            ),
             linear-gradient(135deg, #071a24 0%, #102b3a 52%, #12394a 100%);
           box-shadow: 0 22px 46px rgba(7, 26, 36, 0.18);
         }
@@ -585,7 +629,13 @@ export default function AdminKpisPage() {
           max-width: 100%;
         }
 
+        .admin-kpis-distributor-select {
+          width: 260px !important;
+          max-width: 100%;
+        }
+
         .admin-kpis-search-input,
+        .admin-kpis-distributor-select .ant-select-selector,
         .admin-kpis-reset-button {
           border-radius: 8px !important;
         }
@@ -681,7 +731,10 @@ export default function AdminKpisPage() {
           background-color: #f8fafc !important;
         }
 
-        .admin-kpis-table .ant-table-tbody > tr:hover > td.ant-table-cell-fix-right {
+        .admin-kpis-table
+          .ant-table-tbody
+          > tr:hover
+          > td.ant-table-cell-fix-right {
           background: #f8fbff !important;
         }
 
@@ -753,6 +806,7 @@ export default function AdminKpisPage() {
 
           .admin-kpis-filter-actions,
           .admin-kpis-search-input,
+          .admin-kpis-distributor-select,
           .admin-kpis-reset-button {
             width: 100% !important;
           }

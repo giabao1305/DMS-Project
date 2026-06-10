@@ -50,7 +50,7 @@ type PromotionTypeFilter = "all" | PromotionType;
 const typeMap: Record<PromotionType, { label: string; color: string }> = {
   percent: { label: "Giảm %", color: "blue" },
   amount: { label: "Giảm tiền", color: "green" },
-  product_gift: { label: "Tặng sản phẩm", color: "purple" },
+  product_gift: { label: "Tặng sản phẩm", color: "blue" },
 };
 
 const money = (value: number) => `${value.toLocaleString("vi-VN")}đ`;
@@ -543,7 +543,7 @@ export default function PromotionsPage() {
           border-radius: 8px;
           color: #ffffff;
           font-size: 20px;
-          background: #8b5cf6;
+          background: #2563eb;
         }
 
         .admin-promotions-hero-panel span {

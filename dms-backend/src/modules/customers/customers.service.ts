@@ -9,6 +9,7 @@ import { Model, Types } from 'mongoose';
 
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import {
+  buildSearchRegex,
   getPagination,
   getSort,
   PaginatedResult,
@@ -88,6 +89,25 @@ export class CustomersService {
     }
   }
 
+  private async assertActiveSeller(sellerId: string): Promise<void> {
+    if (!Types.ObjectId.isValid(sellerId)) {
+      throw new NotFoundException('Seller not found');
+    }
+
+    const seller = await this.userModel
+      .findOne({
+        _id: new Types.ObjectId(sellerId),
+        role: UserRole.SELLER,
+        isActive: true,
+      })
+      .select('_id')
+      .exec();
+
+    if (!seller) {
+      throw new NotFoundException('Seller not found');
+    }
+  }
+
   private getRelationId(value: RelationId): string {
     if (typeof value === 'string') {
       return value;
@@ -119,6 +139,10 @@ export class CustomersService {
 
     if (!assignedSeller) {
       throw new BadRequestException('Customer must be assigned to a seller');
+    }
+
+    if (isAdmin) {
+      await this.assertActiveSeller(assignedSeller);
     }
 
     if (isDistributor) {
@@ -189,7 +213,7 @@ export class CustomersService {
     }
 
     if (query?.search) {
-      const search = new RegExp(query.search.trim(), 'i');
+      const search = buildSearchRegex(query.search);
       filter.$or = [
         { name: search },
         { phone: search },
@@ -206,6 +230,13 @@ export class CustomersService {
     query?: PaginationQueryDto,
   ): Promise<Customer[] | PaginatedResult<Customer>> {
     const filter = this.buildCustomerListFilter(query);
+
+    if (query?.distributor && Types.ObjectId.isValid(query.distributor)) {
+      filter.assignedSeller = {
+        $in: await this.getManagedSellerIds(query.distributor),
+      };
+    }
+
     const customerQuery = this.customerModel
       .find(filter)
       .populate('assignedSeller', 'fullName email phone companyName')
@@ -349,6 +380,10 @@ export class CustomersService {
       }
     }
 
+    if (!isDistributor && updateCustomerDto.assignedSeller) {
+      await this.assertActiveSeller(updateCustomerDto.assignedSeller);
+    }
+
     Object.assign(customer, updateCustomerDto);
 
     const savedCustomer = await customer.save();
@@ -372,13 +407,30 @@ export class CustomersService {
 
     return savedCustomer;
   }
-  async approve(id: string, adminId: string): Promise<Customer> {
+  async approve(
+    id: string,
+    reviewerId: string,
+    reviewerRole: UserRole,
+  ): Promise<Customer> {
+    const existingCustomer = await this.customerModel.findById(id).exec();
+
+    if (!existingCustomer) {
+      throw new NotFoundException('Customer not found');
+    }
+
+    if (reviewerRole === UserRole.DISTRIBUTOR) {
+      await this.assertManagedSeller(
+        reviewerId,
+        existingCustomer.assignedSeller.toString(),
+      );
+    }
+
     const customer = await this.customerModel
       .findByIdAndUpdate(
         id,
         {
           status: CustomerStatus.APPROVED,
-          approvedBy: new Types.ObjectId(adminId),
+          approvedBy: new Types.ObjectId(reviewerId),
           approvedAt: new Date(),
           rejectReason: undefined,
         },
@@ -405,11 +457,25 @@ export class CustomersService {
 
   async reject(
     id: string,
-    adminId: string,
+    reviewerId: string,
+    reviewerRole: UserRole,
     rejectReason: string,
   ): Promise<Customer> {
     if (!rejectReason) {
       throw new BadRequestException('Reject reason is required');
+    }
+
+    const existingCustomer = await this.customerModel.findById(id).exec();
+
+    if (!existingCustomer) {
+      throw new NotFoundException('Customer not found');
+    }
+
+    if (reviewerRole === UserRole.DISTRIBUTOR) {
+      await this.assertManagedSeller(
+        reviewerId,
+        existingCustomer.assignedSeller.toString(),
+      );
     }
 
     const customer = await this.customerModel
@@ -417,7 +483,7 @@ export class CustomersService {
         id,
         {
           status: CustomerStatus.REJECTED,
-          approvedBy: new Types.ObjectId(adminId),
+          approvedBy: new Types.ObjectId(reviewerId),
           approvedAt: new Date(),
           rejectReason,
         },

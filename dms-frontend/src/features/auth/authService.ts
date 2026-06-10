@@ -1,6 +1,7 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 
 import { baseQuery } from "@/features/baseApi";
+import type { User } from "@/features/users/userTypes";
 import type {
   ChangePasswordRequest,
   ForgotPasswordRequest,
@@ -17,6 +18,10 @@ export const authService = createApi({
   baseQuery,
 
   endpoints: (builder) => ({
+    getMe: builder.query<User, void>({
+      query: () => "/auth/me",
+    }),
+
     login: builder.mutation<LoginResponse, LoginRequest>({
       query: (body) => ({
         url: "/auth/login",
@@ -67,6 +72,7 @@ export const authService = createApi({
 });
 
 export const {
+  useGetMeQuery,
   useLoginMutation,
   useChangePasswordMutation,
   useRefreshTokenMutation,
