@@ -6,7 +6,7 @@ docs/
 **/node_modules/
 **/.expo/
 **/dist/
-**/build/
+dms-frontend/build/
 **/web-build/
 **/.next/
 **/.verification/
