@@ -29,8 +29,11 @@ build:
           cp -R build/Build/Products/Release-iphoneos/*.app build/unsigned/Payload/
           cd build/unsigned
           /usr/bin/zip -qry ../dms-seller-unsigned.ipa Payload
+          cd ../..
+          test -f build/dms-seller-unsigned.ipa
+          find build -name '*.ipa' -print
     - eas/upload_artifact:
         name: Upload unsigned IPA
         inputs:
           type: application-archive
-          path: ios/build/dms-seller-unsigned.ipa
+          path: ./ios/build/dms-seller-unsigned.ipa
