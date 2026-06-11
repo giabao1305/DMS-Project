@@ -4,7 +4,10 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  KeyboardAvoidingView,
   Linking,
+  Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -61,6 +64,7 @@ export function OrderDetail({
   onChanged: (order: Order) => void;
 }) {
   const [returnReason, setReturnReason] = useState("");
+  const [returnFormOpen, setReturnFormOpen] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentNote, setPaymentNote] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
@@ -79,6 +83,7 @@ export function OrderDetail({
   const netCollected = Math.max(paidAmount - refundedAmount, 0);
   const balanceDue =
     order.balanceDue ?? Math.max(order.finalAmount - netCollected, 0);
+  const canRequestReturn = order.status === "delivered";
   const transferNote = order.orderCode;
   const transferQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=12&data=${encodeURIComponent(
     transferPaymentUrl || transferNote,
@@ -250,6 +255,7 @@ export function OrderDetail({
     try {
       onChanged(await sellerApi.requestReturnOrder(order._id, reason));
       setReturnReason("");
+      setReturnFormOpen(false);
       setMessage("Đã gửi yêu cầu trả hàng.");
     } catch (err) {
       setError(
@@ -302,6 +308,7 @@ export function OrderDetail({
     <ScrollView
       style={styles.screen}
       contentContainerStyle={styles.scrollContent}
+      keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.page}>
@@ -609,27 +616,26 @@ export function OrderDetail({
               />
             </View>
           ) : null}
-          {order.status === "delivered" && netCollected === 0 ? (
+          {canRequestReturn ? (
             <View style={styles.returnBox}>
-              <Field
-                label="Lý do trả hàng"
-                value={returnReason}
-                onChangeText={setReturnReason}
-              />
               <PrimaryButton
-                label="Yêu cầu trả hàng"
-                onPress={requestReturn}
+                label="Trả hàng"
+                onPress={() => {
+                  setError("");
+                  setMessage("");
+                  setReturnReason("");
+                  setReturnFormOpen(true);
+                }}
                 loading={submitting}
-                disabled={!returnReason.trim()}
                 variant="muted"
                 icon="backup-restore"
               />
             </View>
           ) : null}
-          {order.status === "delivered" && netCollected > 0 ? (
+          {order.status === "return_requested" ? (
             <Text style={styles.refundHint}>
-              Đơn còn giữ tiền khách, NPP/Admin cần hoàn tiền trước khi seller
-              yêu cầu trả hàng.
+              Yêu cầu trả hàng đang chờ NPP duyệt. Khi duyệt, hệ thống sẽ tự
+              ghi nhận hoàn tiền và trả hàng.
             </Text>
           ) : null}
         </View>
@@ -661,6 +667,95 @@ export function OrderDetail({
             </View>
           </View>
         ) : null}
+
+        <Modal
+          animationType="fade"
+          transparent
+          visible={returnFormOpen}
+          onRequestClose={() => setReturnFormOpen(false)}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.modalKeyboard}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.returnModalCard}>
+                <Text style={styles.returnModalTitle}>Trả hàng</Text>
+                <Text style={styles.returnModalHint}>
+                  Nhập lý do trả hàng để gửi yêu cầu xử lý đơn {order.orderCode}.
+                </Text>
+                <ScrollView
+                  style={styles.returnModalScroll}
+                  contentContainerStyle={styles.returnModalScrollContent}
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={false}
+                >
+                <View style={styles.returnPreviewBox}>
+                  <Text style={styles.returnPreviewTitle}>Thông tin khách hàng</Text>
+                  <DetailRow
+                    label="Khách hàng"
+                    value={getCustomerName(order.customer)}
+                  />
+                  <DetailRow
+                    label="Số điện thoại"
+                    value={customerPhone(order.customer)}
+                  />
+                  <DetailRow
+                    label="Địa chỉ"
+                    value={customerAddress(order.customer)}
+                  />
+                </View>
+                <View style={styles.returnPreviewBox}>
+                  <Text style={styles.returnPreviewTitle}>Sản phẩm trả hàng</Text>
+                  {order.items.map((item, index) => (
+                    <View
+                      key={`return-${order._id}-${productDisplayName(item)}-${index}`}
+                      style={styles.returnProductRow}
+                    >
+                      <ProductThumb item={item} />
+                      <View style={styles.returnProductBody}>
+                        <Text style={styles.returnProductName} numberOfLines={2}>
+                          {productDisplayName(item)}
+                        </Text>
+                        <Text style={styles.returnProductMeta}>
+                          SL {item.quantity} x {currency(item.price)}
+                        </Text>
+                      </View>
+                      <Text style={styles.returnProductAmount}>
+                        {currency(item.subtotal)}
+                      </Text>
+                    </View>
+                  ))}
+                  <DetailRow label="Giá trị đơn" value={currency(order.finalAmount)} />
+                  <DetailRow label="Tiền đã thu" value={currency(netCollected)} strong />
+                </View>
+                <Field
+                  label="Lý do trả hàng"
+                  value={returnReason}
+                  onChangeText={setReturnReason}
+                  multiline
+                />
+                </ScrollView>
+                <View style={styles.modalActions}>
+                  <PrimaryButton
+                    label="Đóng"
+                    onPress={() => setReturnFormOpen(false)}
+                    variant="ghost"
+                    style={styles.modalButton}
+                  />
+                  <PrimaryButton
+                    label="Gửi yêu cầu"
+                    onPress={requestReturn}
+                    loading={submitting}
+                    disabled={!returnReason.trim()}
+                    icon="send"
+                    style={styles.modalButton}
+                  />
+                </View>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
       </View>
     </ScrollView>
   );
@@ -719,6 +814,14 @@ function productDisplayName(item: Order["items"][number]) {
 
 function productImage(item: Order["items"][number]) {
   return typeof item.product === "string" ? undefined : item.product.image;
+}
+
+function customerPhone(customer: Order["customer"]) {
+  return typeof customer === "string" ? "-" : customer.phone || "-";
+}
+
+function customerAddress(customer: Order["customer"]) {
+  return typeof customer === "string" ? "-" : customer.address || "-";
 }
 
 function DetailRow({
@@ -1283,6 +1386,96 @@ const styles = StyleSheet.create({
   actionButton: {
     flex: 1,
     minWidth: 130,
+  },
+  modalKeyboard: {
+    flex: 1,
+  },
+  modalOverlay: {
+    alignItems: "center",
+    backgroundColor: "rgba(15, 23, 42, 0.54)",
+    flex: 1,
+    justifyContent: "center",
+    padding: 18,
+  },
+  returnModalCard: {
+    backgroundColor: bento.surface,
+    borderColor: bento.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 12,
+    maxHeight: "92%",
+    maxWidth: 460,
+    padding: 16,
+    width: "100%",
+    ...bentoSoftShadow,
+  },
+  returnModalTitle: {
+    color: bento.text,
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  returnModalHint: {
+    color: bento.textSecondary,
+    fontSize: 12,
+    fontWeight: "600",
+    lineHeight: 18,
+  },
+  returnModalScroll: {
+    flexGrow: 0,
+  },
+  returnModalScrollContent: {
+    gap: 12,
+    paddingBottom: 2,
+  },
+  returnPreviewBox: {
+    backgroundColor: bento.surface,
+    borderColor: bento.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 10,
+    padding: 12,
+  },
+  returnPreviewTitle: {
+    color: bento.text,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  returnProductRow: {
+    alignItems: "center",
+    borderTopColor: bento.border,
+    borderTopWidth: 1,
+    flexDirection: "row",
+    gap: 10,
+    paddingTop: 10,
+  },
+  returnProductBody: {
+    flex: 1,
+    minWidth: 0,
+  },
+  returnProductName: {
+    color: bento.text,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  returnProductMeta: {
+    color: bento.textSecondary,
+    fontSize: 11,
+    fontWeight: "600",
+    marginTop: 3,
+  },
+  returnProductAmount: {
+    color: bento.text,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  modalActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  modalButton: {
+    flex: 1,
+    minWidth: 120,
   },
   pressed: {
     opacity: 0.72,

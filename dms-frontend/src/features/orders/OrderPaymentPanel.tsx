@@ -63,6 +63,32 @@ function refunderName(value: OrderRefund["refundedBy"]) {
     : (value as User).fullName || (value as User).email;
 }
 
+function paymentStatusLabel(
+  order: Order,
+  paidAmount: number,
+  refundedAmount: number,
+  netCollected: number,
+  balanceDue: number,
+) {
+  if (order.status === "returned") {
+    return refundedAmount > 0
+      ? { text: "Đã hoàn tiền", color: "blue" }
+      : { text: "Đã trả hàng", color: "blue" };
+  }
+
+  if (order.status === "return_requested") {
+    return netCollected > 0
+      ? { text: "Chờ hoàn tiền", color: "orange" }
+      : { text: "Chờ duyệt trả hàng", color: "orange" };
+  }
+
+  if (paidAmount > 0 && refundedAmount >= paidAmount && balanceDue === 0) {
+    return { text: "Đã hoàn tiền", color: "blue" };
+  }
+
+  return paymentLabels[order.paymentStatus || "unpaid"];
+}
+
 export default function OrderPaymentPanel({ order }: { order: Order }) {
   const { message } = App.useApp();
   const currentUser = useAppSelector((state) => state.auth.user);
@@ -83,7 +109,13 @@ export default function OrderPaymentPanel({ order }: { order: Order }) {
   const netCollected = Math.max(paidAmount - refundedAmount, 0);
   const balanceDue =
     order.balanceDue ?? Math.max(order.finalAmount - netCollected, 0);
-  const paymentStatus = paymentLabels[order.paymentStatus || "unpaid"];
+  const paymentStatus = paymentStatusLabel(
+    order,
+    paidAmount,
+    refundedAmount,
+    netCollected,
+    balanceDue,
+  );
   const canCollect = order.status === "delivered" && balanceDue > 0;
   const canRefund =
     currentUser?.role !== "seller" &&
@@ -407,7 +439,7 @@ export default function OrderPaymentPanel({ order }: { order: Order }) {
         locale={{ emptyText: "Chưa có lần hoàn tiền nào" }}
         style={{ marginTop: 14 }}
       />
-      {netCollected > 0 && (
+      {order.status !== "returned" && netCollected > 0 && (
         <Space style={{ marginTop: 12 }}>
           <Text type="secondary">
             Đơn còn giữ tiền khách cần hoàn hết trước khi trả hàng.

@@ -1155,3 +1155,191 @@ select {
     clip-path: none !important;
   }
 }
+/* Login brand blue overrides */
+.login-page {
+  background: #f6f8fc !important;
+}
+
+.login-shell {
+  border-color: #e5e7eb !important;
+  box-shadow: 0 24px 64px rgba(17, 24, 39, 0.12) !important;
+}
+
+.login-product-panel {
+  background: #103494 !important;
+}
+
+.login-brand-icon,
+.login-live-pill,
+.login-preview-board,
+.login-metric-card,
+.login-pipeline-track {
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+.login-metric-card:hover {
+  background: rgba(255, 255, 255, 0.16) !important;
+}
+
+.login-product-copy span.ant-typography,
+.login-brand-icon,
+.login-live-pill,
+.login-preview-header span,
+.login-section-title span,
+.login-metric-card span,
+.login-pipeline-row span,
+.login-route-card span {
+  color: #dbeafe !important;
+}
+
+.login-preview-board {
+  box-shadow: 0 18px 42px rgba(7, 30, 87, 0.22) !important;
+}
+
+.login-board-section {
+  background: rgba(7, 30, 87, 0.22) !important;
+}
+
+.login-pipeline-track span {
+  background: #60a5fa !important;
+}
+
+.login-route-card {
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+.login-route-marker {
+  background: #f3f4f6 !important;
+  color: #374151 !important;
+}
+
+.login-form-panel {
+  background: #ffffff !important;
+}
+
+.login-auth-icon {
+  background: #f3f4f6 !important;
+  color: #4b5563 !important;
+}
+
+.login-form-heading span.ant-typography {
+  color: #6b7280 !important;
+}
+
+.login-forgot-row a {
+  color: #2563eb !important;
+}
+
+.login-form .ant-input-prefix,
+.login-security-note .anticon {
+  color: #6b7280 !important;
+}
+
+.login-form .ant-input-password-icon,
+.login-form .ant-input-password-icon:hover {
+  color: #6b7280 !important;
+}
+
+.login-form-heading h2.ant-typography,
+.login-form .ant-form-item-label > label,
+.login-form .ant-input,
+.login-form .ant-input-password input {
+  color: #111827 !important;
+}
+
+.login-form .ant-input-affix-wrapper {
+  border-color: #d1d5db !important;
+  background: #ffffff !important;
+}
+
+.login-form .ant-input-affix-wrapper:hover,
+.login-form .ant-input-affix-wrapper-focused {
+  border-color: #9ca3af !important;
+  box-shadow: 0 0 0 3px rgba(156, 163, 175, 0.14) !important;
+}
+
+.login-form .ant-input::placeholder,
+.login-form .ant-input-password input::placeholder {
+  color: #9ca3af !important;
+}
+
+.login-submit-button.ant-btn,
+.login-submit-button.ant-btn-primary {
+  background: #2563eb !important;
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.2) !important;
+}
+
+.login-submit-button.ant-btn:hover,
+.login-submit-button.ant-btn-primary:hover {
+  background: #1d4ed8 !important;
+  box-shadow: 0 16px 30px rgba(37, 99, 235, 0.24) !important;
+}
+
+.login-security-note {
+  background: #f9fafb !important;
+  color: #4b5563 !important;
+}
+/* Login neutral input overrides */
+.login-page .login-form .ant-input-affix-wrapper,
+.login-page .login-form .ant-input-affix-wrapper:hover,
+.login-page .login-form .ant-input-affix-wrapper:focus,
+.login-page .login-form .ant-input-affix-wrapper-focused,
+.login-page .login-form .ant-input-affix-wrapper-status-success,
+.login-page .login-form .ant-input-affix-wrapper-status-success:hover,
+.login-page .login-form .ant-form-item-has-success .ant-input-affix-wrapper,
+.login-page .login-form .ant-form-item-has-success .ant-input-affix-wrapper:hover,
+.login-page .login-form .ant-form-item-has-success .ant-input-affix-wrapper-focused {
+  border-color: #d1d5db !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.login-page .login-form .ant-input-affix-wrapper:hover,
+.login-page .login-form .ant-input-affix-wrapper-focused,
+.login-page .login-form .ant-input-affix-wrapper:focus-within,
+.login-page .login-form .ant-form-item-has-success .ant-input-affix-wrapper:hover,
+.login-page .login-form .ant-form-item-has-success .ant-input-affix-wrapper-focused {
+  border-color: #9ca3af !important;
+  box-shadow: 0 0 0 3px rgba(156, 163, 175, 0.14) !important;
+}
+
+.login-page .login-form .ant-input-prefix,
+.login-page .login-form .ant-input-suffix,
+.login-page .login-form .ant-input-password-icon,
+.login-page .login-form .ant-input-password-icon:hover,
+.login-page .login-form .ant-input-clear-icon,
+.login-page .login-form .ant-input-clear-icon:hover {
+  color: #6b7280 !important;
+}
+
+.login-page .login-form .ant-input-affix-wrapper:hover .ant-input-prefix,
+.login-page .login-form .ant-input-affix-wrapper-focused .ant-input-prefix,
+.login-page .login-form .ant-input-affix-wrapper:focus-within .ant-input-prefix,
+.login-page .login-form .ant-input-affix-wrapper:hover .ant-input-password-icon,
+.login-page .login-form .ant-input-affix-wrapper-focused .ant-input-password-icon,
+.login-page .login-form .ant-input-affix-wrapper:focus-within .ant-input-password-icon {
+  color: #4b5563 !important;
+}
+
+.login-page .login-form .ant-input,
+.login-page .login-form .ant-input-password input,
+.login-page .login-form .ant-input:hover,
+.login-page .login-form .ant-input:focus,
+.login-page .login-form .ant-input-password input:hover,
+.login-page .login-form .ant-input-password input:focus {
+  color: #111827 !important;
+  background: transparent !important;
+}
+
+.login-page .login-form .ant-input::placeholder,
+.login-page .login-form .ant-input-password input::placeholder {
+  color: #9ca3af !important;
+}
+
+.login-page .login-form input:-webkit-autofill,
+.login-page .login-form input:-webkit-autofill:hover,
+.login-page .login-form input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #111827 !important;
+  box-shadow: 0 0 0 1000px #ffffff inset !important;
+  caret-color: #111827 !important;
+}

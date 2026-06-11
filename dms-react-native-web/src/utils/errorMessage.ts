@@ -1,5 +1,5 @@
 const vi = {
-  connect: "Kh\u00f4ng k\u1ebft n\u1ed1i \u0111\u01b0\u1ee3c m\u00e1y ch\u1ee7. Vui l\u00f2ng ki\u1ec3m tra m\u1ea1ng ho\u1eb7c backend.",
+  connect: "M\u1ea5t k\u1ebft n\u1ed1i",
   session: "Phi\u00ean \u0111\u0103ng nh\u1eadp kh\u00f4ng h\u1ee3p l\u1ec7 ho\u1eb7c \u0111\u00e3 h\u1ebft h\u1ea1n.",
   forbidden: "B\u1ea1n kh\u00f4ng c\u00f3 quy\u1ec1n th\u1ef1c hi\u1ec7n thao t\u00e1c n\u00e0y.",
   notFound: "Kh\u00f4ng t\u00ecm th\u1ea5y d\u1eef li\u1ec7u y\u00eau c\u1ea7u.",
@@ -61,7 +61,7 @@ const patternMessages: Array<[RegExp, string, boolean?]> = [
   [/phone.*(valid|invalid|format)/i, vi.phone],
   [/required|should not be empty|must not be empty/i, vi.required],
   [/server error|internal/i, vi.server],
-  [/network|fetch|connection/i, vi.connect],
+  [/kh\u00f4ng k\u1ebft n\u1ed1i \u0111\u01b0\u1ee3c api|kh\u00f4ng k\u1ebft n\u1ed1i \u0111\u01b0\u1ee3c m\u00e1y ch\u1ee7|network|fetch|connection/i, vi.connect],
 ];
 
 export function toVietnameseError(message?: string | null) {

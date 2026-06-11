@@ -145,7 +145,7 @@ export class OrdersController {
     return this.ordersService.deliver(id, user._id.toString(), user.role);
   }
 
-  @Roles(UserRole.SELLER)
+  @Roles(UserRole.DISTRIBUTOR, UserRole.SELLER)
   @Patch(':id/return-request')
   requestReturn(
     @Param('id') id: string,
@@ -156,10 +156,11 @@ export class OrdersController {
       id,
       requestReturnDto,
       user._id.toString(),
+      user.role,
     );
   }
 
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR)
   @Patch(':id/return')
   returnOrder(@Param('id') id: string, @CurrentUser() user: UserDocument) {
     return this.ordersService.returnOrder(id, user._id.toString(), user.role);

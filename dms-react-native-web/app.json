@@ -39,7 +39,8 @@
     },
     "owner": "giabaodev1305",
     "plugins": [
-      "expo-font"
+      "expo-font",
+      "expo-secure-store"
     ]
   }
 }

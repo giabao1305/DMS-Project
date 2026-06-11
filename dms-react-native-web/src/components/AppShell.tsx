@@ -2,6 +2,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { type ComponentProps, type ReactNode } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Platform,
   Pressable,
   RefreshControl,
@@ -260,29 +261,37 @@ export function AppShell({
           {nativeMobile ? (
             <View pointerEvents="none" style={styles.nativePullBackdrop} />
           ) : null}
-          <ScrollView
-            style={styles.scroll}
-            contentContainerStyle={[
-              styles.content,
-              showDesktop && styles.contentDesktop,
-              activeTab === "dashboard" && styles.contentDashboard,
-              nativeMobile && {
-                paddingBottom: nativeTabBarHeight + nativeNavBottom + 18,
-              },
-            ]}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={refresh}
-                tintColor={nativeMobile ? "#FFFFFF" : atlas.primary}
-                colors={nativeMobile ? ["#FFFFFF"] : [atlas.primary]}
-                progressBackgroundColor="#103494"
-              />
-            }
-            showsVerticalScrollIndicator={false}
+          <KeyboardAvoidingView
+            enabled={nativeMobile}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.keyboardArea}
           >
-            {children}
-          </ScrollView>
+            <ScrollView
+              style={styles.scroll}
+              contentContainerStyle={[
+                styles.content,
+                showDesktop && styles.contentDesktop,
+                activeTab === "dashboard" && styles.contentDashboard,
+                nativeMobile && {
+                  paddingBottom: nativeTabBarHeight + nativeNavBottom + 18,
+                },
+              ]}
+              keyboardDismissMode={nativeMobile ? "interactive" : "none"}
+              keyboardShouldPersistTaps="handled"
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={refresh}
+                  tintColor={nativeMobile ? "#FFFFFF" : atlas.primary}
+                  colors={nativeMobile ? ["#FFFFFF"] : [atlas.primary]}
+                  progressBackgroundColor="#103494"
+                />
+              }
+              showsVerticalScrollIndicator={false}
+            >
+              {children}
+            </ScrollView>
+          </KeyboardAvoidingView>
 
           <View
             style={[
@@ -594,7 +603,8 @@ const styles = StyleSheet.create({
   },
   phoneDesktop: { borderRadius: 8, maxWidth: 1120 },
   phoneMobile: { borderRadius: 0, borderWidth: 0, maxWidth: "100%" },
-  scroll: { backgroundColor: "transparent" },
+  keyboardArea: { flex: 1 },
+  scroll: { backgroundColor: "transparent", flex: 1 },
   nativePullBackdrop: {
     backgroundColor: "#103494",
     height: 240,

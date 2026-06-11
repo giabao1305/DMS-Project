@@ -52,6 +52,7 @@ export interface Order {
   warehouse?: string | Warehouse;
   seller?: string | User;
   customer?: string | Customer;
+  createdBy?: string | User;
   items: OrderItem[];
   promotion?: string | Promotion;
   totalAmount: number;

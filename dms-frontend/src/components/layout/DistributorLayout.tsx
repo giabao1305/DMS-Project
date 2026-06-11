@@ -185,7 +185,7 @@ export default function DistributorLayout({
 
             {!collapsed && (
               <div className="distributor-brand-copy">
-                <div className="distributor-brand-title">NPP Console</div>
+                <div className="distributor-brand-title">Bảng điều phối NPP</div>
                 <div className="distributor-brand-subtitle">
                   Điều phối kho, đội DSR và điểm bán
                 </div>
@@ -208,7 +208,7 @@ export default function DistributorLayout({
             <div className="distributor-team-card">
               <TeamOutlined />
               <div>
-                <span>Workspace</span>
+                <span>Khu vực làm việc</span>
                 <strong>
                   {currentUser?.fullName || currentUser?.email || "Nhà phân phối"}
                 </strong>
@@ -234,7 +234,7 @@ export default function DistributorLayout({
         <Header className="distributor-header">
           <div className="distributor-header-copy">
             <Typography.Text className="distributor-header-eyebrow">
-              Distributor operations
+              Vận hành nhà phân phối
             </Typography.Text>
             <Typography.Title level={4} className="distributor-header-title">
               {selectedTitle}
@@ -251,7 +251,7 @@ export default function DistributorLayout({
               <span>Đội DSR</span>
             </div>
             <Tag
-              color={isSocketConnected ? "blue" : "error"}
+              color={isSocketConnected ? "success" : "error"}
               className="distributor-realtime-tag"
             >
               {isSocketConnected ? "Đang kết nối" : "Mất kết nối"}
@@ -308,22 +308,23 @@ export default function DistributorLayout({
 
         .distributor-brand {
           min-height: 92px;
-          margin: 18px 14px 12px;
-          padding: 14px;
+          margin: 0 0 12px;
+          padding: 18px 14px;
           display: grid;
           grid-template-columns: 46px minmax(0, 1fr) 36px;
           gap: 12px;
           align-items: center;
-          border: 1px solid rgba(59, 130, 246, 0.18);
-          border-radius: 16px;
+          border: 0;
+          border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+          border-radius: 0;
           background: #102a56;
-          box-shadow: 0 14px 28px rgba(3, 12, 18, 0.28);
+          box-shadow: none;
         }
 
         .distributor-brand-collapsed {
           min-height: 126px;
-          margin-inline: 10px;
-          padding: 12px 8px;
+          margin-inline: 0;
+          padding: 16px 8px;
           grid-template-columns: 1fr;
           justify-items: center;
           row-gap: 12px;
@@ -334,7 +335,7 @@ export default function DistributorLayout({
           height: 46px;
           display: grid;
           place-items: center;
-          border-radius: 14px;
+          border-radius: 0;
           background: #3b82f6;
           color: #ffffff;
           font-size: 21px;
@@ -359,7 +360,7 @@ export default function DistributorLayout({
           width: 36px;
           height: 36px;
           border: 1px solid rgba(59, 130, 246, 0.24);
-          border-radius: 12px;
+          border-radius: 0;
           background: #173a6a;
           color: #eff6ff;
           cursor: pointer;
@@ -386,7 +387,7 @@ export default function DistributorLayout({
           align-items: center;
           gap: 10px;
           border: 1px solid rgba(59, 130, 246, 0.15);
-          border-radius: 14px;
+          border-radius: 0;
           background: #122b52;
           color: #eff6ff;
         }
@@ -1991,10 +1992,10 @@ export default function DistributorLayout({
           > .ant-row:nth-of-type(1)
           > .ant-col:nth-child(6n + 2)
           .distributor-dashboard-metric-card {
-          --distributor-card-accent: #2563eb;
-          --distributor-card-soft: #eff6ff;
-          --distributor-card-border: #bfdbfe;
-          --distributor-card-shadow: rgba(37, 99, 235, 0.12);
+          --distributor-card-accent: #d97706;
+          --distributor-card-soft: #fff7ed;
+          --distributor-card-border: #fed7aa;
+          --distributor-card-shadow: rgba(217, 119, 6, 0.16);
         }
 
         .distributor-stat-card-tone-3,
@@ -2002,10 +2003,10 @@ export default function DistributorLayout({
           > .ant-row:nth-of-type(1)
           > .ant-col:nth-child(6n + 3)
           .distributor-dashboard-metric-card {
-          --distributor-card-accent: #d97706;
-          --distributor-card-soft: #fff7ed;
-          --distributor-card-border: #fed7aa;
-          --distributor-card-shadow: rgba(217, 119, 6, 0.12);
+          --distributor-card-accent: #059669;
+          --distributor-card-soft: #ecfdf5;
+          --distributor-card-border: #a7f3d0;
+          --distributor-card-shadow: rgba(5, 150, 105, 0.16);
         }
 
         .distributor-stat-card-tone-4,
@@ -2024,10 +2025,10 @@ export default function DistributorLayout({
           > .ant-row:nth-of-type(1)
           > .ant-col:nth-child(6n + 5)
           .distributor-dashboard-metric-card {
-          --distributor-card-accent: #0891b2;
-          --distributor-card-soft: #ecfeff;
-          --distributor-card-border: #a5f3fc;
-          --distributor-card-shadow: rgba(8, 145, 178, 0.12);
+          --distributor-card-accent: #7c3aed;
+          --distributor-card-soft: #f5f3ff;
+          --distributor-card-border: #ddd6fe;
+          --distributor-card-shadow: rgba(124, 58, 237, 0.16);
         }
 
         .distributor-stat-card-tone-6,
@@ -2038,14 +2039,137 @@ export default function DistributorLayout({
           --distributor-card-accent: #0891b2;
           --distributor-card-soft: #ecfeff;
           --distributor-card-border: #a5f3fc;
-          --distributor-card-shadow: rgba(8, 145, 178, 0.12);
+          --distributor-card-shadow: rgba(8, 145, 178, 0.16);
         }
 
         .distributor-stat-card.ant-card,
         .distributor-dashboard-metric-card {
           border-color: var(--distributor-card-border, #dbeafe) !important;
           background: var(--distributor-card-soft, #ffffff) !important;
-          box-shadow: 0 14px 30px var(--distributor-card-shadow, rgba(37, 99, 235, 0.08)) !important;
+          box-shadow:
+            inset 0 0 0 1px rgba(255, 255, 255, 0.64),
+            0 16px 34px var(--distributor-card-shadow, rgba(37, 99, 235, 0.12)) !important;
+        }
+
+        .distributor-dashboard-metric-blue {
+          --distributor-card-accent: #2563eb;
+          --distributor-card-soft: #eff6ff;
+          --distributor-card-border: #bfdbfe;
+          --distributor-card-shadow: rgba(37, 99, 235, 0.16);
+          --dashboard-metric-accent: #2563eb;
+          --dashboard-metric-icon-bg: #dbeafe;
+        }
+
+        .distributor-dashboard-metric-amber {
+          --distributor-card-accent: #d97706;
+          --distributor-card-soft: #fff7ed;
+          --distributor-card-border: #fed7aa;
+          --distributor-card-shadow: rgba(217, 119, 6, 0.16);
+          --dashboard-metric-accent: #d97706;
+          --dashboard-metric-icon-bg: #ffedd5;
+        }
+
+        .distributor-dashboard-metric-green {
+          --distributor-card-accent: #059669;
+          --distributor-card-soft: #ecfdf5;
+          --distributor-card-border: #a7f3d0;
+          --distributor-card-shadow: rgba(5, 150, 105, 0.16);
+          --dashboard-metric-accent: #059669;
+          --dashboard-metric-icon-bg: #d1fae5;
+        }
+
+        .distributor-dashboard-metric-rose {
+          --distributor-card-accent: #e11d48;
+          --distributor-card-soft: #fff1f2;
+          --distributor-card-border: #fecdd3;
+          --distributor-card-shadow: rgba(225, 29, 72, 0.16);
+          --dashboard-metric-accent: #e11d48;
+          --dashboard-metric-icon-bg: #ffe4e6;
+        }
+
+        .distributor-dashboard-metric-violet {
+          --distributor-card-accent: #7c3aed;
+          --distributor-card-soft: #f5f3ff;
+          --distributor-card-border: #ddd6fe;
+          --distributor-card-shadow: rgba(124, 58, 237, 0.16);
+          --dashboard-metric-accent: #7c3aed;
+          --dashboard-metric-icon-bg: #ede9fe;
+        }
+
+        .distributor-dashboard-metric-cyan {
+          --distributor-card-accent: #0891b2;
+          --distributor-card-soft: #ecfeff;
+          --distributor-card-border: #a5f3fc;
+          --distributor-card-shadow: rgba(8, 145, 178, 0.16);
+          --dashboard-metric-accent: #0891b2;
+          --dashboard-metric-icon-bg: #cffafe;
+        }
+
+        .distributor-dashboard-metric-emerald {
+          --distributor-card-accent: #16a34a;
+          --distributor-card-soft: #f0fdf4;
+          --distributor-card-border: #bbf7d0;
+          --distributor-card-shadow: rgba(22, 163, 74, 0.16);
+          --dashboard-metric-accent: #16a34a;
+          --dashboard-metric-icon-bg: #dcfce7;
+        }
+
+        .distributor-dashboard-metric-yellow {
+          --distributor-card-accent: #ca8a04;
+          --distributor-card-soft: #fefce8;
+          --distributor-card-border: #fde68a;
+          --distributor-card-shadow: rgba(202, 138, 4, 0.16);
+          --dashboard-metric-accent: #ca8a04;
+          --dashboard-metric-icon-bg: #fef3c7;
+        }
+
+        .distributor-dashboard-profile-panel {
+          background:
+            radial-gradient(circle at 8% 18%, rgba(96, 165, 250, 0.22), transparent 28%),
+            linear-gradient(135deg, #111827 0%, #172554 100%) !important;
+        }
+
+        .distributor-dashboard-profile-panel .ant-typography,
+        .distributor-dashboard-profile-panel .ant-typography *,
+        .distributor-dashboard-profile-panel .distributor-dashboard-profile-name,
+        .distributor-dashboard-profile-panel .distributor-dashboard-profile-text {
+          color: #ffffff !important;
+          opacity: 1 !important;
+        }
+
+        .distributor-dashboard-profile-panel .distributor-dashboard-profile-eyebrow,
+        .distributor-dashboard-profile-panel .distributor-dashboard-profile-icon {
+          color: rgba(255, 255, 255, 0.78) !important;
+        }
+
+        .distributor-dashboard-profile-panel .distributor-dashboard-avatar {
+          background: #ffffff !important;
+          color: #2563eb !important;
+          box-shadow: 0 18px 34px rgba(15, 23, 42, 0.28) !important;
+        }
+
+        .distributor-dashboard-profile-panel .distributor-dashboard-status-tag.ant-tag-success {
+          min-height: 32px;
+          border-color: #86efac !important;
+          background: #dcfce7 !important;
+          color: #15803d !important;
+          font-weight: 850 !important;
+        }
+
+        .distributor-dashboard-profile-panel .distributor-dashboard-status-tag.ant-tag-error {
+          min-height: 32px;
+          border-color: #fecaca !important;
+          background: #fee2e2 !important;
+          color: #b91c1c !important;
+          font-weight: 850 !important;
+        }
+
+        .distributor-dashboard-profile-panel .distributor-dashboard-status-tag.ant-tag {
+          width: auto !important;
+          min-width: 132px !important;
+          align-self: flex-start !important;
+          border-radius: 999px !important;
+          text-align: center !important;
         }
 
         .distributor-stat-icon,
@@ -2068,7 +2192,7 @@ export default function DistributorLayout({
         }
 
         .distributor-dashboard-summary-panel .ant-col:nth-child(2) {
-          border-inline: 1px solid #eaf2ff;
+          border-inline: 0;
         }
 
         .distributor-modal-root .ant-modal-mask {
@@ -2272,6 +2396,171 @@ export default function DistributorLayout({
           border: 1px solid #fecdd3;
           border-radius: 14px;
           background: #fff1f2;
+        }
+
+        .distributor-shell .distributor-sider {
+          background: #ffffff !important;
+          border-right: 1px solid #dbeafe !important;
+          box-shadow: 8px 0 22px rgba(15, 23, 42, 0.06) !important;
+        }
+
+        .distributor-shell .distributor-sidebar-inner {
+          background: #ffffff !important;
+        }
+
+        .distributor-shell .distributor-brand {
+          min-height: 106px !important;
+          margin: 0 !important;
+          padding: 18px 16px !important;
+          border: 0 !important;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.18) !important;
+          border-radius: 0 !important;
+          background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 58%, #0f766e 100%) !important;
+          box-shadow: none !important;
+        }
+
+        .distributor-shell .distributor-brand::after {
+          display: none !important;
+        }
+
+        .distributor-shell .distributor-brand-mark {
+          border-radius: 14px !important;
+        }
+
+        .distributor-shell .distributor-collapse-button {
+          border-radius: 10px !important;
+        }
+
+        .distributor-shell .distributor-brand-mark {
+          background: rgba(255, 255, 255, 0.94) !important;
+          color: #1d4ed8 !important;
+          box-shadow: none !important;
+        }
+
+        .distributor-shell .distributor-collapse-button {
+          border-color: rgba(255, 255, 255, 0.32) !important;
+          background: rgba(15, 23, 42, 0.16) !important;
+          color: #ffffff !important;
+        }
+
+        .distributor-shell .distributor-brand-title,
+        .distributor-shell .distributor-brand-subtitle {
+          color: #ffffff !important;
+        }
+
+        .distributor-shell .distributor-brand-subtitle {
+          opacity: 0.88;
+        }
+
+        .distributor-shell .distributor-team-card {
+          margin: 16px 16px 12px !important;
+          border-color: #dbeafe !important;
+          border-radius: 16px !important;
+          background: #f8fbff !important;
+          color: #0f172a !important;
+          box-shadow: none !important;
+        }
+
+        .distributor-shell .distributor-team-card > .anticon {
+          color: #2563eb !important;
+          background: #eff6ff !important;
+        }
+
+        .distributor-shell .distributor-team-card span {
+          color: #2563eb !important;
+        }
+
+        .distributor-shell .distributor-team-card strong {
+          color: #0f172a !important;
+        }
+
+        .distributor-shell .distributor-menu-scroll {
+          padding: 6px 16px 16px !important;
+        }
+
+        .distributor-shell .distributor-menu.ant-menu-dark .ant-menu-item {
+          height: 46px !important;
+          border-radius: 14px !important;
+          color: #475569 !important;
+          background: transparent !important;
+          font-weight: 750 !important;
+        }
+
+        .distributor-shell
+          .distributor-menu.ant-menu-dark
+          .ant-menu-item
+          .ant-menu-item-icon {
+          color: #64748b !important;
+        }
+
+        .distributor-shell
+          .distributor-menu.ant-menu-dark
+          .ant-menu-item:not(.ant-menu-item-selected):hover {
+          color: #1d4ed8 !important;
+          background: #eff6ff !important;
+          box-shadow: inset 4px 0 0 #60a5fa !important;
+        }
+
+        .distributor-shell
+          .distributor-menu.ant-menu-dark
+          .ant-menu-item:not(.ant-menu-item-selected):hover
+          .ant-menu-item-icon {
+          color: #1d4ed8 !important;
+        }
+
+        .distributor-shell .distributor-menu.ant-menu-dark .ant-menu-item-selected {
+          color: #ffffff !important;
+          background: #2563eb !important;
+          box-shadow: inset 4px 0 0 #93c5fd !important;
+        }
+
+        .distributor-shell
+          .distributor-menu.ant-menu-dark
+          .ant-menu-item-selected
+          .ant-menu-item-icon {
+          color: #ffffff !important;
+        }
+
+        .distributor-shell .distributor-header {
+          height: 84px !important;
+          margin: 0 !important;
+          padding: 0 20px !important;
+          border: 0 !important;
+          border-bottom: 1px solid #dbeafe !important;
+          border-radius: 0 !important;
+          background: #ffffff !important;
+          box-shadow: none !important;
+        }
+
+        .distributor-shell .distributor-header::before,
+        .distributor-shell .distributor-header::after {
+          display: none !important;
+        }
+
+        .distributor-shell .distributor-content {
+          height: calc(100vh - 84px) !important;
+          margin: 0 !important;
+          border-top: 0 !important;
+          border-right: 0 !important;
+          border-bottom: 0 !important;
+          border-radius: 0 !important;
+          background: #f8fbff !important;
+        }
+
+        .distributor-shell
+          .distributor-header-actions
+          > .distributor-realtime-tag.ant-tag-success {
+          border-color: #86efac !important;
+          background: #dcfce7 !important;
+          color: #15803d !important;
+        }
+
+        .distributor-shell
+          .distributor-header-actions
+          > .distributor-realtime-tag.ant-tag-error {
+          border-color: #fecaca !important;
+          background: #fee2e2 !important;
+          color: #b91c1c !important;
         }
 
         @media (max-width: 1240px) {

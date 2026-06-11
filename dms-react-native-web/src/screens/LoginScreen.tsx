@@ -1,5 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useMemo, useState } from "react";
+import * as SecureStore from "expo-secure-store";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -22,8 +23,59 @@ import { atlas, radius } from "../theme";
 import { toVietnameseError } from "../utils/errorMessage";
 
 const inputCaretColor = "#0F172A";
+const REMEMBERED_LOGIN_KEY = "dms_seller_remembered_login";
+const SECURE_STORE_OPTIONS = {
+  keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK,
+};
 
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>["name"];
+type RememberedLogin = {
+  email: string;
+  password: string;
+};
+
+const isNativeSecureStore = () =>
+  Platform.OS === "ios" || Platform.OS === "android";
+
+const getRememberedLogin = () => {
+  const raw = isNativeSecureStore()
+    ? SecureStore.getItem(REMEMBERED_LOGIN_KEY, SECURE_STORE_OPTIONS)
+    : globalThis.localStorage?.getItem(REMEMBERED_LOGIN_KEY);
+
+  if (!raw) return null;
+
+  try {
+    const remembered = JSON.parse(raw) as RememberedLogin;
+    if (!remembered.email || !remembered.password) return null;
+    return remembered;
+  } catch {
+    clearRememberedLogin();
+    return null;
+  }
+};
+
+const storeRememberedLogin = (login: RememberedLogin) => {
+  const value = JSON.stringify(login);
+
+  if (isNativeSecureStore()) {
+    SecureStore.setItem(REMEMBERED_LOGIN_KEY, value, SECURE_STORE_OPTIONS);
+    return;
+  }
+
+  globalThis.localStorage?.setItem(REMEMBERED_LOGIN_KEY, value);
+};
+
+const clearRememberedLogin = () => {
+  if (isNativeSecureStore()) {
+    void SecureStore.deleteItemAsync(
+      REMEMBERED_LOGIN_KEY,
+      SECURE_STORE_OPTIONS,
+    ).catch(() => {});
+    return;
+  }
+
+  globalThis.localStorage?.removeItem(REMEMBERED_LOGIN_KEY);
+};
 
 export function LoginScreen({
   onLogin,
@@ -37,6 +89,15 @@ export function LoginScreen({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
+
+  useEffect(() => {
+    const remembered = getRememberedLogin();
+    if (!remembered) return;
+
+    setEmail(remembered.email);
+    setPassword(remembered.password);
+    setRemember(true);
+  }, []);
 
   const canSubmit = useMemo(
     () => Boolean(email.trim() && password.trim()),
@@ -61,6 +122,12 @@ export function LoginScreen({
         return;
       }
 
+      if (remember) {
+        storeRememberedLogin({ email: email.trim(), password });
+      } else {
+        clearRememberedLogin();
+      }
+
       storeSession(session);
       onLogin(session);
     } catch (err) {
@@ -77,6 +144,16 @@ export function LoginScreen({
   const showForgotHelp = () => {
     setError("");
     setInfo("Vui lòng liên hệ quản trị viên để cấp lại mật khẩu.");
+  };
+
+  const toggleRemember = () => {
+    setRemember((value) => {
+      const nextValue = !value;
+      if (!nextValue) {
+        clearRememberedLogin();
+      }
+      return nextValue;
+    });
   };
 
   return (
@@ -160,7 +237,7 @@ export function LoginScreen({
 
             <View style={styles.optionRow}>
               <Pressable
-                onPress={() => setRemember((value) => !value)}
+                onPress={toggleRemember}
                 style={({ pressed }) => [
                   styles.remember,
                   pressed && styles.pressed,
@@ -205,7 +282,6 @@ export function LoginScreen({
             >
               {loading ? <ActivityIndicator color="#FFFFFF" /> : "Đăng nhập"}
             </PaperButton>
-
           </View>
         </View>
       </ScrollView>

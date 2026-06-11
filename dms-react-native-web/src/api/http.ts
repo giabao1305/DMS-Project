@@ -79,7 +79,7 @@ async function fetchWithFallback(path: string, init: RequestInit) {
   }
 
   throw new ApiError(0, {
-    message: `Không kết nối được API tại ${API_URLS.join(" hoặc ")}. Hãy kiểm tra backend, IP máy chủ và CORS.`,
+    message: "Mất kết nối",
   });
 }
 

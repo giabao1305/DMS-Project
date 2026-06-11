@@ -144,6 +144,13 @@ export class OrdersService {
       order.status === OrderStatus.RETURNED
         ? 0
         : this.roundMoney(Math.max(order.finalAmount - netCollected, 0));
+    if (order.status === OrderStatus.RETURNED) {
+      order.paymentStatus =
+        (order.refundedAmount || 0) > 0
+          ? PaymentStatus.PAID
+          : PaymentStatus.UNPAID;
+      return;
+    }
     order.paymentStatus =
       netCollected <= 0
         ? PaymentStatus.UNPAID
@@ -154,6 +161,33 @@ export class OrdersService {
 
   private netCollectedAmount(order: Order): number {
     return Math.max((order.paidAmount || 0) - (order.refundedAmount || 0), 0);
+  }
+
+  private appendAutoRefund(
+    order: OrderDocument,
+    userId: string,
+    note: string,
+  ): number {
+    const refundAmount = this.netCollectedAmount(order);
+
+    if (refundAmount <= 0) {
+      return 0;
+    }
+
+    order.refunds = order.refunds || [];
+    order.refunds.push({
+      amount: refundAmount,
+      method: PaymentMethod.CASH,
+      note,
+      refundedBy: new Types.ObjectId(userId),
+      refundedAt: new Date(),
+    });
+    order.refundedAmount = this.roundMoney(
+      (order.refundedAmount || 0) + refundAmount,
+    );
+    this.recalculatePaymentSummary(order);
+
+    return refundAmount;
   }
 
   private getRelationId(value?: RelationId): string {
@@ -947,7 +981,7 @@ export class OrdersService {
       .populate('distributor', 'code fullName email phone companyName address')
       .populate('warehouse', 'name code type')
       .populate('seller', 'fullName email phone companyName manager')
-      .populate('createdBy', 'fullName email phone companyName manager')
+      .populate('createdBy', 'fullName email phone companyName manager role')
       .populate('customer', 'name phone address')
       .populate('promotion', 'name type discountPercent discountAmount')
       .populate('returnRequestedBy', 'fullName email')
@@ -1008,7 +1042,7 @@ export class OrdersService {
       .populate('distributor', 'code fullName email phone companyName address')
       .populate('warehouse', 'name code type')
       .populate('seller', 'fullName email phone companyName manager')
-      .populate('createdBy', 'fullName email phone companyName manager')
+      .populate('createdBy', 'fullName email phone companyName manager role')
       .populate('customer', 'name phone address')
       .populate('promotion', 'name type discountPercent discountAmount')
       .populate('returnRequestedBy', 'fullName email')
@@ -1036,7 +1070,7 @@ export class OrdersService {
       .populate('distributor', 'code fullName email phone companyName address')
       .populate('warehouse', 'name code type')
       .populate('seller', 'fullName email phone companyName manager')
-      .populate('createdBy', 'fullName email phone companyName manager')
+      .populate('createdBy', 'fullName email phone companyName manager role')
       .populate('customer', 'name phone address')
       .populate('promotion', 'name type discountPercent discountAmount')
       .populate('returnRequestedBy', 'fullName email')
@@ -1701,8 +1735,10 @@ export class OrdersService {
     userId: string,
     role: UserRole,
   ): Promise<Order> {
-    if (role !== UserRole.ADMIN) {
-      throw new ForbiddenException('Only admins can approve return requests');
+    if (role !== UserRole.ADMIN && role !== UserRole.DISTRIBUTOR) {
+      throw new ForbiddenException(
+        'Only admins or distributors can approve return requests',
+      );
     }
 
     const session = await this.connection.startSession();
@@ -1726,11 +1762,25 @@ export class OrdersService {
           );
         }
 
-        if (this.netCollectedAmount(order) > 0) {
-          throw new BadRequestException(
-            'Collected money must be fully refunded before returning stock',
-          );
+        if (role === UserRole.DISTRIBUTOR) {
+          const isStoreOrder =
+            order.orderType === OrderType.DISTRIBUTOR_TO_STORE ||
+            (!order.orderType && Boolean(order.customer));
+          const belongsToDistributor =
+            this.getRelationId(order.distributor) === userId;
+
+          if (!isStoreOrder || !belongsToDistributor) {
+            throw new ForbiddenException(
+              'Distributor can only approve returns for their own store orders',
+            );
+          }
         }
+
+        this.appendAutoRefund(
+          order,
+          userId,
+          'Auto refund when return is approved',
+        );
 
         for (const item of order.items) {
           if (order.orderType === OrderType.DISTRIBUTOR_TO_STORE) {
@@ -1827,7 +1877,8 @@ export class OrdersService {
   async requestReturn(
     id: string,
     requestReturnDto: RequestReturnDto,
-    sellerId: string,
+    userId: string,
+    role: UserRole,
   ): Promise<Order> {
     const order = await this.orderModel.findById(id).exec();
 
@@ -1835,39 +1886,54 @@ export class OrdersService {
       throw new NotFoundException('Order not found');
     }
 
-    if (
-      !order.seller ||
-      (order.seller.toString() !== sellerId &&
-        order.createdBy?.toString() !== sellerId)
-    ) {
-      throw new ForbiddenException(
-        'You can only request return for your own orders',
-      );
+    if (role === UserRole.SELLER) {
+      if (
+        !order.seller ||
+        (order.seller.toString() !== userId &&
+          order.createdBy?.toString() !== userId)
+      ) {
+        throw new ForbiddenException(
+          'You can only request return for your own orders',
+        );
+      }
+    } else if (role === UserRole.DISTRIBUTOR) {
+      const isStoreOrder =
+        order.orderType === OrderType.DISTRIBUTOR_TO_STORE ||
+        (!order.orderType && Boolean(order.customer));
+      const belongsToDistributor =
+        this.getRelationId(order.distributor) === userId;
+
+      if (!isStoreOrder || !belongsToDistributor) {
+        throw new ForbiddenException(
+          'Distributor can only return their own store orders',
+        );
+      }
     }
 
     if (order.status !== OrderStatus.DELIVERED) {
       throw new BadRequestException('Only delivered orders can request return');
     }
 
-    if (this.netCollectedAmount(order) > 0) {
-      throw new BadRequestException(
-        'Collected money must be fully refunded before requesting return',
-      );
-    }
-
     order.status = OrderStatus.RETURN_REQUESTED;
     order.returnReason = requestReturnDto.reason.trim();
-    order.returnRequestedBy = new Types.ObjectId(sellerId);
+    order.returnRequestedBy = new Types.ObjectId(userId);
     order.returnRequestedAt = new Date();
 
     const savedOrder = await order.save();
 
-    await this.notificationsService.createForAdmins({
-      title: 'Yêu cầu trả hàng',
-      message: `Seller yêu cầu trả hàng đơn ${order.orderCode}`,
-      type: NotificationType.ORDER,
-      relatedId: order._id.toString(),
-    });
+    if (role === UserRole.DISTRIBUTOR) {
+      return this.returnOrder(id, userId, role);
+    }
+
+    if (order.distributor) {
+      await this.notificationsService.create({
+        user: order.distributor.toString(),
+        title: 'Yêu cầu trả hàng',
+        message: `Seller yêu cầu trả hàng đơn ${order.orderCode}`,
+        type: NotificationType.ORDER,
+        relatedId: order._id.toString(),
+      });
+    }
 
     this.emitOrderRealtime('return-requested', savedOrder);
 

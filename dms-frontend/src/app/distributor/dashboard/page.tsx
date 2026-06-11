@@ -92,6 +92,15 @@ type DashboardMetricCardProps = {
   icon: React.ReactNode;
   loading?: boolean;
   description: string;
+  tone?:
+    | "blue"
+    | "amber"
+    | "green"
+    | "rose"
+    | "violet"
+    | "cyan"
+    | "emerald"
+    | "yellow";
 };
 
 function DashboardMetricCard({
@@ -101,9 +110,13 @@ function DashboardMetricCard({
   icon,
   loading,
   description,
+  tone = "blue",
 }: DashboardMetricCardProps) {
   return (
-    <Card loading={loading} className="distributor-dashboard-metric-card">
+    <Card
+      loading={loading}
+      className={`distributor-dashboard-metric-card distributor-dashboard-metric-${tone}`}
+    >
       <Flex vertical gap={14}>
         <Flex align="center" justify="space-between" gap={12}>
           <div className="distributor-dashboard-metric-icon">{icon}</div>
@@ -115,7 +128,7 @@ function DashboardMetricCard({
             <Statistic
               value={value}
               valueStyle={{
-                color: "#0f172a",
+                color: "var(--dashboard-metric-accent, #0f172a)",
                 fontSize: 26,
                 fontWeight: 800,
                 lineHeight: 1.15,
@@ -308,7 +321,7 @@ export default function DistributorDashboardPage() {
     ? Math.round((stats.activeTeam / stats.team) * 100)
     : 0;
 
-  const distributorName = distributor?.fullName || "Distributor";
+  const distributorName = distributor?.fullName || "Nhà phân phối";
   const distributorInitial =
     distributorName.trim().charAt(0).toUpperCase() || "D";
 
@@ -427,7 +440,7 @@ export default function DistributorDashboardPage() {
     <>
       <DistributorBreadcrumb />
       <DistributorPageHeader
-        eyebrow="Distributor command"
+        eyebrow="Điều hành nhà phân phối"
         title="Tổng quan nhà phân phối"
         description="Theo dõi nhanh hoạt động bán hàng, đội DSR, đơn hàng và tuyến ghé thăm hôm nay."
       />
@@ -442,7 +455,7 @@ export default function DistributorDashboardPage() {
           styles={{ body: { padding: 0 } }}
         >
           <Row gutter={0}>
-            <Col xs={24} lg={9}>
+            <Col xs={24} lg={8}>
               <div className="distributor-dashboard-profile-panel">
                 <Flex
                   vertical
@@ -462,6 +475,7 @@ export default function DistributorDashboardPage() {
                         level={3}
                         ellipsis
                         className="distributor-dashboard-profile-name"
+                        style={{ color: "#FFFFFF" }}
                       >
                         {distributorName}
                       </Title>
@@ -474,13 +488,17 @@ export default function DistributorDashboardPage() {
                       <Text
                         ellipsis
                         className="distributor-dashboard-profile-text"
+                        style={{ color: "rgba(255,255,255,0.9)" }}
                       >
                         {distributor?.email || "Chưa có email"}
                       </Text>
                     </Flex>
                     <Flex align="center" gap={10}>
                       <PhoneOutlined className="distributor-dashboard-profile-icon" />
-                      <Text className="distributor-dashboard-profile-text">
+                      <Text
+                        className="distributor-dashboard-profile-text"
+                        style={{ color: "rgba(255,255,255,0.9)" }}
+                      >
                         Quản lý đội DSR, tuyến bán hàng và hiệu suất điểm bán
                       </Text>
                     </Flex>
@@ -488,7 +506,11 @@ export default function DistributorDashboardPage() {
 
                   <Tag
                     color={distributor?.isActive ? "success" : "error"}
-                    className="distributor-pill-tag"
+                    className="distributor-pill-tag distributor-dashboard-status-tag"
+                    style={{
+                      alignSelf: "flex-start",
+                      marginInlineEnd: 0,
+                    }}
                   >
                     {distributor?.isActive ? "Đang hoạt động" : "Tạm khóa"}
                   </Tag>
@@ -496,7 +518,7 @@ export default function DistributorDashboardPage() {
               </div>
             </Col>
 
-            <Col xs={24} lg={15}>
+            <Col xs={24} lg={16}>
               <div className="distributor-dashboard-summary-panel">
                 <Row gutter={[18, 18]}>
                   <Col xs={24} md={8}>
@@ -587,6 +609,7 @@ export default function DistributorDashboardPage() {
               value={stats.team}
               icon={<TeamOutlined />}
               loading={isTeamLoading}
+              tone="blue"
               description="Nhân sự được gán trực tiếp cho distributor."
             />
           </Col>
@@ -596,6 +619,7 @@ export default function DistributorDashboardPage() {
               value={stats.pendingCustomers}
               icon={<ClockCircleOutlined />}
               loading={isCustomersLoading}
+              tone="amber"
               description="Điểm bán mới đang chờ admin xét duyệt."
             />
           </Col>
@@ -605,6 +629,7 @@ export default function DistributorDashboardPage() {
               value={stats.todayOrders}
               icon={<ShoppingCartOutlined />}
               loading={isOrdersLoading}
+              tone="green"
               description="Đơn hàng đội DSR tạo trong ngày."
             />
           </Col>
@@ -614,7 +639,8 @@ export default function DistributorDashboardPage() {
               value={stats.activeVisits}
               icon={<AimOutlined />}
               loading={isVisitsLoading}
-              description="Phiên check-in đang còn hoạt động."
+              tone="rose"
+              description="Phiên ghé thăm đang còn hoạt động."
             />
           </Col>
         </Row>
@@ -626,6 +652,7 @@ export default function DistributorDashboardPage() {
               value={stats.customers}
               icon={<CheckCircleOutlined />}
               loading={isCustomersLoading}
+              tone="violet"
               description={`${stats.approvedCustomers} điểm bán đã được duyệt.`}
             />
           </Col>
@@ -635,6 +662,7 @@ export default function DistributorDashboardPage() {
               value={stats.orders}
               icon={<ShoppingCartOutlined />}
               loading={isOrdersLoading}
+              tone="cyan"
               description={`${stats.pendingOrders} đơn đang chờ xử lý.`}
             />
           </Col>
@@ -645,6 +673,7 @@ export default function DistributorDashboardPage() {
               formattedValue={`${currencyFormatter.format(stats.deliveredRevenue)} đ`}
               icon={<DollarOutlined />}
               loading={isOrdersLoading || isDashboardLoading}
+              tone="emerald"
               description={`${stats.deliveredOrders} đơn đã giao thành công.`}
             />
           </Col>
@@ -654,6 +683,7 @@ export default function DistributorDashboardPage() {
               value={routeCustomers.length}
               icon={<EnvironmentOutlined />}
               loading={isRoutesLoading}
+              tone="yellow"
               description={`Từ ${stats.todayRoutes} tuyến bán hàng hôm nay.`}
             />
           </Col>
@@ -668,7 +698,7 @@ export default function DistributorDashboardPage() {
                 </div>
                 <Flex vertical gap={5}>
                   <Text className="distributor-dashboard-active-label">
-                    DSR đang check-in
+                    DSR đang ghé thăm
                   </Text>
                   <Title
                     level={4}
@@ -677,7 +707,7 @@ export default function DistributorDashboardPage() {
                     {getName(activeVisits[0].customer)}
                   </Title>
                   <Text className="distributor-dashboard-active-description">
-                    {getName(activeVisits[0].seller)} check-in lúc{" "}
+                    {getName(activeVisits[0].seller)} bắt đầu ghé lúc{" "}
                     {new Date(activeVisits[0].checkInTime).toLocaleString(
                       "vi-VN",
                     )}
@@ -827,8 +857,10 @@ export default function DistributorDashboardPage() {
           .distributor-dashboard-profile-panel {
             height: 100%;
             min-height: 208px;
-            padding: 18px;
-            background: #0f1f3d;
+            padding: 22px;
+            background:
+              radial-gradient(circle at 12% 16%, rgba(96, 165, 250, 0.26), transparent 30%),
+              linear-gradient(135deg, #172554 0%, #0f172a 100%);
             color: #ffffff;
           }
 
@@ -838,6 +870,7 @@ export default function DistributorDashboardPage() {
             color: #2563eb;
             font-size: 22px;
             font-weight: 800;
+            box-shadow: 0 16px 34px rgba(15, 23, 42, 0.28);
           }
 
           .distributor-dashboard-profile-eyebrow,
@@ -858,6 +891,7 @@ export default function DistributorDashboardPage() {
             color: #ffffff !important;
             font-weight: 800;
             line-height: 1.25;
+            text-shadow: 0 1px 1px rgba(15, 23, 42, 0.18);
           }
 
           .distributor-dashboard-profile-name.ant-typography,
@@ -875,16 +909,83 @@ export default function DistributorDashboardPage() {
             line-height: 1.5;
           }
 
+          .distributor-dashboard-status-tag.ant-tag {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: auto;
+            min-width: 132px;
+            min-height: 32px;
+            padding-inline: 14px;
+            border-radius: 999px;
+            font-weight: 850;
+          }
+
+          .distributor-dashboard-status-tag.ant-tag-success {
+            border-color: #86efac !important;
+            background: #dcfce7 !important;
+            color: #15803d !important;
+          }
+
+          .distributor-dashboard-status-tag.ant-tag-error {
+            border-color: #fecaca !important;
+            background: #fee2e2 !important;
+            color: #b91c1c !important;
+          }
+
           .distributor-dashboard-summary-panel {
-            padding: 18px;
+            height: 100%;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+          }
+
+          .distributor-dashboard-summary-panel .ant-row:first-child {
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            gap: 14px;
+          }
+
+          .distributor-dashboard-summary-panel .ant-row:first-child > .ant-col {
+            flex: 1 1 0;
+            max-width: none;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--dashboard-summary-border, #dbeafe);
+            background: var(--dashboard-summary-bg, #eff6ff);
+          }
+
+          .distributor-dashboard-summary-panel
+            .ant-row:first-child
+            > .ant-col:nth-child(1) {
+            --dashboard-summary-bg: #ecfdf5;
+            --dashboard-summary-border: #a7f3d0;
+            --dashboard-summary-accent: #059669;
+          }
+
+          .distributor-dashboard-summary-panel
+            .ant-row:first-child
+            > .ant-col:nth-child(2) {
+            --dashboard-summary-bg: #eff6ff;
+            --dashboard-summary-border: #bfdbfe;
+            --dashboard-summary-accent: #2563eb;
+          }
+
+          .distributor-dashboard-summary-panel
+            .ant-row:first-child
+            > .ant-col:nth-child(3) {
+            --dashboard-summary-bg: #fff7ed;
+            --dashboard-summary-border: #fed7aa;
+            --dashboard-summary-accent: #d97706;
           }
 
           .distributor-dashboard-summary-label {
-            color: #475569 !important;
+            color: var(--dashboard-summary-accent, #475569) !important;
           }
 
           .distributor-dashboard-summary-value {
-            color: #0f172a !important;
+            color: var(--dashboard-summary-accent, #0f172a) !important;
             font-size: 22px;
             font-weight: 800;
             line-height: 1.2;
@@ -935,10 +1036,74 @@ export default function DistributorDashboardPage() {
 
           .distributor-dashboard-metric-card {
             height: 100%;
-            border: 1px solid #dbeafe;
-            border-radius: 16px;
-            background: #ffffff;
-            box-shadow: 0 14px 30px rgba(37, 99, 235, 0.06);
+            border: 1px solid var(--dashboard-metric-border, #dbeafe);
+            border-radius: 8px;
+            background: var(--dashboard-metric-bg, #ffffff);
+            box-shadow: 0 14px 30px var(--dashboard-metric-shadow, rgba(37, 99, 235, 0.06));
+          }
+
+          .distributor-dashboard-stack > .ant-row:nth-of-type(2) > .ant-col:nth-child(1) {
+            --dashboard-metric-bg: #eff6ff;
+            --dashboard-metric-border: #bfdbfe;
+            --dashboard-metric-accent: #2563eb;
+            --dashboard-metric-icon-bg: #dbeafe;
+            --dashboard-metric-shadow: rgba(37, 99, 235, 0.12);
+          }
+
+          .distributor-dashboard-stack > .ant-row:nth-of-type(2) > .ant-col:nth-child(2) {
+            --dashboard-metric-bg: #fff7ed;
+            --dashboard-metric-border: #fed7aa;
+            --dashboard-metric-accent: #d97706;
+            --dashboard-metric-icon-bg: #ffedd5;
+            --dashboard-metric-shadow: rgba(217, 119, 6, 0.12);
+          }
+
+          .distributor-dashboard-stack > .ant-row:nth-of-type(2) > .ant-col:nth-child(3) {
+            --dashboard-metric-bg: #ecfdf5;
+            --dashboard-metric-border: #a7f3d0;
+            --dashboard-metric-accent: #059669;
+            --dashboard-metric-icon-bg: #d1fae5;
+            --dashboard-metric-shadow: rgba(5, 150, 105, 0.12);
+          }
+
+          .distributor-dashboard-stack > .ant-row:nth-of-type(2) > .ant-col:nth-child(4) {
+            --dashboard-metric-bg: #fff1f2;
+            --dashboard-metric-border: #fecdd3;
+            --dashboard-metric-accent: #e11d48;
+            --dashboard-metric-icon-bg: #ffe4e6;
+            --dashboard-metric-shadow: rgba(225, 29, 72, 0.12);
+          }
+
+          .distributor-dashboard-stack > .ant-row:nth-of-type(3) > .ant-col:nth-child(1) {
+            --dashboard-metric-bg: #f5f3ff;
+            --dashboard-metric-border: #ddd6fe;
+            --dashboard-metric-accent: #7c3aed;
+            --dashboard-metric-icon-bg: #ede9fe;
+            --dashboard-metric-shadow: rgba(124, 58, 237, 0.12);
+          }
+
+          .distributor-dashboard-stack > .ant-row:nth-of-type(3) > .ant-col:nth-child(2) {
+            --dashboard-metric-bg: #ecfeff;
+            --dashboard-metric-border: #a5f3fc;
+            --dashboard-metric-accent: #0891b2;
+            --dashboard-metric-icon-bg: #cffafe;
+            --dashboard-metric-shadow: rgba(8, 145, 178, 0.12);
+          }
+
+          .distributor-dashboard-stack > .ant-row:nth-of-type(3) > .ant-col:nth-child(3) {
+            --dashboard-metric-bg: #f0fdf4;
+            --dashboard-metric-border: #bbf7d0;
+            --dashboard-metric-accent: #16a34a;
+            --dashboard-metric-icon-bg: #dcfce7;
+            --dashboard-metric-shadow: rgba(22, 163, 74, 0.12);
+          }
+
+          .distributor-dashboard-stack > .ant-row:nth-of-type(3) > .ant-col:nth-child(4) {
+            --dashboard-metric-bg: #fefce8;
+            --dashboard-metric-border: #fde68a;
+            --dashboard-metric-accent: #ca8a04;
+            --dashboard-metric-icon-bg: #fef3c7;
+            --dashboard-metric-shadow: rgba(202, 138, 4, 0.12);
           }
 
           .distributor-dashboard-metric-card .ant-card-body {
@@ -952,14 +1117,14 @@ export default function DistributorDashboardPage() {
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            border-radius: 14px;
-            background: #eff6ff;
-            color: #2563eb;
+            border-radius: 8px;
+            background: var(--dashboard-metric-icon-bg, #eff6ff);
+            color: var(--dashboard-metric-accent, #2563eb);
             font-size: 18px;
           }
 
           .distributor-dashboard-metric-value {
-            color: #0f172a !important;
+            color: var(--dashboard-metric-accent, #0f172a) !important;
             font-size: 18px;
             font-weight: 800;
             line-height: 1.15;
@@ -967,7 +1132,7 @@ export default function DistributorDashboardPage() {
           }
 
           .distributor-dashboard-metric-title {
-            color: #0f172a !important;
+            color: var(--dashboard-metric-accent, #0f172a) !important;
             font-size: 14px;
             font-weight: 800;
             line-height: 1.45;

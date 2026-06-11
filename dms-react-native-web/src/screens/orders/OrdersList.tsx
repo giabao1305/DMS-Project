@@ -2,7 +2,6 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { SummaryMetric, SummaryStrip } from "../../components/Ui";
 import { bento, bentoSoftShadow } from "../../theme";
 import type { Order, OrderStatus } from "../../types/domain";
 import {
@@ -124,38 +123,54 @@ export function OrdersList({
           </Pressable>
         </View>
 
-        <SummaryStrip>
-          <SummaryMetric
-            label="Tổng đơn"
-            value={stats.total}
-            icon="clipboard-text-outline"
-            tone="primary"
-          />
-          <SummaryMetric
-            label="Chờ duyệt"
-            value={stats.pending}
-            icon="clock-outline"
-            tone="warning"
-          />
-          <SummaryMetric
-            label="Đã giao"
-            value={stats.delivered}
-            icon="truck-check-outline"
-            tone="success"
-          />
-          <SummaryMetric
-            label="Doanh thu giao"
-            value={compactMoney(stats.revenue)}
-            icon="cash-check"
-            tone="blue"
-          />
-          <SummaryMetric
-            label="Chưa thanh toán"
-            value={stats.unpaid}
-            icon="credit-card-clock-outline"
-            tone="danger"
-          />
-        </SummaryStrip>
+        <View style={styles.overviewPanel}>
+          <View style={styles.revenuePanel}>
+            <View style={styles.revenueIcon}>
+              <MaterialCommunityIcons
+                name="cash-check"
+                size={22}
+                color="#FFFFFF"
+              />
+            </View>
+            <View style={styles.revenueBody}>
+              <Text style={styles.revenueLabel}>Doanh thu giao</Text>
+              <Text
+                style={styles.revenueValue}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.78}
+              >
+                {compactMoney(stats.revenue)}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.summaryGrid}>
+            <OrderSummaryCard
+              label="Tổng đơn"
+              value={stats.total}
+              icon="clipboard-text-outline"
+              tone="primary"
+            />
+            <OrderSummaryCard
+              label="Chờ duyệt"
+              value={stats.pending}
+              icon="clock-outline"
+              tone="warning"
+            />
+            <OrderSummaryCard
+              label="Đã giao"
+              value={stats.delivered}
+              icon="truck-check-outline"
+              tone="success"
+            />
+            <OrderSummaryCard
+              label="Chưa thanh toán"
+              value={stats.unpaid}
+              icon="credit-card-clock-outline"
+              tone="danger"
+            />
+          </View>
+        </View>
 
         {!canCreate ? (
           <Pressable
@@ -417,6 +432,45 @@ function Meta({ icon, text }: { icon: IconName; text: string }) {
   );
 }
 
+function OrderSummaryCard({
+  label,
+  value,
+  icon,
+  tone,
+}: {
+  label: string;
+  value: string | number;
+  icon: IconName;
+  tone: Tone;
+}) {
+  const colors = summaryToneColors(tone);
+  return (
+    <View
+      style={[
+        styles.summaryCard,
+        { backgroundColor: colors.color, borderColor: colors.color },
+      ]}
+    >
+      <View style={styles.summaryIcon}>
+        <MaterialCommunityIcons name={icon} size={16} color="#FFFFFF" />
+      </View>
+      <View style={styles.summaryBody}>
+        <Text style={styles.summaryLabel} numberOfLines={2}>
+          {label}
+        </Text>
+        <Text
+          style={styles.summaryValue}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.78}
+        >
+          {value}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 function Notice({
   type,
   message,
@@ -527,6 +581,15 @@ function toneColors(tone: Tone) {
   };
 }
 
+function summaryToneColors(tone: Tone) {
+  if (tone === "success") return { color: "#059669" };
+  if (tone === "warning") return { color: "#D97706" };
+  if (tone === "danger") return { color: "#DC2626" };
+  if (tone === "route") return { color: "#0891B2" };
+  if (tone === "muted") return { color: "#64748B" };
+  return { color: "#2563EB" };
+}
+
 function isPaymentOutstanding(order: Order) {
   if (order.status !== "delivered") return false;
   if (order.paymentStatus === "paid") return false;
@@ -610,6 +673,95 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 20,
     fontWeight: "700",
+    marginTop: 2,
+  },
+  overviewPanel: {
+    backgroundColor: bento.surface,
+    borderColor: bento.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 10,
+    padding: 10,
+    ...bentoSoftShadow,
+  },
+  summaryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  summaryCard: {
+    alignItems: "center",
+    backgroundColor: bento.primary,
+    borderColor: bento.primary,
+    borderRadius: 8,
+    borderWidth: 1,
+    flexBasis: "47%",
+    flexDirection: "row",
+    flexGrow: 1,
+    gap: 8,
+    minHeight: 62,
+    minWidth: 142,
+    paddingHorizontal: 9,
+    paddingVertical: 8,
+  },
+  summaryIcon: {
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.18)",
+    borderRadius: 8,
+    height: 34,
+    justifyContent: "center",
+    width: 34,
+  },
+  summaryBody: {
+    flex: 1,
+    minWidth: 0,
+  },
+  summaryLabel: {
+    color: "rgba(255,255,255,0.92)",
+    fontSize: 11,
+    fontWeight: "700",
+    lineHeight: 14,
+  },
+  summaryValue: {
+    color: "#FFFFFF",
+    fontSize: 19,
+    fontWeight: "700",
+    lineHeight: 23,
+  },
+  revenuePanel: {
+    alignItems: "center",
+    backgroundColor: "#0891B2",
+    borderColor: "#0891B2",
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 10,
+    minHeight: 58,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  revenueIcon: {
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.18)",
+    borderRadius: 8,
+    height: 40,
+    justifyContent: "center",
+    width: 40,
+  },
+  revenueBody: {
+    flex: 1,
+    minWidth: 0,
+  },
+  revenueLabel: {
+    color: "rgba(255,255,255,0.92)",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  revenueValue: {
+    color: "#FFFFFF",
+    fontSize: 22,
+    fontWeight: "700",
+    lineHeight: 26,
     marginTop: 2,
   },
   createPrompt: {
