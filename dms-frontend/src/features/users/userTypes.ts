@@ -36,6 +36,7 @@ export interface UpdateUserRequest {
   code?: string;
   fullName?: string;
   email?: string;
+  avatar?: string;
   password?: string;
   phone?: string;
   role?: UserRole;

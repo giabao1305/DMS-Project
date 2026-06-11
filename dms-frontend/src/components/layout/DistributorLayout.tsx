@@ -150,6 +150,14 @@ export default function DistributorLayout({
         (route) => pathname === route || pathname.startsWith(`${route}/`),
       ) ?? "/distributor/dashboard";
   const selectedTitle = distributorRouteTitles[selectedKey] ?? "Bảng điều hành";
+  const accountName = currentUser?.fullName || currentUser?.email || "Nhà phân phối";
+  const accountInitial =
+    accountName
+      .trim()
+      .split(/\s+/)
+      .at(-1)
+      ?.charAt(0)
+      .toUpperCase() || "N";
 
   const handleLogout = async () => {
     try {
@@ -206,12 +214,15 @@ export default function DistributorLayout({
 
           {!collapsed && (
             <div className="distributor-team-card">
-              <TeamOutlined />
+              <Avatar
+                src={currentUser?.avatar?.trim() || undefined}
+                className="distributor-team-avatar"
+              >
+                {accountInitial}
+              </Avatar>
               <div>
                 <span>Khu vực làm việc</span>
-                <strong>
-                  {currentUser?.fullName || currentUser?.email || "Nhà phân phối"}
-                </strong>
+                <strong>{accountName}</strong>
               </div>
             </div>
           )}
@@ -266,8 +277,10 @@ export default function DistributorLayout({
               onClick={() => router.push("/distributor/notifications")}
             />
             <div className="distributor-user-chip">
-              <Avatar icon={<UserOutlined />} />
-              <span>{currentUser?.fullName || "Nhà phân phối"}</span>
+              <Avatar src={currentUser?.avatar?.trim() || undefined}>
+                {accountInitial}
+              </Avatar>
+              <span>{currentUser?.fullName || accountName}</span>
             </div>
             <Button
               danger
@@ -733,6 +746,24 @@ export default function DistributorLayout({
           .ant-input-textarea-affix-wrapper-focused {
           border-color: #2563eb !important;
           box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
+        }
+
+        .distributor-content
+          .account-settings-card
+          .ant-input-affix-wrapper
+          .ant-input,
+        .distributor-content
+          .account-settings-card
+          .ant-input-affix-wrapper
+          .ant-input:hover,
+        .distributor-content
+          .account-settings-card
+          .ant-input-affix-wrapper
+          .ant-input:focus {
+          border: 0 !important;
+          border-radius: 0 !important;
+          background: transparent !important;
+          box-shadow: none !important;
         }
 
         .distributor-content .account-settings-card .ant-btn-primary {
@@ -2415,7 +2446,7 @@ export default function DistributorLayout({
           border: 0 !important;
           border-bottom: 1px solid rgba(255, 255, 255, 0.18) !important;
           border-radius: 0 !important;
-          background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 58%, #0f766e 100%) !important;
+          background: #2563eb !important;
           box-shadow: none !important;
         }
 
@@ -2464,6 +2495,18 @@ export default function DistributorLayout({
         .distributor-shell .distributor-team-card > .anticon {
           color: #2563eb !important;
           background: #eff6ff !important;
+        }
+
+        .distributor-shell .distributor-team-avatar.ant-avatar {
+          width: 40px;
+          height: 40px;
+          min-width: 40px;
+          border: 1px solid #bfdbfe;
+          background: #2563eb !important;
+          color: #ffffff !important;
+          font-size: 16px;
+          font-weight: 900;
+          line-height: 40px;
         }
 
         .distributor-shell .distributor-team-card span {

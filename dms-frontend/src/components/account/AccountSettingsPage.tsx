@@ -32,6 +32,7 @@ import {
   useGetUserByIdQuery,
   useUpdateUserMutation,
 } from "@/features/users/userService";
+import ImageUpload from "@/components/common/ImageUpload";
 import { getRoleLabel } from "@/features/auth/roleUtils";
 import type { UpdateUserRequest, User } from "@/features/users/userTypes";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
@@ -45,6 +46,7 @@ type AccountSettingsPageProps = {
 type ProfileFormValues = {
   fullName: string;
   email: string;
+  avatar?: string;
   phone?: string;
   address?: string;
   companyName?: string;
@@ -74,6 +76,8 @@ export default function AccountSettingsPage({
   const currentUser = user || authUser;
   const profileUser = currentUser as Partial<User> | null;
   const displayName = currentUser?.fullName || "Tài khoản";
+  const watchedAvatar = Form.useWatch("avatar", profileForm);
+  const avatarUrl = watchedAvatar || profileUser?.avatar;
   const initial = displayName.trim().charAt(0).toUpperCase() || "U";
   const workspaceClass =
     accent === "distributor"
@@ -92,6 +96,7 @@ export default function AccountSettingsPage({
     profileForm.setFieldsValue({
       fullName: currentUser.fullName,
       email: currentUser.email,
+      avatar: extendedUser.avatar,
       phone: extendedUser.phone,
       address: extendedUser.address,
       companyName: extendedUser.companyName,
@@ -106,6 +111,7 @@ export default function AccountSettingsPage({
       const body: UpdateUserRequest = {
         fullName: values.fullName,
         email: values.email,
+        avatar: values.avatar,
         phone: values.phone,
         address: values.address,
         companyName: values.companyName,
@@ -121,6 +127,7 @@ export default function AccountSettingsPage({
         updateCurrentUser({
           fullName: updatedUser.fullName,
           email: updatedUser.email,
+          avatar: updatedUser.avatar,
           isActive: updatedUser.isActive,
         }),
       );
@@ -128,6 +135,24 @@ export default function AccountSettingsPage({
       message.success("Cập nhật hồ sơ thành công");
     } catch {
       message.error("Cập nhật hồ sơ thất bại");
+    }
+  };
+
+  const handleUpdateAvatar = async (avatar: string) => {
+    if (!authUser?._id) return;
+
+    profileForm.setFieldValue("avatar", avatar);
+
+    try {
+      const updatedUser = await updateUser({
+        id: authUser._id,
+        body: { avatar },
+      }).unwrap();
+
+      dispatch(updateCurrentUser({ avatar: updatedUser.avatar }));
+      message.success("Cập nhật avatar thành công");
+    } catch {
+      message.error("Cập nhật avatar thất bại");
     }
   };
 
@@ -152,7 +177,11 @@ export default function AccountSettingsPage({
       <Card className="account-settings-hero" variant="borderless">
         <div className="account-settings-hero-main">
           <div className="account-settings-identity">
-            <Avatar size={82} className="account-settings-avatar">
+            <Avatar
+              size={82}
+              src={avatarUrl?.trim() || undefined}
+              className="account-settings-avatar"
+            >
               {initial}
             </Avatar>
 
@@ -237,6 +266,41 @@ export default function AccountSettingsPage({
                     requiredMark={false}
                     onFinish={handleUpdateProfile}
                   >
+                    <div className="account-settings-avatar-field">
+                      <Avatar
+                        size={88}
+                        src={avatarUrl?.trim() || undefined}
+                        className="account-settings-avatar-preview"
+                      >
+                        {initial}
+                      </Avatar>
+                      <div className="account-settings-avatar-content">
+                        <div>
+                          <Text className="account-settings-avatar-title">
+                            Avatar tài khoản
+                          </Text>
+                          <Text className="account-settings-avatar-hint">
+                            Ảnh này hiển thị ở hồ sơ, header và khu vực tài
+                            khoản nhà phân phối.
+                          </Text>
+                        </div>
+                        <div className="account-settings-avatar-upload">
+                          <ImageUpload
+                            value={avatarUrl}
+                            onChange={handleUpdateAvatar}
+                            actionPath="/upload/avatar"
+                            alt="Avatar tài khoản"
+                            label="Đổi avatar"
+                            size={88}
+                            variant="button"
+                          />
+                        </div>
+                      </div>
+                      <Form.Item name="avatar" hidden>
+                        <Input />
+                      </Form.Item>
+                    </div>
+
                     <Row gutter={[16, 0]}>
                       <Col xs={24} md={12}>
                         <Form.Item
@@ -722,6 +786,72 @@ export default function AccountSettingsPage({
           background: #ffffff;
         }
 
+        .account-settings-avatar-field {
+          margin-bottom: 18px;
+          padding: 16px;
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          border: 1px solid var(--account-border);
+          border-radius: 8px;
+          background: var(--account-surface);
+        }
+
+        .account-settings-avatar-preview {
+          flex-shrink: 0;
+          border: 3px solid #ffffff;
+          background: var(--account-primary);
+          color: #ffffff;
+          font-size: 30px;
+          font-weight: 900;
+          box-shadow: 0 8px 18px rgba(37, 99, 235, 0.12);
+        }
+
+        .account-settings-avatar-content {
+          min-width: 0;
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 14px;
+        }
+
+        .account-settings-avatar-title {
+          display: block;
+          color: var(--account-text) !important;
+          font-size: 14px;
+          font-weight: 900;
+          line-height: 1.35;
+        }
+
+        .account-settings-avatar-hint {
+          display: block;
+          max-width: 520px;
+          margin-top: 4px;
+          color: var(--account-muted) !important;
+          font-size: 13px;
+          line-height: 1.5;
+        }
+
+        .account-settings-avatar-upload {
+          margin-bottom: 0 !important;
+          flex-shrink: 0;
+        }
+
+        .account-settings-avatar-upload .ant-btn {
+          height: 38px;
+          border-color: var(--account-primary) !important;
+          background: #ffffff !important;
+          color: var(--account-primary) !important;
+          font-weight: 850;
+        }
+
+        .account-settings-avatar-upload .ant-btn:hover {
+          border-color: var(--account-primary-hover) !important;
+          background: var(--account-primary-soft) !important;
+          color: var(--account-primary-hover) !important;
+        }
+
         .account-settings-card .ant-form-item-label > label {
           color: var(--account-text);
           font-weight: 800;
@@ -785,6 +915,13 @@ export default function AccountSettingsPage({
           border-radius: 8px !important;
         }
 
+        .account-settings-card .ant-input-affix-wrapper .ant-input {
+          border: 0 !important;
+          border-radius: 0 !important;
+          background: transparent !important;
+          box-shadow: none !important;
+        }
+
         .account-settings-card .ant-input:hover,
         .account-settings-card .ant-input-affix-wrapper:hover {
           border-color: var(--account-primary) !important;
@@ -805,6 +942,12 @@ export default function AccountSettingsPage({
           .account-settings-card
           .ant-input-affix-wrapper-focused {
           box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
+        }
+
+        .account-settings-card .ant-input-affix-wrapper .ant-input:hover,
+        .account-settings-card .ant-input-affix-wrapper .ant-input:focus {
+          border: 0 !important;
+          box-shadow: none !important;
         }
 
         .account-settings-actions {
@@ -835,6 +978,15 @@ export default function AccountSettingsPage({
           .account-settings-status-card,
           .account-settings-actions .ant-btn {
             width: 100%;
+          }
+
+          .account-settings-avatar-field {
+            align-items: flex-start;
+          }
+
+          .account-settings-avatar-content {
+            align-items: flex-start;
+            flex-direction: column;
           }
 
           .account-settings-panel,

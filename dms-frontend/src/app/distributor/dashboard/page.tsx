@@ -851,7 +851,37 @@ export default function DistributorDashboardPage() {
             border: 1px solid #dbeafe;
             border-radius: 18px;
             background: #ffffff;
-            box-shadow: 0 18px 42px rgba(37, 99, 235, 0.07);
+            box-shadow: none;
+          }
+
+          .distributor-dashboard-stack .distributor-panel-card {
+            position: relative;
+            border-color: #bfdbfe !important;
+            background-clip: padding-box;
+            box-shadow: none !important;
+          }
+
+          .distributor-dashboard-stack .distributor-panel-card::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            border: 1px solid #bfdbfe;
+            border-radius: inherit;
+          }
+
+          .distributor-dashboard-stack .distributor-panel-card > .ant-card-head {
+            border-bottom-color: #dbeafe !important;
+          }
+
+          .distributor-dashboard-stack .distributor-dashboard-hero-card.ant-card,
+          .distributor-dashboard-stack .distributor-dashboard-metric-card.ant-card,
+          .distributor-dashboard-stack .distributor-dashboard-active-card.ant-card {
+            box-shadow: none !important;
+          }
+
+          .distributor-dashboard-stack .distributor-dashboard-metric-icon {
+            box-shadow: none !important;
           }
 
           .distributor-dashboard-profile-panel {
@@ -1006,7 +1036,9 @@ export default function DistributorDashboardPage() {
             background: var(--dashboard-button-color, #2563eb);
             color: #ffffff;
             font-weight: 650;
-            box-shadow: 0 10px 20px var(--dashboard-button-shadow, rgba(37, 99, 235, 0.16));
+            box-shadow:
+              inset 0 1px 0 rgba(255, 255, 255, 0.22),
+              0 7px 14px var(--dashboard-button-shadow, rgba(37, 99, 235, 0.12));
           }
 
           .distributor-dashboard-button.ant-btn:hover,
@@ -1014,24 +1046,27 @@ export default function DistributorDashboardPage() {
             border-color: var(--dashboard-button-hover, #1d4ed8) !important;
             color: #ffffff !important;
             background: var(--dashboard-button-hover, #1d4ed8) !important;
+            box-shadow:
+              inset 0 1px 0 rgba(255, 255, 255, 0.2),
+              0 9px 18px var(--dashboard-button-shadow, rgba(37, 99, 235, 0.16));
           }
 
           .distributor-dashboard-summary-panel a:nth-child(1) {
             --dashboard-button-color: #2563eb;
             --dashboard-button-hover: #1d4ed8;
-            --dashboard-button-shadow: rgba(37, 99, 235, 0.16);
+            --dashboard-button-shadow: rgba(37, 99, 235, 0.12);
           }
 
           .distributor-dashboard-summary-panel a:nth-child(2) {
             --dashboard-button-color: #d97706;
             --dashboard-button-hover: #b45309;
-            --dashboard-button-shadow: rgba(217, 119, 6, 0.16);
+            --dashboard-button-shadow: rgba(217, 119, 6, 0.12);
           }
 
           .distributor-dashboard-summary-panel a:nth-child(3) {
             --dashboard-button-color: #2563eb;
             --dashboard-button-hover: #1d4ed8;
-            --dashboard-button-shadow: rgba(37, 99, 235, 0.16);
+            --dashboard-button-shadow: rgba(37, 99, 235, 0.12);
           }
 
           .distributor-dashboard-metric-card {
@@ -1039,7 +1074,6 @@ export default function DistributorDashboardPage() {
             border: 1px solid var(--dashboard-metric-border, #dbeafe);
             border-radius: 8px;
             background: var(--dashboard-metric-bg, #ffffff);
-            box-shadow: 0 14px 30px var(--dashboard-metric-shadow, rgba(37, 99, 235, 0.06));
           }
 
           .distributor-dashboard-stack > .ant-row:nth-of-type(2) > .ant-col:nth-child(1) {
@@ -1047,7 +1081,6 @@ export default function DistributorDashboardPage() {
             --dashboard-metric-border: #bfdbfe;
             --dashboard-metric-accent: #2563eb;
             --dashboard-metric-icon-bg: #dbeafe;
-            --dashboard-metric-shadow: rgba(37, 99, 235, 0.12);
           }
 
           .distributor-dashboard-stack > .ant-row:nth-of-type(2) > .ant-col:nth-child(2) {
@@ -1055,7 +1088,6 @@ export default function DistributorDashboardPage() {
             --dashboard-metric-border: #fed7aa;
             --dashboard-metric-accent: #d97706;
             --dashboard-metric-icon-bg: #ffedd5;
-            --dashboard-metric-shadow: rgba(217, 119, 6, 0.12);
           }
 
           .distributor-dashboard-stack > .ant-row:nth-of-type(2) > .ant-col:nth-child(3) {
@@ -1063,7 +1095,6 @@ export default function DistributorDashboardPage() {
             --dashboard-metric-border: #a7f3d0;
             --dashboard-metric-accent: #059669;
             --dashboard-metric-icon-bg: #d1fae5;
-            --dashboard-metric-shadow: rgba(5, 150, 105, 0.12);
           }
 
           .distributor-dashboard-stack > .ant-row:nth-of-type(2) > .ant-col:nth-child(4) {
@@ -1071,7 +1102,6 @@ export default function DistributorDashboardPage() {
             --dashboard-metric-border: #fecdd3;
             --dashboard-metric-accent: #e11d48;
             --dashboard-metric-icon-bg: #ffe4e6;
-            --dashboard-metric-shadow: rgba(225, 29, 72, 0.12);
           }
 
           .distributor-dashboard-stack > .ant-row:nth-of-type(3) > .ant-col:nth-child(1) {
@@ -1079,7 +1109,6 @@ export default function DistributorDashboardPage() {
             --dashboard-metric-border: #ddd6fe;
             --dashboard-metric-accent: #7c3aed;
             --dashboard-metric-icon-bg: #ede9fe;
-            --dashboard-metric-shadow: rgba(124, 58, 237, 0.12);
           }
 
           .distributor-dashboard-stack > .ant-row:nth-of-type(3) > .ant-col:nth-child(2) {
@@ -1087,7 +1116,6 @@ export default function DistributorDashboardPage() {
             --dashboard-metric-border: #a5f3fc;
             --dashboard-metric-accent: #0891b2;
             --dashboard-metric-icon-bg: #cffafe;
-            --dashboard-metric-shadow: rgba(8, 145, 178, 0.12);
           }
 
           .distributor-dashboard-stack > .ant-row:nth-of-type(3) > .ant-col:nth-child(3) {
@@ -1095,7 +1123,6 @@ export default function DistributorDashboardPage() {
             --dashboard-metric-border: #bbf7d0;
             --dashboard-metric-accent: #16a34a;
             --dashboard-metric-icon-bg: #dcfce7;
-            --dashboard-metric-shadow: rgba(22, 163, 74, 0.12);
           }
 
           .distributor-dashboard-stack > .ant-row:nth-of-type(3) > .ant-col:nth-child(4) {
@@ -1103,7 +1130,6 @@ export default function DistributorDashboardPage() {
             --dashboard-metric-border: #fde68a;
             --dashboard-metric-accent: #ca8a04;
             --dashboard-metric-icon-bg: #fef3c7;
-            --dashboard-metric-shadow: rgba(202, 138, 4, 0.12);
           }
 
           .distributor-dashboard-metric-card .ant-card-body {
@@ -1150,7 +1176,6 @@ export default function DistributorDashboardPage() {
             border: 1px solid #bfdbfe;
             border-radius: 16px;
             background: #eff6ff;
-            box-shadow: 0 16px 34px rgba(37, 99, 235, 0.08);
           }
 
           .distributor-dashboard-active-icon {
