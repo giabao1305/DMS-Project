@@ -11,10 +11,12 @@ import {
 } from '@nestjs/common';
 
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { UserRole } from '../users/schemas/user.schema';
+import type { UserDocument } from '../users/schemas/user.schema';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -45,8 +47,11 @@ export class ProductsController {
 
   @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR, UserRole.SELLER)
   @Get()
-  findAllProducts(@Query() query: PaginationQueryDto) {
-    return this.productsService.findAllProducts(query);
+  findAllProducts(
+    @Query() query: PaginationQueryDto,
+    @CurrentUser() user: UserDocument,
+  ) {
+    return this.productsService.findAllProducts(query, user.role);
   }
 
   @Roles(UserRole.ADMIN)
@@ -57,8 +62,8 @@ export class ProductsController {
 
   @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR, UserRole.SELLER)
   @Get(':id')
-  findProductById(@Param('id') id: string) {
-    return this.productsService.findProductById(id);
+  findProductById(@Param('id') id: string, @CurrentUser() user: UserDocument) {
+    return this.productsService.findProductById(id, user.role);
   }
 
   @Roles(UserRole.ADMIN)

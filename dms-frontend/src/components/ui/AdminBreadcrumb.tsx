@@ -5,7 +5,7 @@ import type { ItemType } from "antd/es/breadcrumb/Breadcrumb";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { adminMenuItems } from "@/config/adminMenu";
+import { adminMenuItems, adminNameMap } from "@/config/adminMenu";
 
 type AdminMenuItem = {
   key: string;
@@ -15,21 +15,27 @@ type AdminMenuItem = {
 export default function AdminBreadcrumb() {
   const pathname = usePathname();
   const paths = pathname.split("/").filter(Boolean);
+  const section = paths[1];
 
-  let currentMenu: AdminMenuItem | undefined;
+  let currentMenu: AdminMenuItem | undefined = [...adminMenuItems]
+    .sort((first, second) => second.key.length - first.key.length)
+    .find(
+      (item) => pathname === item.key || pathname.startsWith(`${item.key}/`),
+    );
   let actionLabel = "";
 
-  for (const item of adminMenuItems) {
-    if (pathname.startsWith(item.key)) {
-      currentMenu = item;
-    }
+  if (!currentMenu && section) {
+    currentMenu = {
+      key: `/admin/${section}`,
+      label: adminNameMap[section] || section,
+    };
   }
 
   if (paths.includes("create")) {
-    actionLabel = "Thêm mới";
+    actionLabel = adminNameMap.create;
   } else if (paths.includes("edit")) {
-    actionLabel = "Chỉnh sửa";
-  } else if (paths.length > 2) {
+    actionLabel = adminNameMap.edit;
+  } else if (currentMenu && pathname !== currentMenu.key && paths.length > 2) {
     actionLabel = "Chi tiết";
   }
 

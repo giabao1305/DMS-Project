@@ -142,7 +142,10 @@ export default function KpiFormPage({ mode }: { mode: KpiFormMode }) {
       title={isEdit ? "Sửa KPI" : "Tạo KPI"}
       description="Thiết lập mục tiêu doanh thu, đơn hàng và lượt ghé cho DSR."
       extra={
-        <Button icon={<ArrowLeftOutlined />} onClick={() => router.back()}>
+        <Button
+          icon={<ArrowLeftOutlined />}
+          onClick={() => router.push("/distributor/kpis")}
+        >
           Quay lại
         </Button>
       }

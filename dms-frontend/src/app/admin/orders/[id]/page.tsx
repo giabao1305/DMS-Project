@@ -31,6 +31,7 @@ import AdminBreadcrumb from "@/components/ui/AdminBreadcrumb";
 import AdminPageHeader from "@/components/ui/AdminPageHeader";
 import type { Customer } from "@/features/customers/customerTypes";
 import { getOrderAmounts } from "@/features/orders/orderAmounts";
+import { translateApiMessage } from "@/features/orders/orderErrorMessage";
 import OrderPaymentPanel from "@/features/orders/OrderPaymentPanel";
 import {
   exportOrderInvoiceExcel,
@@ -95,7 +96,7 @@ const apiMessage = (error: unknown, fallback: string) => {
     return "Chỉ đơn đang chờ xác nhận mới có thể hủy.";
   }
 
-  return raw;
+  return translateApiMessage(raw) || raw;
 };
 
 export default function AdminOrderDetailPage() {

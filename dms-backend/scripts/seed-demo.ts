@@ -249,29 +249,93 @@ async function upsertCustomers(
   return { customer };
 }
 
-async function upsertPromotion(productId: Types.ObjectId) {
+async function upsertPromotions(products: Array<Product & { _id: unknown }>) {
   const now = new Date();
-  const nextMonth = new Date(now);
-  nextMonth.setMonth(nextMonth.getMonth() + 1);
+  const endIn45Days = new Date(now);
+  endIn45Days.setDate(endIn45Days.getDate() + 45);
+  const endIn60Days = new Date(now);
+  endIn60Days.setDate(endIn60Days.getDate() + 60);
+  const endIn30Days = new Date(now);
+  endIn30Days.setDate(endIn30Days.getDate() + 30);
 
-  const promotion = await PromotionModel.findOneAndUpdate(
-    { name: 'Demo May Promotion' },
-    {
-      name: 'Demo May Promotion',
-      description: 'Demo 5 percent discount for orders from seed data',
-      type: PromotionType.PERCENT,
-      discountPercent: 5,
-      giftProduct: productId,
-      giftQuantity: 1,
-      minOrderValue: 100000,
-      startDate: now,
-      endDate: nextMonth,
-      isActive: true,
-    },
-    { returnDocument: 'after', upsert: true },
-  );
+  const teaProductId = asObjectId(products[1]._id);
+  const promotionNames = [
+    'KM Demo Giam 8% Don Tu 300K',
+    'KM Demo Giam 50K Don Tu 500K',
+    'KM Demo Tang 1 Goi Tra',
+  ];
 
-  return { promotion };
+  await PromotionModel.deleteMany({
+    name: { $nin: promotionNames },
+  });
+
+  const promotions = await Promise.all([
+    PromotionModel.findOneAndUpdate(
+      { name: 'KM Demo Giam 8% Don Tu 300K' },
+      {
+        $set: {
+          name: 'KM Demo Giam 8% Don Tu 300K',
+          description: 'Demo percent promotion for store orders',
+          type: PromotionType.PERCENT,
+          discountPercent: 8,
+          minOrderValue: 300000,
+          startDate: now,
+          endDate: endIn45Days,
+          isActive: true,
+        },
+        $unset: {
+          discountAmount: '',
+          giftProduct: '',
+          giftQuantity: '',
+        },
+      },
+      { returnDocument: 'after', upsert: true },
+    ),
+    PromotionModel.findOneAndUpdate(
+      { name: 'KM Demo Giam 50K Don Tu 500K' },
+      {
+        $set: {
+          name: 'KM Demo Giam 50K Don Tu 500K',
+          description: 'Demo fixed amount discount for larger orders',
+          type: PromotionType.AMOUNT,
+          discountAmount: 50000,
+          minOrderValue: 500000,
+          startDate: now,
+          endDate: endIn60Days,
+          isActive: true,
+        },
+        $unset: {
+          discountPercent: '',
+          giftProduct: '',
+          giftQuantity: '',
+        },
+      },
+      { returnDocument: 'after', upsert: true },
+    ),
+    PromotionModel.findOneAndUpdate(
+      { name: 'KM Demo Tang 1 Goi Tra' },
+      {
+        $set: {
+          name: 'KM Demo Tang 1 Goi Tra',
+          description: 'Demo gift product promotion for high value orders',
+          type: PromotionType.PRODUCT_GIFT,
+          giftProduct: teaProductId,
+          giftQuantity: 1,
+          minOrderValue: 700000,
+          startDate: now,
+          endDate: endIn30Days,
+          isActive: true,
+        },
+        $unset: {
+          discountPercent: '',
+          discountAmount: '',
+        },
+      },
+      { returnDocument: 'after', upsert: true },
+    ),
+  ]);
+
+  return { promotion: promotions[0] };
 }
 
 async function upsertWarehouse(params: {
@@ -605,7 +669,7 @@ async function main() {
     asObjectId(admin._id),
     asObjectId(seller._id),
   );
-  const { promotion } = await upsertPromotion(asObjectId(products[0]._id));
+  const { promotion } = await upsertPromotions(products);
   const { warehouse } = await upsertWarehouse({
     distributorId: asObjectId(distributor._id),
     products,

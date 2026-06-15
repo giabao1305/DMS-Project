@@ -26,6 +26,7 @@ import {
   useRecordOrderRefundMutation,
   useCreateVnpayPaymentUrlMutation,
 } from "./orderService";
+import { orderApiMessage } from "./orderErrorMessage";
 import type {
   Order,
   OrderPayment,
@@ -157,13 +158,7 @@ export default function OrderPaymentPanel({ order }: { order: Order }) {
       form.resetFields();
       message.success("Đã ghi nhận thu tiền");
     } catch (error: unknown) {
-      const payload = error as { data?: { message?: string | string[] } };
-      const detail = payload.data?.message;
-      message.error(
-        Array.isArray(detail)
-          ? detail[0]
-          : detail || "Không thể ghi nhận thu tiền",
-      );
+      message.error(orderApiMessage(error, "Không thể ghi nhận thu tiền"));
     }
   };
 
@@ -173,12 +168,8 @@ export default function OrderPaymentPanel({ order }: { order: Order }) {
       refundForm.resetFields();
       message.success("Đã ghi nhận hoàn tiền");
     } catch (error: unknown) {
-      const payload = error as { data?: { message?: string | string[] } };
-      const detail = payload.data?.message;
       message.error(
-        Array.isArray(detail)
-          ? detail[0]
-          : detail || "Không thể ghi nhận hoàn tiền",
+        orderApiMessage(error, "Không thể ghi nhận hoàn tiền"),
       );
     }
   };
@@ -195,13 +186,11 @@ export default function OrderPaymentPanel({ order }: { order: Order }) {
       });
       message.success("Đã tạo QR VNPay sandbox");
     } catch (error: unknown) {
-      const payload = error as { data?: { message?: string | string[] } };
-      const detail = payload.data?.message;
       message.error(
-        Array.isArray(detail)
-          ? detail[0]
-          : detail ||
-              "Không thể tạo QR VNPay. Kiểm tra cấu hình sandbox trên backend.",
+        orderApiMessage(
+          error,
+          "Không thể tạo QR VNPay. Kiểm tra cấu hình sandbox trên backend.",
+        ),
       );
     }
   };

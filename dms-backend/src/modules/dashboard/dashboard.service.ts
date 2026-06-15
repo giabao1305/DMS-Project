@@ -119,6 +119,20 @@ export class DashboardService {
   }
 
   async getAdminDashboard() {
+    const storeOrderFilter = this.buildStoreOrderFilter();
+    const pendingStoreOrderFilter = {
+      $and: [storeOrderFilter, { status: OrderStatus.PENDING }],
+    };
+    const deliveredStoreOrderFilter = {
+      $and: [storeOrderFilter, { status: OrderStatus.DELIVERED }],
+    };
+    const approvedStoreOrderFilter = {
+      $and: [storeOrderFilter, { status: OrderStatus.APPROVED }],
+    };
+    const cancelledStoreOrderFilter = {
+      $and: [storeOrderFilter, { status: OrderStatus.CANCELLED }],
+    };
+
     const [
       totalSellers,
       totalCustomers,
@@ -133,6 +147,8 @@ export class DashboardService {
       pendingLeaves,
       activeProducts,
       activeSellers,
+      totalManagers,
+      activeManagers,
       approvedOrders,
       cancelledOrders,
       lowStockPreview,
@@ -170,15 +186,11 @@ export class DashboardService {
         },
       }),
 
-      this.orderModel.countDocuments(),
+      this.orderModel.countDocuments(storeOrderFilter),
 
-      this.orderModel.countDocuments({
-        status: OrderStatus.PENDING,
-      }),
+      this.orderModel.countDocuments(pendingStoreOrderFilter),
 
-      this.orderModel.countDocuments({
-        status: OrderStatus.DELIVERED,
-      }),
+      this.orderModel.countDocuments(deliveredStoreOrderFilter),
 
       this.visitModel.countDocuments(),
 
@@ -196,13 +208,18 @@ export class DashboardService {
         isActive: true,
       }),
 
-      this.orderModel.countDocuments({
-        status: OrderStatus.APPROVED,
+      this.userModel.countDocuments({
+        role: UserRole.DISTRIBUTOR,
       }),
 
-      this.orderModel.countDocuments({
-        status: OrderStatus.CANCELLED,
+      this.userModel.countDocuments({
+        role: UserRole.DISTRIBUTOR,
+        isActive: true,
       }),
+
+      this.orderModel.countDocuments(approvedStoreOrderFilter),
+
+      this.orderModel.countDocuments(cancelledStoreOrderFilter),
 
       this.productModel
         .find({
@@ -237,21 +254,28 @@ export class DashboardService {
         .limit(5)
         .exec(),
 
-      this.orderModel.find().sort({ createdAt: -1 }).limit(7).exec(),
+      this.orderModel
+        .find(storeOrderFilter)
+        .populate('customer', 'name phone address')
+        .populate('seller', 'fullName email')
+        .populate('distributor', 'fullName email companyName')
+        .sort({ createdAt: -1 })
+        .limit(7)
+        .exec(),
     ]);
 
     const revenueResult = await this.orderModel.aggregate<RevenueAggregate>([
       {
         $match: {
+          orderType: OrderType.MANUFACTURER_TO_DISTRIBUTOR,
           status: OrderStatus.DELIVERED,
-          orderType: { $ne: OrderType.MANUFACTURER_TO_DISTRIBUTOR },
         },
       },
       {
         $group: {
           _id: null,
           totalRevenue: {
-            $sum: '$finalAmount',
+            $sum: { $ifNull: ['$finalAmount', 0] },
           },
         },
       },
@@ -274,6 +298,8 @@ export class DashboardService {
       pendingLeaves,
       activeProducts,
       activeSellers,
+      totalManagers,
+      activeManagers,
       approvedOrders,
       cancelledOrders,
       lowStockPreview,

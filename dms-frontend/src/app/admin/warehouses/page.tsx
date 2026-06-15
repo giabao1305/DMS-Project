@@ -23,6 +23,7 @@ import { useMemo, useState } from "react";
 
 import AdminBreadcrumb from "@/components/ui/AdminBreadcrumb";
 import AdminPageHeader from "@/components/ui/AdminPageHeader";
+import { translateApiMessage } from "@/features/orders/orderErrorMessage";
 import type { Product } from "@/features/products/productTypes";
 import { useGetUsersQuery } from "@/features/users/userService";
 import type { User } from "@/features/users/userTypes";
@@ -50,7 +51,7 @@ const apiMessage = (error: unknown, fallback: string) => {
   if (!raw) return fallback;
   if (raw.includes("sellingPrice")) return "Giá bán ra tiệm không hợp lệ";
 
-  return raw;
+  return translateApiMessage(raw) || raw;
 };
 
 function distributorName(distributor?: string | User) {

@@ -212,17 +212,75 @@ export default function AdminSupplyOrdersPage() {
       setPricingOrder(undefined);
       setPricingRows([]);
     } catch (error: unknown) {
-      const payload = error as { data?: { message?: string | string[] } };
-      const detail = payload.data?.message;
       message.error(
-        Array.isArray(detail)
-          ? detail[0]
-          : detail || "Không thể cập nhật giá cho đơn nhập kho",
+        orderApiMessage(error, "Không thể cập nhật giá cho đơn nhập kho"),
       );
     }
   };
 
   const columns: ColumnsType<Order> = [
+    {
+      title: "Xử lý",
+      key: "workflow",
+      width: 190,
+      fixed: "left",
+      align: "center",
+      render: (_, record) => {
+        if (record.status === "pending") {
+          return (
+            <Popconfirm
+              title="Duyệt đơn nhập kho?"
+              description="Kho chính sẽ bị trừ hàng khi duyệt đơn này."
+              okText="Duyệt"
+              cancelText="Hủy"
+              onConfirm={() => handleApprove(record)}
+            >
+              <Button
+                type="primary"
+                size="large"
+                icon={<CheckCircleOutlined />}
+                loading={approving}
+                className="admin-supply-primary-action"
+              >
+                Duyệt ngay
+              </Button>
+            </Popconfirm>
+          );
+        }
+
+        if (record.status === "approved") {
+          return (
+            <Popconfirm
+              title="Xác nhận đã giao về kho NPP?"
+              description="Tồn kho NPP sẽ được cộng sau thao tác này."
+              okText="Đã giao"
+              cancelText="Hủy"
+              onConfirm={() => handleDeliver(record)}
+            >
+              <Button
+                type="primary"
+                size="large"
+                icon={<SendOutlined />}
+                loading={delivering}
+                className="admin-supply-deliver-action"
+              >
+                Xác nhận giao
+              </Button>
+            </Popconfirm>
+          );
+        }
+
+        if (record.status === "delivered") {
+          return (
+            <Tag icon={<ShopOutlined />} color="green">
+              Đã giao kho
+            </Tag>
+          );
+        }
+
+        return <Tag color={statusMap[record.status]?.color}>{statusMap[record.status]?.label}</Tag>;
+      },
+    },
     {
       title: "Mã đơn",
       dataIndex: "orderCode",
@@ -295,9 +353,8 @@ export default function AdminSupplyOrdersPage() {
     },
     {
       title: "Thao tác",
-      width: 260,
-      align: "right",
-      fixed: "right",
+      width: 210,
+      align: "center",
       render: (_, record) => (
         <Space>
           <Link href={`/admin/orders/${record._id}`}>
@@ -310,40 +367,6 @@ export default function AdminSupplyOrdersPage() {
             >
               Giá vốn
             </Button>
-          )}
-          {record.status === "pending" && (
-            <Popconfirm
-              title="Duyệt đơn nhập kho?"
-              description="Kho chính sẽ bị trừ hàng khi duyệt đơn này."
-              okText="Duyệt"
-              cancelText="Hủy"
-              onConfirm={() => handleApprove(record)}
-            >
-              <Button
-                type="primary"
-                icon={<CheckCircleOutlined />}
-                loading={approving}
-              >
-                Duyệt
-              </Button>
-            </Popconfirm>
-          )}
-          {record.status === "approved" && (
-            <Popconfirm
-              title="Xác nhận đã giao về kho NPP?"
-              description="Tồn kho NPP sẽ được cộng sau thao tác này."
-              okText="Đã giao"
-              cancelText="Hủy"
-              onConfirm={() => handleDeliver(record)}
-            >
-              <Button
-                type="primary"
-                icon={<SendOutlined />}
-                loading={delivering}
-              >
-                Đã giao
-              </Button>
-            </Popconfirm>
           )}
         </Space>
       ),
@@ -437,7 +460,7 @@ export default function AdminSupplyOrdersPage() {
             loading={isLoading}
             columns={columns}
             dataSource={supplyOrders}
-            scroll={{ x: 1360 }}
+            scroll={{ x: 1660 }}
             pagination={{
               current: page,
               pageSize,
@@ -519,6 +542,28 @@ export default function AdminSupplyOrdersPage() {
           ]}
         />
       </Modal>
+
+      <style jsx global>{`
+        .admin-supply-primary-action.ant-btn-primary,
+        .admin-supply-deliver-action.ant-btn-primary {
+          min-width: 142px !important;
+          height: 40px !important;
+          border-radius: 8px !important;
+          font-weight: 800 !important;
+          box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18) !important;
+        }
+
+        .admin-supply-deliver-action.ant-btn-primary {
+          border-color: #16a34a !important;
+          background: #16a34a !important;
+          box-shadow: 0 8px 18px rgba(22, 163, 74, 0.18) !important;
+        }
+
+        .admin-supply-deliver-action.ant-btn-primary:hover {
+          border-color: #15803d !important;
+          background: #15803d !important;
+        }
+      `}</style>
     </>
   );
 }

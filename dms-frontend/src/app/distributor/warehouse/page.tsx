@@ -12,8 +12,6 @@ import {
   Button,
   Empty,
   Flex,
-  InputNumber,
-  Space,
   Table,
   Tag,
   Typography,
@@ -26,17 +24,21 @@ import {
   DistributorPageShell,
   DistributorTableCard,
 } from "@/components/distributor/DistributorPageShell";
+import { orderApiMessage } from "@/features/orders/orderErrorMessage";
 import {
   useGetWarehousesQuery,
   useGetWarehouseStocksQuery,
   useUpdateWarehouseSellingPriceMutation,
 } from "@/features/warehouses/warehouseService";
 import type { WarehouseStock } from "@/features/warehouses/warehouseTypes";
+import { useRealtimeRefetch } from "@/hooks/useRealtimeRefetch";
 
 const { Text } = Typography;
 
 const money = (value: number) => `${value.toLocaleString("vi-VN")} đ`;
 const parseMoneyInput = (value: string) => Number(value.replace(/[^\d]/g, ""));
+const moneyInput = (value: number) =>
+  `${Math.round(value)}`.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 
 const getStockProduct = (stock: WarehouseStock) =>
   typeof stock.product === "string" ? undefined : stock.product;
@@ -44,8 +46,11 @@ const getStockProduct = (stock: WarehouseStock) =>
 export default function DistributorWarehousePage() {
   const { message } = App.useApp();
   const router = useRouter();
-  const { data: warehouses = [], isLoading: loadingWarehouses } =
-    useGetWarehousesQuery();
+  const {
+    data: warehouses = [],
+    isLoading: loadingWarehouses,
+    refetch: refetchWarehouses,
+  } = useGetWarehousesQuery();
 
   const warehouse = warehouses.find(
     (entry) => entry.type === "distributor" && entry.isActive,
@@ -53,12 +58,26 @@ export default function DistributorWarehousePage() {
   const inactiveWarehouse = warehouses.find(
     (entry) => entry.type === "distributor" && !entry.isActive,
   );
-  const { data: stocks = [], isLoading: loadingStocks } =
+  const {
+    data: stocks = [],
+    isLoading: loadingStocks,
+    refetch: refetchStocks,
+  } =
     useGetWarehouseStocksQuery(warehouse?._id || "", {
       skip: !warehouse?._id,
     });
   const [updateWarehouseSellingPrice] =
     useUpdateWarehouseSellingPriceMutation();
+
+  useRealtimeRefetch(
+    ["warehouse-stock-updated", "stock-updated", "order-updated"],
+    () => {
+      refetchWarehouses();
+      if (warehouse?._id) {
+        refetchStocks();
+      }
+    },
+  );
 
   const totalQuantity = stocks.reduce((sum, stock) => sum + stock.quantity, 0);
   const totalCostValue = stocks.reduce(
@@ -93,12 +112,8 @@ export default function DistributorWarehousePage() {
       }).unwrap();
       message.success("Đã cập nhật giá bán ra tiệm");
     } catch (error: unknown) {
-      const payload = error as { data?: { message?: string | string[] } };
-      const detail = payload.data?.message;
       message.error(
-        Array.isArray(detail)
-          ? detail[0]
-          : detail || "Không thể cập nhật giá bán ra tiệm",
+        orderApiMessage(error, "Không thể cập nhật giá bán ra tiệm"),
       );
     }
   };
@@ -111,10 +126,10 @@ export default function DistributorWarehousePage() {
       render: (_, record) => {
         const product = getStockProduct(record);
         return product ? (
-          <Space direction="vertical" size={0}>
-            <Text strong>{product.name}</Text>
-            <Text type="secondary">{product.code}</Text>
-          </Space>
+          <div className="distributor-warehouse-product-cell">
+            <strong>{product.name}</strong>
+            <span>{product.code}</span>
+          </div>
         ) : (
           "-"
         );
@@ -126,9 +141,15 @@ export default function DistributorWarehousePage() {
       align: "right",
       width: 130,
       render: (value: number) => (
-        <Tag color={value <= 10 ? "orange" : "blue"}>
+        <span
+          className={
+            value <= 10
+              ? "distributor-warehouse-cell-tag is-warning"
+              : "distributor-warehouse-cell-tag is-info"
+          }
+        >
           {value.toLocaleString("vi-VN")}
-        </Tag>
+        </span>
       ),
     },
     {
@@ -144,26 +165,21 @@ export default function DistributorWarehousePage() {
       align: "right",
       width: 190,
       render: (value: number | undefined, record) => (
-        <InputNumber
-          min={0}
-          value={value ?? record.averageCost}
+        <input
+          type="text"
+          inputMode="numeric"
+          defaultValue={moneyInput(value ?? record.averageCost)}
           className="distributor-warehouse-price-input"
-          formatter={(input) =>
-            `${input}`.replace(/\B(?=(\d{3})+(?!\d))/g, ".")
-          }
-          parser={(input) => Number((input || "").replace(/[^\d]/g, ""))}
           onBlur={(event) =>
             handleSellingPriceChange(
               record,
               parseMoneyInput(event.target.value),
             )
           }
-          onPressEnter={(event) =>
-            handleSellingPriceChange(
-              record,
-              parseMoneyInput((event.target as HTMLInputElement).value),
-            )
-          }
+          onKeyDown={(event) => {
+            if (event.key !== "Enter") return;
+            event.currentTarget.blur();
+          }}
         />
       ),
     },
@@ -174,7 +190,41 @@ export default function DistributorWarehousePage() {
       render: (_, record) => {
         const profit =
           (record.sellingPrice ?? record.averageCost) - record.averageCost;
-        return <Tag color={profit >= 0 ? "green" : "red"}>{money(profit)}</Tag>;
+        return (
+          <span
+            className={
+              profit >= 0
+                ? "distributor-warehouse-cell-tag is-success"
+                : "distributor-warehouse-cell-tag is-danger"
+            }
+          >
+            {money(profit)}
+          </span>
+        );
+      },
+    },
+    {
+      title: "Nhập hàng",
+      key: "import",
+      align: "center",
+      width: 140,
+      render: (_, record) => {
+        const product = getStockProduct(record);
+
+        return (
+          <button
+            type="button"
+            disabled={!warehouse || !product}
+            className="distributor-warehouse-row-import"
+            onClick={() => {
+              if (!product) return;
+              router.push(`/distributor/warehouse/import?productId=${product._id}`);
+            }}
+          >
+            <InboxOutlined />
+            Nhập hàng
+          </button>
+        );
       },
     },
   ];
@@ -192,7 +242,7 @@ export default function DistributorWarehousePage() {
           onClick={() => router.push("/distributor/warehouse/import")}
           className="distributor-warehouse-primary-action"
         >
-          Nhập hàng
+          Nhập SP mới
         </Button>
       }
     >
@@ -279,7 +329,7 @@ export default function DistributorWarehousePage() {
             showSizeChanger: false,
             showTotal: (total) => `Tổng ${total} sản phẩm`,
           }}
-          scroll={{ x: 980 }}
+          scroll={{ x: 1120 }}
           locale={{
             emptyText: <Empty description="Chưa có hàng trong kho" />,
           }}
@@ -294,12 +344,109 @@ export default function DistributorWarehousePage() {
 
         .distributor-warehouse-price-input {
           width: 150px !important;
+          height: 32px;
+          padding: 4px 11px;
+          border: 1px solid #d9d9d9;
+          border-radius: 6px;
+          color: #0f172a;
+          background: #ffffff;
+          outline: none;
         }
 
-        .distributor-warehouse-price-input,
-        .distributor-warehouse-price-input .ant-input-number-input {
+        .distributor-warehouse-price-input {
           font-weight: 700 !important;
           text-align: right !important;
+        }
+
+        .distributor-warehouse-price-input:focus {
+          border-color: #2563eb;
+          box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+        }
+
+        .distributor-warehouse-product-cell {
+          display: grid;
+          gap: 2px;
+        }
+
+        .distributor-warehouse-product-cell strong {
+          color: #0f172a;
+          font-weight: 800;
+          line-height: 1.35;
+        }
+
+        .distributor-warehouse-product-cell span {
+          color: #64748b;
+          font-size: 12.5px;
+          line-height: 1.35;
+        }
+
+        .distributor-warehouse-cell-tag {
+          min-width: 56px;
+          min-height: 24px;
+          padding: 2px 8px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid transparent;
+          border-radius: 999px;
+          font-size: 12px;
+          font-weight: 800;
+          line-height: 1.2;
+        }
+
+        .distributor-warehouse-cell-tag.is-info {
+          border-color: #91caff;
+          color: #0958d9;
+          background: #e6f4ff;
+        }
+
+        .distributor-warehouse-cell-tag.is-warning {
+          border-color: #ffd591;
+          color: #ad6800;
+          background: #fff7e6;
+        }
+
+        .distributor-warehouse-cell-tag.is-success {
+          border-color: #b7eb8f;
+          color: #389e0d;
+          background: #f6ffed;
+        }
+
+        .distributor-warehouse-cell-tag.is-danger {
+          border-color: #ffa39e;
+          color: #cf1322;
+          background: #fff1f0;
+        }
+
+        .distributor-warehouse-row-import {
+          min-height: 30px;
+          padding: 4px 10px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          border: 1px solid #2563eb;
+          border-radius: 8px;
+          color: #ffffff;
+          background: #2563eb;
+          font-size: 12.5px;
+          font-weight: 700;
+          line-height: 1;
+          cursor: pointer;
+          box-shadow: 0 6px 14px rgba(37, 99, 235, 0.14);
+        }
+
+        .distributor-warehouse-row-import:hover {
+          border-color: #1d4ed8;
+          background: #1d4ed8;
+        }
+
+        .distributor-warehouse-row-import:disabled {
+          border-color: #bfdbfe;
+          color: #64748b;
+          background: #dbeafe;
+          cursor: not-allowed;
+          box-shadow: none;
         }
 
         .distributor-content

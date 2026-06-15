@@ -127,7 +127,7 @@ export default function CreateSupplyOrderPage() {
         note: values.note,
       }).unwrap();
       message.success("Đã tạo đơn cấp hàng cho NPP");
-      router.push("/admin/orders");
+      router.push("/admin/orders/supply");
     } catch (error: unknown) {
       message.error(orderApiMessage(error, "Không thể tạo đơn cấp hàng"));
     }
@@ -140,7 +140,9 @@ export default function CreateSupplyOrderPage() {
         title="Cấp hàng cho nhà phân phối"
         description="Đơn dùng giá sản phẩm hiện tại làm giá Nestlé bán NPP; sau khi giao, hàng nhập vào kho NPP."
         extra={
-          <Button onClick={() => router.push("/admin/orders")}>Quay lại</Button>
+          <Button onClick={() => router.push("/admin/orders/supply")}>
+            Quay lại
+          </Button>
         }
       />
 

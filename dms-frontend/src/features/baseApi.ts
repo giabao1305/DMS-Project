@@ -7,6 +7,7 @@ import {
 
 import { logout, setCredentials } from "@/features/auth/authSlice";
 import type { RefreshTokenResponse } from "@/features/auth/authTypes";
+import { translateApiMessage } from "@/features/orders/orderErrorMessage";
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000",
@@ -30,6 +31,7 @@ export const baseQuery: BaseQueryFn<
   FetchBaseQueryError
 > = async (args, api, extraOptions) => {
   const result = await rawBaseQuery(args, api, extraOptions);
+  translateErrorResult(result);
 
   if (result.error?.status === 401 && !isAuthRecoveryRequest(args)) {
     const refreshToken =
@@ -59,7 +61,9 @@ export const baseQuery: BaseQueryFn<
           }),
         );
 
-        return rawBaseQuery(args, api, extraOptions);
+        const retryResult = await rawBaseQuery(args, api, extraOptions);
+        translateErrorResult(retryResult);
+        return retryResult;
       }
     }
 
@@ -75,6 +79,26 @@ export const baseQuery: BaseQueryFn<
 
   return result;
 };
+
+function translateErrorResult(
+  result: Awaited<ReturnType<typeof rawBaseQuery>>,
+) {
+  const data = result.error?.data as
+    | { message?: string | string[] }
+    | undefined;
+  if (!data) return;
+
+  const detail = data?.message;
+
+  if (typeof detail === "string") {
+    data.message = translateApiMessage(detail) || detail;
+    return;
+  }
+
+  if (Array.isArray(detail)) {
+    data.message = detail.map((item) => translateApiMessage(item) || item);
+  }
+}
 
 function isAuthRecoveryRequest(args: string | FetchArgs) {
   const url = typeof args === "string" ? args : args.url;

@@ -1,6 +1,7 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 
 import { baseQuery } from "@/features/baseApi";
+import { productService } from "@/features/products/productService";
 import type {
   Category,
   CreateCategoryRequest,
@@ -25,6 +26,10 @@ export const categoryService = createApi({
         body,
       }),
       invalidatesTags: ["Categories"],
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        await queryFulfilled;
+        dispatch(productService.util.invalidateTags(["Products"]));
+      },
     }),
 
     updateCategory: builder.mutation<
@@ -37,6 +42,10 @@ export const categoryService = createApi({
         body,
       }),
       invalidatesTags: ["Categories"],
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        await queryFulfilled;
+        dispatch(productService.util.invalidateTags(["Products"]));
+      },
     }),
 
     deleteCategory: builder.mutation<void, string>({
@@ -45,6 +54,10 @@ export const categoryService = createApi({
         method: "DELETE",
       }),
       invalidatesTags: ["Categories"],
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        await queryFulfilled;
+        dispatch(productService.util.invalidateTags(["Products"]));
+      },
     }),
   }),
 });

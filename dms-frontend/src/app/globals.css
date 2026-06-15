@@ -1312,6 +1312,10 @@ select {
   color: #6b7280 !important;
 }
 
+.login-page .login-form .ant-input-prefix {
+  margin-inline-end: 14px !important;
+}
+
 .login-page .login-form .ant-input-affix-wrapper:hover .ant-input-prefix,
 .login-page .login-form .ant-input-affix-wrapper-focused .ant-input-prefix,
 .login-page .login-form .ant-input-affix-wrapper:focus-within .ant-input-prefix,

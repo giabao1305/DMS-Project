@@ -72,7 +72,7 @@ export default function ProductDetailPage() {
   } = useGetInventoryTransactionsByProductQuery(id);
 
   useRealtimeRefetch(
-    ["inventory-updated", "stock-updated", "product-updated"],
+    ["inventory-updated", "stock-updated", "product-updated", "category-updated"],
     () => {
       refetchProduct();
       refetchInventory();

@@ -599,12 +599,6 @@ export class OrdersService {
         throw new NotFoundException(`Product not found: ${item.product}`);
       }
 
-      if (product.stock < item.quantity) {
-        throw new BadRequestException(
-          `Not enough stock for product ${product.name}`,
-        );
-      }
-
       const subtotal = product.price * item.quantity;
 
       items.push({
@@ -1337,6 +1331,20 @@ export class OrdersService {
         type: NotificationType.ORDER,
         relatedId: deliveredOrder._id.toString(),
       });
+    }
+
+    if (
+      deliveredOrder.orderType === OrderType.MANUFACTURER_TO_DISTRIBUTOR &&
+      deliveredOrder.warehouse
+    ) {
+      for (const item of deliveredOrder.items) {
+        this.notificationsService.emitRealtime('warehouse-stock-updated', {
+          action: 'supply-delivered',
+          product: item.product.toString(),
+          warehouse: deliveredOrder.warehouse.toString(),
+          order: deliveredOrder._id.toString(),
+        });
+      }
     }
 
     this.emitOrderRealtime('delivered', deliveredOrder);

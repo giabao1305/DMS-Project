@@ -6,6 +6,8 @@ import type { Route } from "@/features/routes/routeTypes";
 export type AdminDashboard = {
   totalSellers: number;
   activeSellers: number;
+  totalManagers?: number;
+  activeManagers?: number;
   totalCustomers: number;
   pendingCustomers: number;
   approvedCustomers: number;

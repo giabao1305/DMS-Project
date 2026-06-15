@@ -322,7 +322,10 @@ export default function DistributorCreateOrderPage() {
       title="Tạo đơn"
       description="Tạo đơn bán hàng cho đúng DSR phụ trách, khách hàng đã duyệt và sản phẩm còn tồn trong kho DSR."
       extra={
-        <Button icon={<ArrowLeftOutlined />} onClick={() => router.back()}>
+        <Button
+          icon={<ArrowLeftOutlined />}
+          onClick={() => router.push("/distributor/orders")}
+        >
           Quay lại
         </Button>
       }

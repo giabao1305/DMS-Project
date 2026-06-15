@@ -1,19 +1,18 @@
 ﻿"use client";
 
 import {
-  AimOutlined,
+  AppstoreOutlined,
   BarChartOutlined,
-  CheckCircleOutlined,
-  ClockCircleOutlined,
+  DatabaseOutlined,
   DollarOutlined,
-  ExclamationCircleOutlined,
   FileDoneOutlined,
+  GiftOutlined,
   InboxOutlined,
-  ShoppingCartOutlined,
+  ProductOutlined,
   TeamOutlined,
   WarningOutlined,
 } from "@ant-design/icons";
-import { Column, Line, Pie } from "@ant-design/plots";
+import { Column, Line } from "@ant-design/plots";
 import {
   Badge,
   Button,
@@ -24,7 +23,6 @@ import {
   Progress,
   Row,
   Space,
-  Table,
   Tag,
   Typography,
 } from "antd";
@@ -36,41 +34,32 @@ import AdminBreadcrumb from "@/components/ui/AdminBreadcrumb";
 import AdminPageHeader from "@/components/ui/AdminPageHeader";
 import { useGetAdminDashboardQuery } from "@/features/dashboard/dashboardService";
 import type { Order, OrderStatus } from "@/features/orders/orderTypes";
+import { useGetOrdersPageQuery } from "@/features/orders/orderService";
 import {
   useGetOrdersReportQuery,
   useGetSalesReportQuery,
   useGetSellersReportQuery,
 } from "@/features/reports/reportService";
+import { useGetWarehousesQuery } from "@/features/warehouses/warehouseService";
 import { useRealtimeRefetch } from "@/hooks/useRealtimeRefetch";
 
 const { Text, Title } = Typography;
 
 const money = (value: number) => `${value.toLocaleString("vi-VN")}đ`;
 
-const statusMap: Record<OrderStatus, { label: string; color: string }> = {
-  pending: { label: "Chờ xác nhận", color: "orange" },
-  approved: { label: "Đã xác nhận", color: "blue" },
-  delivered: { label: "Đã giao", color: "green" },
-  return_requested: { label: "Chờ duyệt trả", color: "gold" },
-  cancelled: { label: "Đã hủy", color: "red" },
-  returned: { label: "Đã trả hàng", color: "blue" },
+const statusLabel: Record<OrderStatus, string> = {
+  pending: "Chờ duyệt",
+  approved: "Đã duyệt",
+  delivered: "Đã giao kho",
+  return_requested: "Chờ trả hàng",
+  cancelled: "Đã hủy",
+  returned: "Đã trả hàng",
 };
 
-const routeStatusMap = {
-  planned: { label: "Đã lên lịch", color: "blue" },
-  in_progress: { label: "Đang chạy", color: "green" },
-  completed: { label: "Hoàn tất", color: "cyan" },
-  cancelled: { label: "Đã hủy", color: "red" },
-} as const;
-
-const getPersonName = (person?: string | { fullName?: string }) =>
-  typeof person === "object" ? person.fullName || "Chưa gán" : "Chưa gán";
-
-const compactDate = (value: string) =>
-  new Date(value).toLocaleDateString("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-  });
+const getOrderDistributorName = (distributor?: Order["distributor"]) =>
+  typeof distributor === "object"
+    ? distributor.companyName || distributor.fullName || "-"
+    : distributor || "-";
 
 const easeOutCubic = (value: number) => 1 - Math.pow(1 - value, 3);
 
@@ -132,11 +121,6 @@ function AnimatedNumber({
 
 const lineChartAnimate = {
   enter: { type: "pathIn", duration: 520 },
-  update: { duration: 260 },
-} as const;
-
-const pieChartAnimate = {
-  enter: { type: "fadeIn", duration: 420 },
   update: { duration: 260 },
 } as const;
 
@@ -320,6 +304,22 @@ export default function AdminDashboardPage() {
     data: adminSummary,
     refetch: refetchDashboard,
   } = useGetAdminDashboardQuery();
+  const {
+    data: supplyOrdersData,
+    isLoading: loadingSupplyOrders,
+    refetch: refetchSupplyOrders,
+  } = useGetOrdersPageQuery({
+    page: 1,
+    limit: 5,
+    type: "manufacturer_to_distributor",
+    status: "pending",
+    sortBy: "createdAt",
+    sortOrder: "desc",
+  });
+  const {
+    data: warehouses = [],
+    refetch: refetchWarehouses,
+  } = useGetWarehousesQuery();
 
   const {
     data: sales = [],
@@ -328,7 +328,6 @@ export default function AdminDashboardPage() {
   } = useGetSalesReportQuery(reportParams);
   const {
     data: orderReports = [],
-    isLoading: loadingOrdersReport,
     refetch: refetchOrdersReport,
   } = useGetOrdersReportQuery(reportParams);
   const {
@@ -351,6 +350,8 @@ export default function AdminDashboardPage() {
     ],
     () => {
       refetchDashboard();
+      refetchSupplyOrders();
+      refetchWarehouses();
       refetchSales();
       refetchOrdersReport();
       refetchSellersReport();
@@ -368,15 +369,6 @@ export default function AdminDashboardPage() {
     );
     const deliveredOrders =
       orderReports.find((item) => item._id === "delivered")?.totalOrders || 0;
-    const pendingOrders =
-      orderReports.find((item) => item._id === "pending")?.totalOrders || 0;
-    const approvedOrders =
-      orderReports.find((item) => item._id === "approved")?.totalOrders || 0;
-    const cancelledOrders =
-      orderReports.find((item) => item._id === "cancelled")?.totalOrders || 0;
-
-    const completionRate =
-      totalOrders > 0 ? Math.round((deliveredOrders / totalOrders) * 100) : 0;
 
     const salesChartData = [...sales]
       .sort((first, second) => first._id.day - second._id.day)
@@ -386,71 +378,66 @@ export default function AdminDashboardPage() {
         orders: item.totalOrders,
       }));
 
-    const orderStatusChartData = orderReports.map((item) => ({
-      status: statusMap[item._id]?.label || item._id,
-      total: item.totalOrders,
-      value: item.totalValue,
-    }));
-
     const sellerRevenueChartData = sellersReport.slice(0, 7).map((item) => ({
-      seller: item.seller?.fullName || "-",
+      seller: item.seller?.companyName || item.seller?.fullName || "-",
       revenue: item.totalRevenue,
       orders: item.totalOrders,
     }));
+    const managersCount = adminSummary?.totalManagers ?? 0;
+    const activeManagersCount = adminSummary?.activeManagers ?? 0;
+    const sellersCount = adminSummary?.totalSellers ?? 0;
+    const activeSellersCount = adminSummary?.activeSellers ?? 0;
+    const totalStaffCount = sellersCount + managersCount;
+    const activeStaffCount = activeSellersCount + activeManagersCount;
 
     return {
       totalRevenue,
       totalOrders,
       deliveredOrders,
-      pendingOrders,
-      approvedOrders,
-      cancelledOrders,
-      sellersCount: adminSummary?.totalSellers ?? 0,
-      activeSellersCount: adminSummary?.activeSellers ?? 0,
+      sellersCount,
+      activeSellersCount,
+      managersCount,
+      activeManagersCount,
+      totalStaffCount,
+      activeStaffCount,
       customersCount: adminSummary?.totalCustomers ?? 0,
       productsCount: adminSummary?.totalProducts ?? 0,
       activeProductsCount: adminSummary?.activeProducts ?? 0,
       lowStockProductsCount: adminSummary?.lowStockProducts ?? 0,
-      pendingLeavesCount: adminSummary?.pendingLeaves ?? 0,
-      todayRoutesCount: adminSummary?.todayRoutePreview?.length ?? 0,
+      pendingSupplyOrdersCount: supplyOrdersData?.meta.total ?? 0,
+      distributorWarehousesCount: warehouses.filter(
+        (warehouse) => warehouse.type === "distributor",
+      ).length,
       lowStockPreview: adminSummary?.lowStockPreview ?? [],
-      pendingLeavePreview: adminSummary?.pendingLeavePreview ?? [],
-      todayRoutePreview: adminSummary?.todayRoutePreview ?? [],
-      completionRate,
+      pendingSupplyOrders: supplyOrdersData?.data ?? [],
       salesChartData,
-      orderStatusChartData,
       sellerRevenueChartData,
-      recentOrders: adminSummary?.recentOrders ?? [],
     };
-  }, [adminSummary, orderReports, sales, sellersReport]);
-
-  const animatedCompletionRate = Math.round(
-    useAnimatedNumber(dashboard.completionRate, 650),
-  );
+  }, [adminSummary, orderReports, sales, sellersReport, supplyOrdersData, warehouses]);
 
   const statTiles: StatTileProps[] = [
     {
       label: "Doanh thu tháng",
       value: dashboard.totalRevenue,
       formatter: money,
-      caption: `${dashboard.deliveredOrders} đơn đã giao`,
+      caption: `${dashboard.deliveredOrders} đơn giao NPP đã hoàn tất`,
       icon: <DollarOutlined />,
       toneKey: "emerald",
       loading: loadingSales,
     },
     {
-      label: "Tổng đơn hàng",
-      value: dashboard.totalOrders,
-      caption: `${dashboard.pendingOrders} đơn đang chờ duyệt`,
-      icon: <ShoppingCartOutlined />,
+      label: "Duyệt nhập kho",
+      value: dashboard.pendingSupplyOrdersCount,
+      caption: "Đơn NPP chờ admin xử lý",
+      icon: <DatabaseOutlined />,
       toneKey: "blue",
-      loading: loadingOrdersReport,
+      loading: loadingSupplyOrders,
     },
     {
-      label: "Khách hàng",
-      value: dashboard.customersCount,
-      caption: `${dashboard.sellersCount} seller phụ trách`,
-      icon: <TeamOutlined />,
+      label: "Sản phẩm",
+      value: dashboard.activeProductsCount,
+      caption: `${dashboard.productsCount} sản phẩm trong hệ thống`,
+      icon: <ProductOutlined />,
       toneKey: "cyan",
     },
     {
@@ -464,19 +451,19 @@ export default function AdminDashboardPage() {
 
   const queueItems: QueueItemProps[] = [
     {
-      label: "Đơn chờ duyệt",
-      description: "Kiểm tra và xác nhận đơn hàng mới",
-      count: dashboard.pendingOrders,
-      href: "/admin/orders",
+      label: "Duyệt nhập kho",
+      description: "Xác nhận yêu cầu nhập hàng từ NPP",
+      count: dashboard.pendingSupplyOrdersCount,
+      href: "/admin/orders/supply",
       icon: <FileDoneOutlined />,
       toneKey: "amber",
     },
     {
-      label: "Đơn nghỉ phép",
-      description: "Yêu cầu đang cần admin xử lý",
-      count: dashboard.pendingLeavesCount,
-      href: "/admin/leaves",
-      icon: <ClockCircleOutlined />,
+      label: "Kho NPP",
+      description: "Theo dõi tồn và giá bán từng nhà phân phối",
+      count: dashboard.distributorWarehousesCount,
+      href: "/admin/warehouses",
+      icon: <DatabaseOutlined />,
       toneKey: "blue",
     },
     {
@@ -488,11 +475,11 @@ export default function AdminDashboardPage() {
       toneKey: "red",
     },
     {
-      label: "Tuyến hôm nay",
-      description: "Lịch bán hàng đang triển khai",
-      count: dashboard.todayRoutesCount,
-      href: "/admin/routes",
-      icon: <AimOutlined />,
+      label: "Báo cáo",
+      description: "Xem phân tích doanh thu và hiệu suất",
+      count: dashboard.totalOrders,
+      href: "/admin/reports",
+      icon: <BarChartOutlined />,
       toneKey: "emerald",
     },
   ];
@@ -503,16 +490,16 @@ export default function AdminDashboardPage() {
 
       <AdminPageHeader
         title="Tổng quan điều hành"
-        description="Một màn hình tập trung cho doanh thu, đơn hàng, tồn kho và hiệu suất đội bán hàng."
+        description="Theo dõi nhanh các khu vực đang hiện trên sidebar: nhập kho, tồn kho, dữ liệu hệ thống và báo cáo."
         extra={
           <Flex gap={10} wrap="wrap">
-            <Link href="/admin/orders">
-              <Button type="primary" icon={<FileDoneOutlined />}>
-                Duyệt đơn
+            <Link href="/admin/orders/supply">
+              <Button type="primary" icon={<DatabaseOutlined />}>
+                Duyệt nhập kho
               </Button>
             </Link>
-            <Link href="/admin/reports">
-              <Button icon={<BarChartOutlined />}>Báo cáo</Button>
+            <Link href="/admin/inventory">
+              <Button icon={<InboxOutlined />}>Kho hàng</Button>
             </Link>
           </Flex>
         }
@@ -526,8 +513,8 @@ export default function AdminDashboardPage() {
               Tổng quan tháng {reportParams.month}/{reportParams.year}
             </Title>
             <Text className="admin-dash-hero-description">
-              Theo dõi sức khỏe kinh doanh và các việc cần xử lý ngay trong hệ
-              thống phân phối.
+              Tập trung vào những module admin đang dùng thường xuyên: cấp hàng
+              cho NPP, tồn kho, sản phẩm, nhân sự và báo cáo vận hành.
             </Text>
 
             <Row gutter={[12, 12]} className="admin-dash-hero-strip">
@@ -545,17 +532,17 @@ export default function AdminDashboardPage() {
               </Col>
               <Col xs={24} sm={8}>
                 <div className="admin-dash-hero-chip">
-                  <Text>Đơn đã giao</Text>
+                  <Text>Đơn nhập chờ duyệt</Text>
                   <strong>
-                    <AnimatedNumber value={dashboard.deliveredOrders} />
+                    <AnimatedNumber value={dashboard.pendingSupplyOrdersCount} />
                   </strong>
                 </div>
               </Col>
               <Col xs={24} sm={8}>
                 <div className="admin-dash-hero-chip">
-                  <Text>Tuyến hôm nay</Text>
+                  <Text>Cảnh báo kho</Text>
                   <strong>
-                    <AnimatedNumber value={dashboard.todayRoutesCount} />
+                    <AnimatedNumber value={dashboard.lowStockProductsCount} />
                   </strong>
                 </div>
               </Col>
@@ -563,10 +550,17 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="admin-dash-progress-card">
-            <Text className="admin-dash-progress-label">Tỷ lệ hoàn tất đơn</Text>
+            <Text className="admin-dash-progress-label">Sản phẩm đang bán</Text>
             <Progress
               type="dashboard"
-              percent={animatedCompletionRate}
+              percent={
+                dashboard.productsCount > 0
+                  ? Math.round(
+                      (dashboard.activeProductsCount / dashboard.productsCount) *
+                        100,
+                    )
+                  : 0
+              }
               size={150}
               strokeColor="#10B981"
               trailColor="rgba(255, 255, 255, 0.14)"
@@ -577,20 +571,20 @@ export default function AdminDashboardPage() {
               )}
             />
             <Text className="admin-dash-progress-note">
-              <AnimatedNumber value={dashboard.deliveredOrders} />/
-              <AnimatedNumber value={dashboard.totalOrders} /> đơn đã hoàn tất
+              <AnimatedNumber value={dashboard.activeProductsCount} />/
+              <AnimatedNumber value={dashboard.productsCount} /> sản phẩm hoạt động
             </Text>
             <div className="admin-dash-progress-meta">
               <span>
-                Chờ duyệt{" "}
+                Nhân viên{" "}
                 <strong>
-                  <AnimatedNumber value={dashboard.pendingOrders} />
+                  <AnimatedNumber value={dashboard.totalStaffCount} />
                 </strong>
               </span>
               <span>
-                Đã xác nhận{" "}
+                Kho NPP{" "}
                 <strong>
-                  <AnimatedNumber value={dashboard.approvedOrders} />
+                  <AnimatedNumber value={dashboard.distributorWarehousesCount} />
                 </strong>
               </span>
             </div>
@@ -656,36 +650,37 @@ export default function AdminDashboardPage() {
               className="admin-dash-panel admin-dash-ops-panel"
               title={
                 <PanelTitle
-                  title="Nghỉ phép chờ duyệt"
-                  description="Yêu cầu cần quyết định để không kẹt lịch tuyến"
+                  title="Đơn nhập kho chờ duyệt"
+                  description="Yêu cầu cấp hàng từ nhà phân phối"
                   extra={
-                    <Link href="/admin/leaves">
-                      <Button size="small">Duyệt phép</Button>
+                    <Link href="/admin/orders/supply">
+                      <Button size="small">Duyệt nhập</Button>
                     </Link>
                   }
                 />
               }
             >
-              {dashboard.pendingLeavePreview.length === 0 ? (
-                <Empty description="Không có yêu cầu chờ duyệt" />
+              {dashboard.pendingSupplyOrders.length === 0 ? (
+                <Empty description="Không có đơn nhập kho chờ duyệt" />
               ) : (
                 <Space direction="vertical" size={10} className="admin-dash-list">
-                  {dashboard.pendingLeavePreview.map((leave) => (
+                  {dashboard.pendingSupplyOrders.map((order) => (
                     <Link
-                      href={`/admin/leaves/${leave._id}`}
+                      href={`/admin/orders/${order._id}`}
                       className="admin-dash-management-row"
-                      key={leave._id}
+                      key={order._id}
                     >
                       <span className="admin-dash-row-icon admin-dash-row-icon-amber">
-                        <ClockCircleOutlined />
+                        <DatabaseOutlined />
                       </span>
                       <span className="admin-dash-row-main">
-                        <strong>{getPersonName(leave.seller)}</strong>
+                        <strong>{order.orderCode}</strong>
                         <small>
-                          {compactDate(leave.startDate)} - {compactDate(leave.endDate)}
+                          {getOrderDistributorName(order.distributor)} ·{" "}
+                          {money(order.finalAmount)}
                         </small>
                       </span>
-                      <Tag color="orange">Chờ</Tag>
+                      <Tag color="orange">{statusLabel[order.status]}</Tag>
                     </Link>
                   ))}
                 </Space>
@@ -699,42 +694,47 @@ export default function AdminDashboardPage() {
               className="admin-dash-panel admin-dash-ops-panel"
               title={
                 <PanelTitle
-                  title="Tuyến hôm nay"
-                  description="Giám sát tuyến bán hàng đang triển khai"
-                  extra={
-                    <Link href="/admin/routes">
-                      <Button size="small">Xem tuyến</Button>
-                    </Link>
-                  }
+                  title="Quản trị dữ liệu"
+                  description="Lối tắt đến các module đang hiện trên sidebar"
+                  extra={<Tag color="blue">Sidebar</Tag>}
                 />
               }
             >
-              {dashboard.todayRoutePreview.length === 0 ? (
-                <Empty description="Chưa có tuyến hôm nay" />
-              ) : (
-                <Space direction="vertical" size={10} className="admin-dash-list">
-                  {dashboard.todayRoutePreview.map((route) => (
-                    <Link
-                      href={`/admin/routes/${route._id}`}
-                      className="admin-dash-management-row"
-                      key={route._id}
-                    >
-                      <span className="admin-dash-row-icon admin-dash-row-icon-blue">
-                        <AimOutlined />
-                      </span>
-                      <span className="admin-dash-row-main">
-                        <strong>{route.name}</strong>
-                        <small>
-                          {getPersonName(route.seller)} · {route.customers.length} điểm
-                        </small>
-                      </span>
-                      <Tag color={routeStatusMap[route.status]?.color}>
-                        {routeStatusMap[route.status]?.label}
-                      </Tag>
-                    </Link>
-                  ))}
-                </Space>
-              )}
+              <Space direction="vertical" size={10} className="admin-dash-list">
+                <Link href="/admin/users" className="admin-dash-management-row">
+                  <span className="admin-dash-row-icon admin-dash-row-icon-blue">
+                    <TeamOutlined />
+                  </span>
+                  <span className="admin-dash-row-main">
+                    <strong>Nhân viên</strong>
+                    <small>
+                      {dashboard.activeManagersCount} quản lí ·{" "}
+                      {dashboard.activeSellersCount} seller đang hoạt động
+                    </small>
+                  </span>
+                  <Tag color="blue">User</Tag>
+                </Link>
+                <Link href="/admin/categories" className="admin-dash-management-row">
+                  <span className="admin-dash-row-icon admin-dash-row-icon-blue">
+                    <AppstoreOutlined />
+                  </span>
+                  <span className="admin-dash-row-main">
+                    <strong>Danh mục</strong>
+                    <small>Tổ chức nhóm sản phẩm</small>
+                  </span>
+                  <Tag color="cyan">Data</Tag>
+                </Link>
+                <Link href="/admin/promotions" className="admin-dash-management-row">
+                  <span className="admin-dash-row-icon admin-dash-row-icon-amber">
+                    <GiftOutlined />
+                  </span>
+                  <span className="admin-dash-row-main">
+                    <strong>Khuyến mãi</strong>
+                    <small>Chính sách hỗ trợ bán hàng</small>
+                  </span>
+                  <Tag color="orange">Sales</Tag>
+                </Link>
+              </Space>
             </Card>
           </Col>
         </Row>
@@ -743,10 +743,10 @@ export default function AdminDashboardPage() {
           <Col xs={24}>
             <div className="admin-dash-command-strip">
               <div>
-                <span>Seller hoạt động</span>
+                <span>Nhân viên hoạt động</span>
                 <strong>
-                  <AnimatedNumber value={dashboard.activeSellersCount} />/
-                  <AnimatedNumber value={dashboard.sellersCount} />
+                  <AnimatedNumber value={dashboard.activeStaffCount} />/
+                  <AnimatedNumber value={dashboard.totalStaffCount} />
                 </strong>
               </div>
               <div>
@@ -767,8 +767,7 @@ export default function AdminDashboardPage() {
                 <strong>
                   <AnimatedNumber
                     value={
-                      dashboard.pendingOrders +
-                      dashboard.pendingLeavesCount +
+                      dashboard.pendingSupplyOrdersCount +
                       dashboard.lowStockProductsCount
                     }
                   />
@@ -786,8 +785,8 @@ export default function AdminDashboardPage() {
               loading={loadingSales}
               title={
                 <PanelTitle
-                  title="Doanh thu theo ngày"
-                  description="Biến động doanh thu trong tháng hiện tại"
+                  title="Doanh thu giao NPP theo ngày"
+                  description="Doanh thu từ đơn giao hàng cho NPP trong tháng"
                   extra={<Tag color="green">{money(dashboard.totalRevenue)}</Tag>}
                 />
               }
@@ -850,60 +849,15 @@ export default function AdminDashboardPage() {
         </Row>
 
         <Row gutter={[16, 16]} className="admin-dash-row">
-          <Col xs={24} xl={9}>
-            <Card
-              variant="borderless"
-              className="admin-dash-panel"
-              loading={loadingOrdersReport}
-              title={
-                <PanelTitle
-                  title="Trạng thái đơn"
-                  description="Tỷ trọng đơn hàng theo tiến độ"
-                  extra={
-                    <Tag color="blue">
-                      {dashboard.totalOrders.toLocaleString("vi-VN")} đơn
-                    </Tag>
-                  }
-                />
-              }
-            >
-              {dashboard.orderStatusChartData.length === 0 ? (
-                <Empty description="Chưa có dữ liệu đơn hàng" />
-              ) : (
-                <Pie
-                  height={310}
-                  data={dashboard.orderStatusChartData}
-                  angleField="total"
-                  colorField="status"
-                  innerRadius={0.64}
-                  legend={{ color: { position: "bottom" } }}
-                  label={false}
-                  animate={pieChartAnimate}
-                  tooltip={{
-                    title: "status",
-                    items: [
-                      { field: "total", name: "Số đơn" },
-                      {
-                        field: "value",
-                        name: "Giá trị",
-                        valueFormatter: (value: number) => money(value),
-                      },
-                    ],
-                  }}
-                />
-              )}
-            </Card>
-          </Col>
-
-          <Col xs={24} xl={15}>
+          <Col xs={24} xl={16}>
             <Card
               variant="borderless"
               className="admin-dash-panel"
               loading={loadingSellersReport}
               title={
                 <PanelTitle
-                  title="Top seller theo doanh thu"
-                  description="Hiệu suất bán hàng nổi bật trong tháng"
+                  title="Top NPP theo doanh thu"
+                  description="Nhà phân phối nhận hàng có doanh thu cao trong tháng"
                   extra={<Tag color="cyan">7 cao nhất</Tag>}
                 />
               }
@@ -942,102 +896,46 @@ export default function AdminDashboardPage() {
               )}
             </Card>
           </Col>
-        </Row>
 
-        <Row gutter={[16, 16]} className="admin-dash-row">
-          <Col xs={24} xl={15}>
+          <Col xs={24} xl={8}>
             <Card
               variant="borderless"
               className="admin-dash-panel"
               title={
                 <PanelTitle
-                  title="Đơn hàng mới nhất"
-                  description="Các đơn vừa phát sinh trong hệ thống"
-                  extra={<Tag color="geekblue">7 đơn gần nhất</Tag>}
-                />
-              }
-            >
-              <Table<Order>
-                rowKey="_id"
-                size="middle"
-                dataSource={dashboard.recentOrders}
-                pagination={false}
-                scroll={{ x: 620 }}
-                className="admin-dash-table"
-                locale={{ emptyText: <Empty description="Chưa có đơn hàng" /> }}
-                columns={[
-                  {
-                    title: "Mã đơn",
-                    dataIndex: "orderCode",
-                    render: (value: string) => (
-                      <Text className="admin-dash-table-strong">{value}</Text>
-                    ),
-                  },
-                  {
-                    title: "Giá trị",
-                    dataIndex: "finalAmount",
-                    align: "right",
-                    render: (value: number) => (
-                      <Text className="admin-dash-table-money">{money(value)}</Text>
-                    ),
-                  },
-                  {
-                    title: "Trạng thái",
-                    dataIndex: "status",
-                    align: "center",
-                    render: (status: OrderStatus) => (
-                      <Tag
-                        color={statusMap[status]?.color}
-                        className="admin-dash-status-tag"
-                      >
-                        {statusMap[status]?.label}
-                      </Tag>
-                    ),
-                  },
-                ]}
-              />
-            </Card>
-          </Col>
-
-          <Col xs={24} xl={9}>
-            <Card
-              variant="borderless"
-              className="admin-dash-panel"
-              title={
-                <PanelTitle
-                  title="Tóm tắt xử lý đơn"
-                  description="Tình trạng vận hành hiện tại"
-                  extra={<Tag color="green">Trạng thái</Tag>}
+                  title="Tóm tắt module"
+                  description="Những khu vực chính đang mở trên sidebar"
+                  extra={<Tag color="green">Admin</Tag>}
                 />
               }
             >
               <div className="admin-dash-status-grid">
                 <div>
-                  <CheckCircleOutlined />
-                  <span>Đã giao</span>
+                  <DatabaseOutlined />
+                  <span>Đơn nhập chờ</span>
                   <strong>
-                    <AnimatedNumber value={dashboard.deliveredOrders} />
+                    <AnimatedNumber value={dashboard.pendingSupplyOrdersCount} />
                   </strong>
                 </div>
                 <div>
-                  <ShoppingCartOutlined />
-                  <span>Đã xác nhận</span>
+                  <InboxOutlined />
+                  <span>Cảnh báo kho</span>
                   <strong>
-                    <AnimatedNumber value={dashboard.approvedOrders} />
+                    <AnimatedNumber value={dashboard.lowStockProductsCount} />
                   </strong>
                 </div>
                 <div>
-                  <ExclamationCircleOutlined />
-                  <span>Chờ xác nhận</span>
+                  <ProductOutlined />
+                  <span>Sản phẩm</span>
                   <strong>
-                    <AnimatedNumber value={dashboard.pendingOrders} />
+                    <AnimatedNumber value={dashboard.productsCount} />
                   </strong>
                 </div>
                 <div>
-                  <WarningOutlined />
-                  <span>Đã hủy</span>
+                  <TeamOutlined />
+                  <span>Nhân viên</span>
                   <strong>
-                    <AnimatedNumber value={dashboard.cancelledOrders} />
+                    <AnimatedNumber value={dashboard.totalStaffCount} />
                   </strong>
                 </div>
               </div>

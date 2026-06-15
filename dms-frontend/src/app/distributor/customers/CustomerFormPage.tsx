@@ -140,7 +140,10 @@ export default function CustomerFormPage({ mode }: { mode: CustomerFormMode }) {
         title="Sửa khách hàng"
         description="Cập nhật hồ sơ điểm bán, DSR phụ trách và thông tin định vị."
         extra={
-          <Button icon={<ArrowLeftOutlined />} onClick={() => router.back()}>
+          <Button
+            icon={<ArrowLeftOutlined />}
+            onClick={() => router.push("/distributor/customers")}
+          >
             Quay lại
           </Button>
         }
@@ -164,7 +167,10 @@ export default function CustomerFormPage({ mode }: { mode: CustomerFormMode }) {
       title={isEdit ? "Sửa khách hàng" : "Thêm khách hàng"}
       description="Cập nhật hồ sơ điểm bán, DSR phụ trách và thông tin định vị."
       extra={
-        <Button icon={<ArrowLeftOutlined />} onClick={() => router.back()}>
+        <Button
+          icon={<ArrowLeftOutlined />}
+          onClick={() => router.push("/distributor/customers")}
+        >
           Quay lại
         </Button>
       }

@@ -87,12 +87,12 @@ export default function ProductsPage() {
     useToggleProductStatusMutation();
 
   useRealtimeRefetch(
-    ["new-notification", "product-updated", "stock-updated"],
+    ["new-notification", "product-updated", "stock-updated", "category-updated"],
     refetch,
   );
 
   const highlightedProductId = useRealtimeHighlight(
-    ["product-updated", "stock-updated"],
+    ["product-updated", "stock-updated", "category-updated"],
     (payload) => {
       const product = (payload as ProductRealtimePayload).product;
       return typeof product === "string" ? product : product?._id;

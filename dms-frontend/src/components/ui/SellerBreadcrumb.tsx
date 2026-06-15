@@ -27,23 +27,22 @@ const distributorMenuItems: SalesMenuItem[] = [
 export default function SellerBreadcrumb() {
   const pathname = usePathname();
   const paths = pathname.split("/").filter(Boolean);
-  const menuItems = distributorMenuItems;
   const dashboardPath = "/distributor/dashboard";
 
-  let currentMenu: SalesMenuItem | undefined;
+  const currentMenu = [...distributorMenuItems]
+    .sort((first, second) => second.key.length - first.key.length)
+    .find(
+      (item) => pathname === item.key || pathname.startsWith(`${item.key}/`),
+    );
   let actionLabel = "";
-
-  for (const item of menuItems) {
-    if (pathname.startsWith(item.key)) {
-      currentMenu = item;
-    }
-  }
 
   if (paths.includes("create")) {
     actionLabel = "Thêm mới";
   } else if (paths.includes("edit")) {
     actionLabel = "Chỉnh sửa";
-  } else if (paths.length > 2) {
+  } else if (paths.includes("import")) {
+    actionLabel = "Nhập hàng";
+  } else if (currentMenu && pathname !== currentMenu.key && paths.length > 2) {
     actionLabel = "Chi tiết";
   }
 

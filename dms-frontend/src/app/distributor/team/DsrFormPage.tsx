@@ -296,7 +296,10 @@ export default function DsrFormPage({ mode }: { mode: DsrFormMode }) {
       title={isEdit ? "Sửa DSR" : "Thêm DSR"}
       description="Tạo hồ sơ DSR đầy đủ thông tin đăng nhập, liên hệ và dữ liệu xuất hóa đơn."
       extra={
-        <Button icon={<ArrowLeftOutlined />} onClick={() => router.back()}>
+        <Button
+          icon={<ArrowLeftOutlined />}
+          onClick={() => router.push("/distributor/team")}
+        >
           Quay lại
         </Button>
       }

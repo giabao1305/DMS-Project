@@ -38,6 +38,7 @@ import {
 } from "@/features/orders/orderService";
 import OrderPaymentPanel from "@/features/orders/OrderPaymentPanel";
 import { getOrderAmounts } from "@/features/orders/orderAmounts";
+import { translateApiMessage } from "@/features/orders/orderErrorMessage";
 import {
   exportOrderInvoiceExcel,
   exportOrderInvoicePdf,
@@ -47,6 +48,7 @@ import type {
   OrderItem,
   OrderStatus,
 } from "@/features/orders/orderTypes";
+import { useRealtimeRefetch } from "@/hooks/useRealtimeRefetch";
 
 const { Text } = Typography;
 const money = new Intl.NumberFormat("vi-VN");
@@ -85,7 +87,7 @@ export default function DistributorOrderDetailPage() {
   const [returnForm] = Form.useForm<{ reason: string }>();
   const [returnModalOpen, setReturnModalOpen] = useState(false);
   const { id } = useParams<{ id: string }>();
-  const { data: order, isLoading } = useGetOrderByIdQuery(id);
+  const { data: order, isLoading, refetch } = useGetOrderByIdQuery(id);
   const [approveOrder, { isLoading: approving }] = useApproveOrderMutation();
   const [deliverOrder, { isLoading: delivering }] = useDeliverOrderMutation();
   const [requestReturnOrder, { isLoading: requestingReturn }] =
@@ -95,6 +97,8 @@ export default function DistributorOrderDetailPage() {
   const canRequestReturn = order?.status === "delivered" && !isSupplyOrder;
   const canApproveReturn =
     order?.status === "return_requested" && !isSupplyOrder;
+
+  useRealtimeRefetch(["order-updated", "warehouse-stock-updated"], refetch);
 
   if (isLoading) return <DistributorDetailLoading />;
 
@@ -189,7 +193,7 @@ export default function DistributorOrderDetailPage() {
         return;
       }
 
-      message.error(raw || "Giao đơn hàng thất bại");
+      message.error(translateApiMessage(raw) || "Giao đơn hàng thất bại");
     }
   };
 
@@ -213,9 +217,7 @@ export default function DistributorOrderDetailPage() {
       const detail = payload.data?.message;
       const raw = Array.isArray(detail) ? detail[0] : detail;
 
-      if (raw) {
-        message.error(raw);
-      }
+      message.error(translateApiMessage(raw) || "Không thể gửi yêu cầu trả hàng");
     }
   };
 
@@ -228,7 +230,9 @@ export default function DistributorOrderDetailPage() {
       const payload = error as { data?: { message?: string | string[] } };
       const detail = payload.data?.message;
       const raw = Array.isArray(detail) ? detail[0] : detail;
-      message.error(raw || "Xác nhận trả hàng thất bại");
+      message.error(
+        translateApiMessage(raw) || "Xác nhận trả hàng thất bại",
+      );
     }
   };
 

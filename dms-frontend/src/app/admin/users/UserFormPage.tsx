@@ -279,6 +279,40 @@ export default function UserFormPage({ mode }: { mode: UserFormMode }) {
     });
   }, [form, user]);
 
+  useEffect(() => {
+    if (!isEdit || !user?.address || provinces.length === 0) return;
+    if (form.getFieldValue("provinceCode")) return;
+
+    const normalizedAddress = user.address.toLowerCase();
+    const matchedProvince = provinces.find((province) =>
+      normalizedAddress.includes(province.name.toLowerCase()),
+    );
+
+    if (!matchedProvince) return;
+
+    form.setFieldsValue({
+      provinceCode: matchedProvince.code,
+      address: user.address,
+    });
+  }, [form, isEdit, provinces, user?.address]);
+
+  useEffect(() => {
+    if (!isEdit || !user?.address || wards.length === 0) return;
+    if (form.getFieldValue("wardName")) return;
+
+    const normalizedAddress = user.address.toLowerCase();
+    const matchedWard = wards.find((ward) =>
+      normalizedAddress.includes(ward.name.toLowerCase()),
+    );
+
+    if (!matchedWard) return;
+
+    form.setFieldsValue({
+      wardName: matchedWard.name,
+      address: user.address,
+    });
+  }, [form, isEdit, user?.address, wards]);
+
   const generatedCode = useMemo(() => {
     if (isEdit) return user?.code || "";
 
@@ -338,6 +372,7 @@ export default function UserFormPage({ mode }: { mode: UserFormMode }) {
     try {
       const address =
         [values.wardName, selectedProvince?.name].filter(Boolean).join(", ") ||
+        values.address ||
         user?.address ||
         undefined;
 
@@ -519,8 +554,9 @@ export default function UserFormPage({ mode }: { mode: UserFormMode }) {
                     rules={[
                       {
                         required:
-                          selectedRole === "distributor" ||
-                          selectedRole === "seller",
+                          !isEdit &&
+                          (selectedRole === "distributor" ||
+                            selectedRole === "seller"),
                         message: "Vui lòng chọn tỉnh/thành",
                       },
                     ]}
@@ -735,6 +771,16 @@ export default function UserFormPage({ mode }: { mode: UserFormMode }) {
                       size="large"
                       prefix={<IdcardOutlined />}
                       placeholder="Nhập mã số thuế"
+                    />
+                  </Form.Item>
+                </Col>
+
+                <Col xs={24}>
+                  <Form.Item label="Địa chỉ" name="address">
+                    <Input
+                      size="large"
+                      prefix={<ShopOutlined />}
+                      placeholder="Nhập địa chỉ hoặc chọn tỉnh/xã để cập nhật"
                     />
                   </Form.Item>
                 </Col>

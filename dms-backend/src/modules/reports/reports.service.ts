@@ -285,14 +285,14 @@ export class ReportsService {
     year?: number,
   ): Promise<SalesReportRow[]> {
     const match: Record<string, unknown> = {
+      orderType: OrderType.MANUFACTURER_TO_DISTRIBUTOR,
       status: OrderStatus.DELIVERED,
-      orderType: { $ne: OrderType.MANUFACTURER_TO_DISTRIBUTOR },
     };
 
     if (month && year) {
       const { startDate, endDate } = this.getMonthRange(month, year);
 
-      match.createdAt = {
+      match.revenueDate = {
         $gte: startDate,
         $lt: endDate,
       };
@@ -300,23 +300,30 @@ export class ReportsService {
 
     const result = await this.orderModel.aggregate<SalesReportRow>([
       {
+        $addFields: {
+          revenueDate: {
+            $ifNull: ['$deliveredAt', { $ifNull: ['$updatedAt', '$createdAt'] }],
+          },
+        },
+      },
+      {
         $match: match,
       },
       {
         $group: {
           _id: {
             year: {
-              $year: '$createdAt',
+              $year: '$revenueDate',
             },
             month: {
-              $month: '$createdAt',
+              $month: '$revenueDate',
             },
             day: {
-              $dayOfMonth: '$createdAt',
+              $dayOfMonth: '$revenueDate',
             },
           },
           totalRevenue: {
-            $sum: '$finalAmount',
+            $sum: { $ifNull: ['$finalAmount', 0] },
           },
           totalOrders: {
             $sum: 1,
@@ -340,19 +347,26 @@ export class ReportsService {
     year?: number,
   ): Promise<OrdersReportRow[]> {
     const match: Record<string, unknown> = {
-      orderType: { $ne: OrderType.MANUFACTURER_TO_DISTRIBUTOR },
+      orderType: OrderType.MANUFACTURER_TO_DISTRIBUTOR,
     };
 
     if (month && year) {
       const { startDate, endDate } = this.getMonthRange(month, year);
 
-      match.createdAt = {
+      match.revenueDate = {
         $gte: startDate,
         $lt: endDate,
       };
     }
 
     return this.orderModel.aggregate<OrdersReportRow>([
+      {
+        $addFields: {
+          revenueDate: {
+            $ifNull: ['$deliveredAt', { $ifNull: ['$updatedAt', '$createdAt'] }],
+          },
+        },
+      },
       {
         $match: match,
       },
@@ -427,14 +441,14 @@ export class ReportsService {
     year?: number,
   ): Promise<SellersReportRow[]> {
     const match: Record<string, unknown> = {
+      orderType: OrderType.MANUFACTURER_TO_DISTRIBUTOR,
       status: OrderStatus.DELIVERED,
-      orderType: { $ne: OrderType.MANUFACTURER_TO_DISTRIBUTOR },
     };
 
     if (month && year) {
       const { startDate, endDate } = this.getMonthRange(month, year);
 
-      match.createdAt = {
+      match.revenueDate = {
         $gte: startDate,
         $lt: endDate,
       };
@@ -442,13 +456,20 @@ export class ReportsService {
 
     return this.orderModel.aggregate<SellersReportRow>([
       {
+        $addFields: {
+          revenueDate: {
+            $ifNull: ['$deliveredAt', { $ifNull: ['$updatedAt', '$createdAt'] }],
+          },
+        },
+      },
+      {
         $match: match,
       },
       {
         $group: {
-          _id: '$seller',
+          _id: '$distributor',
           totalRevenue: {
-            $sum: '$finalAmount',
+            $sum: { $ifNull: ['$finalAmount', 0] },
           },
           totalOrders: {
             $sum: 1,

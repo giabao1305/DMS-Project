@@ -2,6 +2,7 @@
 
 import {
   DeleteOutlined,
+  DownOutlined,
   EditOutlined,
   EyeOutlined,
   PlusOutlined,
@@ -14,6 +15,7 @@ import {
   Avatar,
   Button,
   Card,
+  Dropdown,
   Empty,
   Flex,
   Input,
@@ -141,6 +143,55 @@ export default function UsersPage() {
     }
   };
 
+  const handleChangeStatus = async (user: User, nextActive: boolean) => {
+    if (user.isActive === nextActive) return;
+    await handleToggleStatus(user._id);
+  };
+
+  const renderStatusDropdown = (user: User) => (
+    <Dropdown
+      trigger={["click"]}
+      overlayClassName="admin-users-status-menu"
+      menu={{
+        selectedKeys: [user.isActive ? "active" : "inactive"],
+        items: [
+          {
+            key: "active",
+            label: (
+              <span className="admin-users-status-menu-label is-active">
+                Hoạt động
+              </span>
+            ),
+          },
+          {
+            key: "inactive",
+            label: (
+              <span className="admin-users-status-menu-label is-inactive">
+                Khóa
+              </span>
+            ),
+          },
+        ],
+        onClick: ({ key }) => handleChangeStatus(user, key === "active"),
+      }}
+    >
+      <Button
+        type="text"
+        loading={togglingStatus}
+        className={
+          user.isActive
+            ? "admin-users-status-dropdown is-active"
+            : "admin-users-status-dropdown is-inactive"
+        }
+      >
+        <span className="admin-users-status-text">
+          {user.isActive ? "Hoạt động" : "Khóa"}
+        </span>
+        <DownOutlined />
+      </Button>
+    </Dropdown>
+  );
+
   const columns: ColumnsType<User> = [
     {
       title: "Nhân viên",
@@ -166,15 +217,7 @@ export default function UsersPage() {
       dataIndex: "isActive",
       width: 150,
       align: "center",
-      render: (isActive: boolean, record) => (
-        <Tag
-          color={isActive ? "green" : "default"}
-          className="admin-users-status-tag is-clickable"
-          onClick={() => handleToggleStatus(record._id)}
-        >
-          {isActive ? "Hoạt động" : "Khóa"}
-        </Tag>
-      ),
+      render: (_, record) => renderStatusDropdown(record),
     },
     {
       title: "Mã",
@@ -710,6 +753,114 @@ export default function UsersPage() {
         .admin-users-status-tag.is-clickable {
           cursor: pointer;
           user-select: none;
+        }
+
+        .admin-users-status-dropdown {
+          height: 36px !important;
+          min-width: 112px;
+          padding: 0 10px !important;
+          display: inline-flex !important;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          border: 1px solid transparent !important;
+          border-radius: 4px !important;
+        }
+
+        .admin-users-status-dropdown.is-active {
+          border-color: #b7ebc6 !important;
+          color: #389e0d !important;
+          background: #f6ffed !important;
+        }
+
+        .admin-users-status-dropdown.is-active:hover,
+        .admin-users-status-dropdown.is-active:focus-visible {
+          border-color: #95de64 !important;
+          color: #237804 !important;
+          background: #efffe5 !important;
+        }
+
+        .admin-users-status-dropdown.is-inactive {
+          border-color: #d9d9d9 !important;
+          color: #64748b !important;
+          background: #f8fafc !important;
+        }
+
+        .admin-users-status-dropdown.is-inactive:hover,
+        .admin-users-status-dropdown.is-inactive:focus-visible {
+          border-color: #bfbfbf !important;
+          color: #334155 !important;
+          background: #f1f5f9 !important;
+        }
+
+        .admin-users-status-dropdown .anticon {
+          color: currentColor;
+          font-size: 11px;
+        }
+
+        .admin-users-status-text {
+          font-size: 12.5px;
+          font-weight: 900;
+          line-height: 1;
+        }
+
+        .admin-users-status-menu .ant-dropdown-menu {
+          padding: 6px !important;
+          border: 1px solid #dbe4f0;
+          border-radius: 6px !important;
+          box-shadow: 0 14px 28px rgba(15, 23, 42, 0.14) !important;
+        }
+
+        .admin-users-status-menu .ant-dropdown-menu-item {
+          margin: 2px 0 !important;
+          border-radius: 4px !important;
+          font-weight: 800;
+        }
+
+        .admin-users-status-menu-label {
+          min-width: 108px;
+          height: 30px;
+          padding: 0 10px;
+          display: inline-flex;
+          align-items: center;
+          border: 1px solid transparent;
+          border-radius: 4px;
+          font-size: 12.5px;
+          font-weight: 900;
+        }
+
+        .admin-users-status-menu-label.is-active {
+          border-color: #b7ebc6;
+          color: #389e0d;
+          background: #f6ffed;
+        }
+
+        .admin-users-status-menu-label.is-inactive {
+          border-color: #d9d9d9;
+          color: #64748b;
+          background: #f8fafc;
+        }
+
+        .admin-users-status-menu
+          .ant-dropdown-menu-item-selected
+          .admin-users-status-menu-label.is-active,
+        .admin-users-status-menu
+          .ant-dropdown-menu-item:hover
+          .admin-users-status-menu-label.is-active {
+          border-color: #95de64;
+          color: #237804;
+          background: #efffe5;
+        }
+
+        .admin-users-status-menu
+          .ant-dropdown-menu-item-selected
+          .admin-users-status-menu-label.is-inactive,
+        .admin-users-status-menu
+          .ant-dropdown-menu-item:hover
+          .admin-users-status-menu-label.is-inactive {
+          border-color: #bfbfbf;
+          color: #334155;
+          background: #f1f5f9;
         }
 
         .admin-users-table .ant-table,

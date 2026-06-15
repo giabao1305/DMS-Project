@@ -21,6 +21,7 @@ import { CreateCategoryDto } from './dto/create-category.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { SocketGateway } from '../socket/socket.gateway';
+import { UserRole } from '../users/schemas/user.schema';
 
 type QueryFilter = Record<string, any>;
 
@@ -174,8 +175,41 @@ export class ProductsService {
     return filter;
   }
 
+  private hideManufacturerStockForNonAdmin<T extends Product | Product[] | PaginatedResult<Product>>(
+    value: T,
+    role?: UserRole,
+  ): T {
+    if (role === UserRole.ADMIN) {
+      return value;
+    }
+
+    const hideStock = (product: Product) => {
+      const plain =
+        typeof (product as ProductDocument).toObject === 'function'
+          ? (product as ProductDocument).toObject()
+          : { ...product };
+
+      const { stock: _stock, ...productWithoutStock } = plain;
+      return productWithoutStock as Product;
+    };
+
+    if (Array.isArray(value)) {
+      return value.map(hideStock) as T;
+    }
+
+    if ('data' in value && Array.isArray(value.data)) {
+      return {
+        ...value,
+        data: value.data.map(hideStock),
+      } as T;
+    }
+
+    return hideStock(value as Product) as T;
+  }
+
   async findAllProducts(
     query?: PaginationQueryDto,
+    role?: UserRole,
   ): Promise<Product[] | PaginatedResult<Product>> {
     const filter = this.buildProductListFilter(query);
     const productQuery = this.productModel
@@ -184,7 +218,8 @@ export class ProductsService {
       .sort(getSort(query));
 
     if (!shouldPaginate(query)) {
-      return productQuery.exec();
+      const products = await productQuery.exec();
+      return this.hideManufacturerStockForNonAdmin(products, role);
     }
 
     const { page, limit, skip } = getPagination(query);
@@ -193,7 +228,10 @@ export class ProductsService {
       this.productModel.countDocuments(filter).exec(),
     ]);
 
-    return toPaginatedResult(data, total, page, limit);
+    return this.hideManufacturerStockForNonAdmin(
+      toPaginatedResult(data, total, page, limit),
+      role,
+    );
   }
 
   async findLowStockProducts(): Promise<Product[]> {
@@ -210,7 +248,7 @@ export class ProductsService {
       .exec();
   }
 
-  async findProductById(id: string): Promise<Product> {
+  async findProductById(id: string, role?: UserRole): Promise<Product> {
     const product = await this.productModel
       .findOne({ _id: id, isDeleted: { $ne: true } })
       .populate('category', 'code name description')
@@ -222,7 +260,7 @@ export class ProductsService {
 
     this.emitProductRealtime('updated', product);
 
-    return product;
+    return this.hideManufacturerStockForNonAdmin(product, role);
   }
 
   async updateProduct(
