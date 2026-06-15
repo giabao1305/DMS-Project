@@ -9,7 +9,6 @@ import {
   Flex,
   Form,
   Input,
-  InputNumber,
   Modal,
   Popconfirm,
   Select,
@@ -31,7 +30,6 @@ import {
   useCreateWarehouseMutation,
   useGetWarehousesQuery,
   useGetWarehouseStocksQuery,
-  useUpdateWarehouseSellingPriceMutation,
   useUpdateWarehouseStatusMutation,
 } from "@/features/warehouses/warehouseService";
 import type {
@@ -114,11 +112,9 @@ export default function WarehousesPage() {
   const { data: stocks = [], isLoading: loadingStocks } =
     useGetWarehouseStocksQuery(activeWarehouseId, {
       skip: !activeWarehouseId,
-    });
+  });
   const [createWarehouse, { isLoading: creating }] =
     useCreateWarehouseMutation();
-  const [updateWarehouseSellingPrice] =
-    useUpdateWarehouseSellingPriceMutation();
   const [updateWarehouseStatus] = useUpdateWarehouseStatusMutation();
 
   const distributors = useMemo(
@@ -151,28 +147,6 @@ export default function WarehousesPage() {
         warehouseForm.getFieldValue("name") ||
         getDistributorWarehouseName(distributor),
     });
-  };
-
-  const handleSellingPriceChange = async (
-    stock: WarehouseStock,
-    sellingPrice: number | null,
-  ) => {
-    if (!activeWarehouseId || sellingPrice === null) return;
-    if (sellingPrice < 0) {
-      message.error("Giá bán ra tiệm không được nhỏ hơn 0");
-      return;
-    }
-
-    try {
-      await updateWarehouseSellingPrice({
-        warehouseId: activeWarehouseId,
-        stockId: stock._id,
-        body: { sellingPrice },
-      }).unwrap();
-      message.success("Đã cập nhật giá bán ra tiệm");
-    } catch {
-      message.error("Không thể cập nhật giá bán");
-    }
   };
 
   const handleWarehouseStatusChange = async (
@@ -271,24 +245,6 @@ export default function WarehousesPage() {
       dataIndex: "averageCost",
       align: "right",
       render: (value: number) => money(value),
-    },
-    {
-      title: "Giá bán ra tiệm",
-      dataIndex: "sellingPrice",
-      align: "right",
-      render: (value: number | undefined, record) => (
-        <Space.Compact>
-          <InputNumber
-            min={0}
-            disabled={!selectedWarehouse?.isActive}
-            defaultValue={value ?? record.averageCost}
-            onBlur={(event) =>
-              handleSellingPriceChange(record, Number(event.target.value))
-            }
-          />
-          <Button disabled>đ</Button>
-        </Space.Compact>
-      ),
     },
     {
       title: "Giá trị vốn tồn",
