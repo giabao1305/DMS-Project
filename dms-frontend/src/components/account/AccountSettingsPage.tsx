@@ -41,6 +41,7 @@ const { Text, Title } = Typography;
 
 type AccountSettingsPageProps = {
   accent?: "admin" | "distributor" | "seller";
+  showPasswordTab?: boolean;
 };
 
 type ProfileFormValues = {
@@ -59,6 +60,7 @@ type PasswordFormValues = ChangePasswordRequest & {
 
 export default function AccountSettingsPage({
   accent = "admin",
+  showPasswordTab = true,
 }: AccountSettingsPageProps) {
   const { message } = App.useApp();
   const dispatch = useAppDispatch();
@@ -171,9 +173,7 @@ export default function AccountSettingsPage({
   };
 
   return (
-    <section
-      className={`account-settings-shell ${workspaceClass}`}
-    >
+    <section className={`account-settings-shell ${workspaceClass}`}>
       <Card className="account-settings-hero" variant="borderless">
         <div className="account-settings-hero-main">
           <div className="account-settings-identity">
@@ -199,9 +199,7 @@ export default function AccountSettingsPage({
               </Text>
 
               <div className="account-settings-tags">
-                <Tag color="blue">
-                  {roleLabel}
-                </Tag>
+                <Tag color="blue">{roleLabel}</Tag>
                 <Tag color={currentUser?.isActive ? "success" : "error"}>
                   {statusLabel}
                 </Tag>
@@ -212,7 +210,9 @@ export default function AccountSettingsPage({
           <div className="account-settings-status-card">
             <SafetyCertificateOutlined />
             <span>Bảo mật tài khoản</span>
-            <strong>{currentUser?.isActive ? "Sẵn sàng" : "Cần kiểm tra"}</strong>
+            <strong>
+              {currentUser?.isActive ? "Sẵn sàng" : "Cần kiểm tra"}
+            </strong>
           </div>
         </div>
       </Card>
@@ -243,6 +243,7 @@ export default function AccountSettingsPage({
 
       <Card className="account-settings-card" variant="borderless">
         <Tabs
+          tabBarStyle={!showPasswordTab ? { display: "none" } : undefined}
           items={[
             {
               key: "profile",
@@ -372,121 +373,130 @@ export default function AccountSettingsPage({
                 </div>
               ),
             },
-            {
-              key: "password",
-              label: "Đổi mật khẩu",
-              forceRender: true,
-              children: (
-                <div className="account-settings-panel">
-                  <div className="account-settings-panel-head">
-                    <div>
-                      <Title level={4}>Bảo mật đăng nhập</Title>
-                      <Text>
-                        Nên đổi mật khẩu định kỳ và tránh dùng lại mật khẩu ở hệ
-                        thống khác.
-                      </Text>
-                    </div>
-                    <div className="account-settings-security-chip">
-                      <LockOutlined />
-                      Protected
-                    </div>
-                  </div>
+            ...(showPasswordTab
+              ? [
+                  {
+                    key: "password",
+                    label: "Đổi mật khẩu",
+                    forceRender: true,
+                    children: (
+                      <div className="account-settings-panel">
+                        <div className="account-settings-panel-head">
+                          <div>
+                            <Title level={4}>Bảo mật đăng nhập</Title>
+                            <Text>
+                              Nên đổi mật khẩu định kỳ và tránh dùng lại mật
+                              khẩu ở hệ thống khác.
+                            </Text>
+                          </div>
+                          <div className="account-settings-security-chip">
+                            <LockOutlined />
+                            Đã bảo vệ
+                          </div>
+                        </div>
 
-                  <Form<PasswordFormValues>
-                    form={passwordForm}
-                    layout="vertical"
-                    requiredMark={false}
-                    onFinish={handleChangePassword}
-                  >
-                    <Row gutter={[16, 0]}>
-                      <Col xs={24} md={12}>
-                        <Form.Item
-                          label="Mật khẩu hiện tại"
-                          name="currentPassword"
-                          rules={[
-                            {
-                              required: true,
-                              message: "Vui lòng nhập mật khẩu hiện tại",
-                            },
-                          ]}
+                        <Form<PasswordFormValues>
+                          form={passwordForm}
+                          layout="vertical"
+                          requiredMark={false}
+                          onFinish={handleChangePassword}
                         >
-                          <Input.Password
-                            prefix={<LockOutlined />}
-                            size="large"
-                            autoComplete="current-password"
-                          />
-                        </Form.Item>
-                      </Col>
+                          <Row gutter={[16, 0]}>
+                            <Col xs={24} md={12}>
+                              <Form.Item
+                                label="Mật khẩu hiện tại"
+                                name="currentPassword"
+                                rules={[
+                                  {
+                                    required: true,
+                                    message: "Vui lòng nhập mật khẩu hiện tại",
+                                  },
+                                ]}
+                              >
+                                <Input.Password
+                                  prefix={<LockOutlined />}
+                                  size="large"
+                                  autoComplete="current-password"
+                                />
+                              </Form.Item>
+                            </Col>
 
-                      <Col xs={24} md={12}>
-                        <Form.Item
-                          label="Mật khẩu mới"
-                          name="newPassword"
-                          rules={[
-                            {
-                              required: true,
-                              message: "Vui lòng nhập mật khẩu mới",
-                            },
-                            { min: 6, message: "Mật khẩu tối thiểu 6 ký tự" },
-                          ]}
-                        >
-                          <Input.Password
-                            prefix={<LockOutlined />}
-                            size="large"
-                            autoComplete="new-password"
-                          />
-                        </Form.Item>
-                      </Col>
+                            <Col xs={24} md={12}>
+                              <Form.Item
+                                label="Mật khẩu mới"
+                                name="newPassword"
+                                rules={[
+                                  {
+                                    required: true,
+                                    message: "Vui lòng nhập mật khẩu mới",
+                                  },
+                                  {
+                                    min: 6,
+                                    message: "Mật khẩu tối thiểu 6 ký tự",
+                                  },
+                                ]}
+                              >
+                                <Input.Password
+                                  prefix={<LockOutlined />}
+                                  size="large"
+                                  autoComplete="new-password"
+                                />
+                              </Form.Item>
+                            </Col>
 
-                      <Col xs={24} md={12}>
-                        <Form.Item
-                          label="Xác nhận mật khẩu mới"
-                          name="confirmPassword"
-                          dependencies={["newPassword"]}
-                          rules={[
-                            {
-                              required: true,
-                              message: "Vui lòng xác nhận mật khẩu",
-                            },
-                            ({ getFieldValue }) => ({
-                              validator(_, value) {
-                                if (
-                                  !value ||
-                                  getFieldValue("newPassword") === value
-                                ) {
-                                  return Promise.resolve();
-                                }
+                            <Col xs={24} md={12}>
+                              <Form.Item
+                                label="Xác nhận mật khẩu mới"
+                                name="confirmPassword"
+                                dependencies={["newPassword"]}
+                                rules={[
+                                  {
+                                    required: true,
+                                    message: "Vui lòng xác nhận mật khẩu",
+                                  },
+                                  ({ getFieldValue }) => ({
+                                    validator(_, value) {
+                                      if (
+                                        !value ||
+                                        getFieldValue("newPassword") === value
+                                      ) {
+                                        return Promise.resolve();
+                                      }
 
-                                return Promise.reject(
-                                  new Error("Mật khẩu xác nhận không khớp"),
-                                );
-                              },
-                            }),
-                          ]}
-                        >
-                          <Input.Password
-                            prefix={<LockOutlined />}
-                            size="large"
-                            autoComplete="new-password"
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
+                                      return Promise.reject(
+                                        new Error(
+                                          "Mật khẩu xác nhận không khớp",
+                                        ),
+                                      );
+                                    },
+                                  }),
+                                ]}
+                              >
+                                <Input.Password
+                                  prefix={<LockOutlined />}
+                                  size="large"
+                                  autoComplete="new-password"
+                                />
+                              </Form.Item>
+                            </Col>
+                          </Row>
 
-                    <div className="account-settings-actions">
-                      <Button
-                        type="primary"
-                        htmlType="submit"
-                        loading={changingPassword}
-                        icon={<LockOutlined />}
-                      >
-                        Đổi mật khẩu
-                      </Button>
-                    </div>
-                  </Form>
-                </div>
-              ),
-            },
+                          <div className="account-settings-actions">
+                            <Button
+                              type="primary"
+                              htmlType="submit"
+                              loading={changingPassword}
+                              icon={<LockOutlined />}
+                            >
+                              Đổi mật khẩu
+                            </Button>
+                          </div>
+                        </Form>
+                      </div>
+                    ),
+                  },
+                ]
+              : []),
           ]}
         />
       </Card>
@@ -496,7 +506,7 @@ export default function AccountSettingsPage({
           --account-primary: #2563eb;
           --account-primary-hover: #1d4ed8;
           --account-primary-soft: #eff6ff;
-          --account-border: #dbe4f0;
+          --account-border: #b8c6d8;
           --account-surface: #f8fafc;
           --account-text: #0f172a;
           --account-muted: #64748b;
@@ -509,7 +519,7 @@ export default function AccountSettingsPage({
           --account-primary: #2563eb;
           --account-primary-hover: #1d4ed8;
           --account-primary-soft: #eff6ff;
-          --account-border: #dbeafe;
+          --account-border: #b8c6d8;
           --account-surface: #f8fbff;
           --account-text: #0f172a;
           --account-muted: #64748b;
@@ -522,7 +532,9 @@ export default function AccountSettingsPage({
           border: 1px solid var(--account-border) !important;
           border-radius: 8px !important;
           background: #ffffff !important;
-          box-shadow: 0 10px 24px rgba(15, 23, 42, 0.055) !important;
+          box-shadow: none !important;
+          transform: none !important;
+          transition: none !important;
         }
 
         .account-settings-shell.is-seller .account-settings-hero,
@@ -531,20 +543,20 @@ export default function AccountSettingsPage({
         .account-settings-shell.is-distributor .account-settings-hero,
         .account-settings-shell.is-distributor .account-settings-summary-card,
         .account-settings-shell.is-distributor .account-settings-card {
-          box-shadow: 0 14px 30px rgba(37, 99, 235, 0.08) !important;
+          box-shadow: none !important;
         }
 
         .account-settings-hero {
           background: #102b3a !important;
           border-color: rgba(125, 211, 252, 0.2) !important;
-          box-shadow: 0 22px 46px rgba(7, 26, 36, 0.18) !important;
+          box-shadow: none !important;
         }
 
         .account-settings-shell.is-seller .account-settings-hero,
         .account-settings-shell.is-distributor .account-settings-hero {
           background: #ffffff !important;
           border-color: var(--account-border) !important;
-          box-shadow: 0 14px 30px rgba(37, 99, 235, 0.08) !important;
+          box-shadow: none !important;
         }
 
         .account-settings-hero .ant-card-body {
@@ -576,13 +588,13 @@ export default function AccountSettingsPage({
           font-size: 30px;
           font-weight: 900;
           flex-shrink: 0;
-          box-shadow: 0 14px 28px rgba(37, 99, 235, 0.24);
+          box-shadow: none;
         }
 
         .account-settings-shell.is-seller .account-settings-avatar,
         .account-settings-shell.is-distributor .account-settings-avatar {
           background: var(--account-primary);
-          box-shadow: 0 14px 28px rgba(37, 99, 235, 0.22);
+          box-shadow: none;
         }
 
         .account-settings-eyebrow {
@@ -607,8 +619,12 @@ export default function AccountSettingsPage({
           line-height: 1.2;
         }
 
-        .account-settings-shell.is-seller .account-settings-hero h3.ant-typography,
-        .account-settings-shell.is-distributor .account-settings-hero h3.ant-typography {
+        .account-settings-shell.is-seller
+          .account-settings-hero
+          h3.ant-typography,
+        .account-settings-shell.is-distributor
+          .account-settings-hero
+          h3.ant-typography {
           color: var(--account-text);
         }
 
@@ -680,7 +696,9 @@ export default function AccountSettingsPage({
         }
 
         .account-settings-shell.is-seller .account-settings-status-card span,
-        .account-settings-shell.is-distributor .account-settings-status-card span {
+        .account-settings-shell.is-distributor
+          .account-settings-status-card
+          span {
           color: var(--account-muted);
         }
 
@@ -700,7 +718,9 @@ export default function AccountSettingsPage({
         }
 
         .account-settings-shell.is-seller .account-settings-status-card strong,
-        .account-settings-shell.is-distributor .account-settings-status-card strong {
+        .account-settings-shell.is-distributor
+          .account-settings-status-card
+          strong {
           color: var(--account-text);
         }
 
@@ -735,19 +755,26 @@ export default function AccountSettingsPage({
         }
 
         .account-settings-panel {
-          padding: 18px;
-          border: 1px solid var(--account-border);
-          border-radius: 8px;
-          background: var(--account-surface);
+          padding: 0;
+          border: 0 !important;
+          border-radius: 0 !important;
+          background: transparent !important;
+          box-shadow: none !important;
         }
 
         .account-settings-panel-head {
           margin-bottom: 18px;
+          padding: 0 !important;
           display: flex;
           align-items: flex-start;
           justify-content: space-between;
           gap: 14px;
           flex-wrap: wrap;
+          border: 0 !important;
+          border-radius: 0 !important;
+          background: transparent !important;
+          box-shadow: none !important;
+          transform: none !important;
         }
 
         .account-settings-panel-head h4.ant-typography {
@@ -780,10 +807,10 @@ export default function AccountSettingsPage({
         }
 
         .account-settings-card .ant-form {
-          padding: 16px;
-          border: 1px solid var(--account-border);
-          border-radius: 8px;
-          background: #ffffff;
+          padding: 0;
+          border: 0;
+          border-radius: 0;
+          background: transparent;
         }
 
         .account-settings-avatar-field {
@@ -794,7 +821,7 @@ export default function AccountSettingsPage({
           gap: 16px;
           border: 1px solid var(--account-border);
           border-radius: 8px;
-          background: var(--account-surface);
+          background: #ffffff;
         }
 
         .account-settings-avatar-preview {
@@ -804,7 +831,7 @@ export default function AccountSettingsPage({
           color: #ffffff;
           font-size: 30px;
           font-weight: 900;
-          box-shadow: 0 8px 18px rgba(37, 99, 235, 0.12);
+          box-shadow: none;
         }
 
         .account-settings-avatar-content {
@@ -866,12 +893,16 @@ export default function AccountSettingsPage({
         .account-settings-card .ant-btn-primary {
           background: var(--account-primary) !important;
           border-color: var(--account-primary) !important;
-          box-shadow: 0 10px 22px rgba(37, 99, 235, 0.18);
+          box-shadow: none !important;
         }
 
-        .account-settings-shell.is-seller .account-settings-card .ant-btn-primary,
-        .account-settings-shell.is-distributor .account-settings-card .ant-btn-primary {
-          box-shadow: 0 10px 22px rgba(37, 99, 235, 0.18);
+        .account-settings-shell.is-seller
+          .account-settings-card
+          .ant-btn-primary,
+        .account-settings-shell.is-distributor
+          .account-settings-card
+          .ant-btn-primary {
+          box-shadow: none !important;
         }
 
         .account-settings-card .ant-btn-primary:hover {
@@ -881,12 +912,7 @@ export default function AccountSettingsPage({
 
         .account-settings-card
           .ant-tabs-tab.ant-tabs-tab-active
-          .ant-tabs-tab-btn,
-        .account-settings-card .ant-tabs-tab:hover,
-        .account-settings-card .ant-tabs-tab:hover .ant-tabs-tab-btn,
-        .account-settings-card .ant-tabs-tab-btn:hover,
-        .account-settings-card .ant-tabs-tab-btn:focus,
-        .account-settings-card .ant-tabs-tab-btn:active {
+          .ant-tabs-tab-btn {
           color: var(--account-primary) !important;
         }
 
@@ -901,7 +927,15 @@ export default function AccountSettingsPage({
         .account-settings-card .ant-tabs-tab-btn {
           color: inherit !important;
           font-weight: 800;
-          transition: color 160ms ease;
+          transition: none !important;
+        }
+
+        .account-settings-card .ant-tabs-tab:hover,
+        .account-settings-card .ant-tabs-tab:hover .ant-tabs-tab-btn,
+        .account-settings-card .ant-tabs-tab-btn:hover,
+        .account-settings-card .ant-tabs-tab-btn:focus,
+        .account-settings-card .ant-tabs-tab-btn:active {
+          color: inherit !important;
         }
 
         .account-settings-card .ant-tabs-ink-bar {
@@ -933,8 +967,12 @@ export default function AccountSettingsPage({
           box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
         }
 
-        .account-settings-shell.is-seller .account-settings-card .ant-input:focus,
-        .account-settings-shell.is-distributor .account-settings-card .ant-input:focus,
+        .account-settings-shell.is-seller
+          .account-settings-card
+          .ant-input:focus,
+        .account-settings-shell.is-distributor
+          .account-settings-card
+          .ant-input:focus,
         .account-settings-shell.is-seller
           .account-settings-card
           .ant-input-affix-wrapper-focused,
@@ -953,6 +991,263 @@ export default function AccountSettingsPage({
         .account-settings-actions {
           display: flex;
           justify-content: flex-end;
+        }
+
+        .account-settings-shell
+          :where(
+            .account-settings-hero,
+            .account-settings-summary-card,
+            .account-settings-card,
+            .account-settings-status-card,
+            .account-settings-panel,
+            .account-settings-avatar-field,
+            .account-settings-security-chip,
+            .ant-card,
+            .ant-card-body,
+            .ant-avatar
+          ),
+        .account-settings-shell
+          :where(
+            .account-settings-hero,
+            .account-settings-summary-card,
+            .account-settings-card,
+            .account-settings-status-card,
+            .account-settings-panel,
+            .account-settings-avatar-field,
+            .account-settings-security-chip,
+            .ant-card,
+            .ant-card-body,
+            .ant-avatar
+          ):hover {
+          box-shadow: none !important;
+          transform: none !important;
+          transition: none !important;
+        }
+
+        .account-settings-shell
+          :where(
+            .account-settings-hero,
+            .account-settings-summary-card,
+            .account-settings-card,
+            .account-settings-status-card,
+            .account-settings-avatar-field
+          ):hover {
+          border-color: var(--account-border) !important;
+        }
+
+        .account-settings-hero:hover {
+          border-color: rgba(125, 211, 252, 0.2) !important;
+          background: #102b3a !important;
+        }
+
+        .account-settings-shell.is-seller .account-settings-hero:hover,
+        .account-settings-shell.is-distributor .account-settings-hero:hover {
+          border-color: var(--account-border) !important;
+          background: #ffffff !important;
+        }
+
+        .admin-layout-root
+          .account-settings-shell
+          :is(
+            .account-settings-hero,
+            .account-settings-summary-card,
+            .account-settings-card,
+            .account-settings-status-card,
+            .account-settings-panel,
+            .account-settings-panel-head,
+            .account-settings-avatar-field,
+            .account-settings-security-chip,
+            .ant-card,
+            .ant-card-body,
+            .ant-avatar
+          ),
+        .distributor-shell
+          .account-settings-shell
+          :is(
+            .account-settings-hero,
+            .account-settings-summary-card,
+            .account-settings-card,
+            .account-settings-status-card,
+            .account-settings-panel,
+            .account-settings-panel-head,
+            .account-settings-avatar-field,
+            .account-settings-security-chip,
+            .ant-card,
+            .ant-card-body,
+            .ant-avatar
+          ),
+        .admin-layout-root
+          .account-settings-shell
+          :is(
+            .account-settings-hero,
+            .account-settings-summary-card,
+            .account-settings-card,
+            .account-settings-status-card,
+            .account-settings-panel,
+            .account-settings-panel-head,
+            .account-settings-avatar-field,
+            .account-settings-security-chip,
+            .ant-card,
+            .ant-card-body,
+            .ant-avatar
+          ):hover,
+        .distributor-shell
+          .account-settings-shell
+          :is(
+            .account-settings-hero,
+            .account-settings-summary-card,
+            .account-settings-card,
+            .account-settings-status-card,
+            .account-settings-panel,
+            .account-settings-panel-head,
+            .account-settings-avatar-field,
+            .account-settings-security-chip,
+            .ant-card,
+            .ant-card-body,
+            .ant-avatar
+          ):hover {
+          box-shadow: none !important;
+          transform: none !important;
+          transition: none !important;
+        }
+
+        .admin-content-frame .account-settings-shell .account-settings-panel,
+        .admin-content-frame
+          .account-settings-shell
+          .account-settings-panel:hover,
+        .admin-content-frame
+          .account-settings-shell
+          .account-settings-panel-head,
+        .admin-content-frame
+          .account-settings-shell
+          .account-settings-panel-head:hover,
+        .distributor-content .account-settings-shell .account-settings-panel,
+        .distributor-content
+          .account-settings-shell
+          .account-settings-panel:hover,
+        .distributor-content
+          .account-settings-shell
+          .account-settings-panel-head,
+        .distributor-content
+          .account-settings-shell
+          .account-settings-panel-head:hover {
+          padding-inline: 0 !important;
+          border: 0 !important;
+          border-radius: 0 !important;
+          background: transparent !important;
+          box-shadow: none !important;
+          transform: none !important;
+        }
+
+        .admin-layout-root
+          .account-settings-shell
+          .account-settings-summary-card.ant-card,
+        .admin-layout-root
+          .account-settings-shell
+          .account-settings-summary-card.ant-card:hover,
+        .distributor-shell
+          .account-settings-shell
+          .account-settings-summary-card.ant-card,
+        .distributor-shell
+          .account-settings-shell
+          .account-settings-summary-card.ant-card:hover {
+          border-color: var(--account-border) !important;
+          background: #ffffff !important;
+          color: var(--account-text) !important;
+          box-shadow: none !important;
+          transform: none !important;
+        }
+
+        .admin-layout-root
+          .account-settings-shell
+          .account-settings-summary-card.ant-card::before,
+        .admin-layout-root
+          .account-settings-shell
+          .account-settings-summary-card.ant-card::after,
+        .distributor-shell
+          .account-settings-shell
+          .account-settings-summary-card.ant-card::before,
+        .distributor-shell
+          .account-settings-shell
+          .account-settings-summary-card.ant-card::after {
+          display: none !important;
+          content: none !important;
+        }
+
+        .admin-layout-root
+          .account-settings-shell
+          .account-settings-summary-card
+          span,
+        .admin-layout-root
+          .account-settings-shell
+          .account-settings-summary-card
+          strong,
+        .distributor-shell
+          .account-settings-shell
+          .account-settings-summary-card
+          span,
+        .distributor-shell
+          .account-settings-shell
+          .account-settings-summary-card
+          strong {
+          color: var(--account-text) !important;
+          opacity: 1 !important;
+        }
+
+        .admin-layout-root
+          .account-settings-shell
+          .account-settings-summary-card
+          span,
+        .distributor-shell
+          .account-settings-shell
+          .account-settings-summary-card
+          span {
+          color: var(--account-muted) !important;
+        }
+
+        .admin-layout-root
+          .account-settings-shell
+          .account-settings-summary-card
+          .anticon,
+        .distributor-shell
+          .account-settings-shell
+          .account-settings-summary-card
+          .anticon {
+          color: var(--account-primary) !important;
+          background: var(--account-primary-soft) !important;
+          box-shadow: none !important;
+        }
+
+        .distributor-content
+          .account-settings-shell
+          .account-settings-card
+          .ant-tabs-tab:hover,
+        .distributor-content
+          .account-settings-shell
+          .account-settings-card
+          .ant-tabs-tab:hover
+          .ant-tabs-tab-btn,
+        .distributor-content
+          .account-settings-shell
+          .account-settings-card
+          .ant-tabs-tab-btn:hover,
+        .admin-content-frame
+          .account-settings-shell
+          .account-settings-card
+          .ant-tabs-tab:hover,
+        .admin-content-frame
+          .account-settings-shell
+          .account-settings-card
+          .ant-tabs-tab:hover
+          .ant-tabs-tab-btn,
+        .admin-content-frame
+          .account-settings-shell
+          .account-settings-card
+          .ant-tabs-tab-btn:hover {
+          color: inherit !important;
+          background: transparent !important;
+          box-shadow: none !important;
+          transform: none !important;
         }
 
         @media (max-width: 767px) {
@@ -991,7 +1286,7 @@ export default function AccountSettingsPage({
 
           .account-settings-panel,
           .account-settings-card .ant-form {
-            padding: 12px;
+            padding: 0;
           }
         }
       `}</style>

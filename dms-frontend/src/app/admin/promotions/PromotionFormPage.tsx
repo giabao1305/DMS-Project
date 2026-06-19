@@ -21,7 +21,6 @@ import {
   Select,
   Space,
   Switch,
-  Tag,
   Typography,
 } from "antd";
 import dayjs from "dayjs";
@@ -243,9 +242,6 @@ export default function PromotionFormPage({ mode }: { mode: PromotionFormMode })
                     Thiết lập tên, mô tả và loại ưu đãi sẽ áp dụng.
                   </Text>
                 </div>
-                <Tag color="blue" className="admin-promotion-form-section-tag">
-                  Required
-                </Tag>
               </Flex>
 
               <Row gutter={[18, 0]}>

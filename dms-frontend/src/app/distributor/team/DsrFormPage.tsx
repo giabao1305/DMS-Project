@@ -253,7 +253,7 @@ export default function DsrFormPage({ mode }: { mode: DsrFormMode }) {
 
   const handleSubmit = async (values: DsrFormValues) => {
     if (!isEdit && !generatedCode) {
-      message.warning("NPP chưa có mã hợp lệ để tự sinh mã DSR");
+      message.warning("NPP chưa có mã hợp lệ để tự sinh mã nhân viên");
       return;
     }
 
@@ -273,7 +273,7 @@ export default function DsrFormPage({ mode }: { mode: DsrFormMode }) {
     try {
       if (isEdit && id) {
         await updateUser({ id, body }).unwrap();
-        message.success("Cập nhật DSR thành công");
+        message.success("Cập nhật nhân viên thành công");
       } else {
         await createSeller({
           ...body,
@@ -281,20 +281,20 @@ export default function DsrFormPage({ mode }: { mode: DsrFormMode }) {
           companyName: readonlyCompanyName || undefined,
           password: values.password as string,
         }).unwrap();
-        message.success("Thêm DSR thành công");
+        message.success("Thêm nhân viên thành công");
       }
 
       router.push("/distributor/team");
     } catch (error) {
-      message.error(orderApiMessage(error, "Không thể lưu DSR"));
+      message.error(orderApiMessage(error, "Không thể lưu nhân viên"));
     }
   };
 
   return (
     <DistributorPageShell
-      eyebrow="Đội bán hàng"
-      title={isEdit ? "Sửa DSR" : "Thêm DSR"}
-      description="Tạo hồ sơ DSR đầy đủ thông tin đăng nhập, liên hệ và dữ liệu xuất hóa đơn."
+      eyebrow="Nhân sự bán hàng"
+      title={isEdit ? "Sửa nhân viên" : "Thêm nhân viên"}
+      description="Tạo hồ sơ nhân viên đầy đủ thông tin đăng nhập, liên hệ và dữ liệu xuất hóa đơn."
       extra={
         <Button
           icon={<ArrowLeftOutlined />}
@@ -305,8 +305,8 @@ export default function DsrFormPage({ mode }: { mode: DsrFormMode }) {
       }
     >
       <DistributorTableCard
-        title={isEdit ? "Hồ sơ DSR" : "Hồ sơ DSR mới"}
-        description="Mã DSR và công ty được đồng bộ theo nhà phân phối đang đăng nhập."
+        title={isEdit ? "Hồ sơ nhân viên" : "Hồ sơ nhân viên mới"}
+        description="Mã nhân viên và công ty được đồng bộ theo nhà phân phối đang đăng nhập."
       >
         <section className="distributor-dsr-form-shell">
           <div
@@ -334,7 +334,7 @@ export default function DsrFormPage({ mode }: { mode: DsrFormMode }) {
                       Thông tin tài khoản
                     </Text>
                     <Text className="distributor-dsr-section-desc">
-                      Mã DSR tự sinh theo NPP, email và mật khẩu dùng để đăng nhập.
+                      Mã nhân viên tự sinh theo NPP, email và mật khẩu dùng để đăng nhập.
                     </Text>
                   </div>
                   <Tag color="blue" className="distributor-dsr-section-tag">
@@ -345,9 +345,9 @@ export default function DsrFormPage({ mode }: { mode: DsrFormMode }) {
                 <Row gutter={[18, 0]}>
                   <Col xs={24} md={12}>
                     <Form.Item
-                      label="Họ tên DSR"
+                      label="Họ tên nhân viên"
                       name="fullName"
-                      rules={[{ required: true, message: "Vui lòng nhập họ tên DSR" }]}
+                      rules={[{ required: true, message: "Vui lòng nhập họ tên nhân viên" }]}
                     >
                       <Input
                         size="large"
@@ -357,7 +357,7 @@ export default function DsrFormPage({ mode }: { mode: DsrFormMode }) {
                     </Form.Item>
                   </Col>
                   <Col xs={24} md={12}>
-                    <Form.Item label="Mã DSR tự sinh">
+                    <Form.Item label="Mã nhân viên tự sinh">
                       <Input
                         size="large"
                         prefix={<IdcardOutlined />}
@@ -511,7 +511,7 @@ export default function DsrFormPage({ mode }: { mode: DsrFormMode }) {
               >
                 <Flex align="center" gap={10} className="distributor-dsr-form-note">
                   <UserOutlined />
-                  <Text>{isEdit ? "Đang cập nhật hồ sơ" : "Tạo DSR mới"}</Text>
+                  <Text>{isEdit ? "Đang cập nhật hồ sơ" : "Tạo nhân viên mới"}</Text>
                 </Flex>
 
                 <Space wrap>
@@ -530,7 +530,7 @@ export default function DsrFormPage({ mode }: { mode: DsrFormMode }) {
                     loading={creating || updating}
                     className="distributor-dsr-form-action"
                   >
-                    {isEdit ? "Cập nhật DSR" : "Thêm DSR"}
+                    {isEdit ? "Cập nhật nhân viên" : "Thêm nhân viên"}
                   </Button>
                 </Space>
               </Flex>

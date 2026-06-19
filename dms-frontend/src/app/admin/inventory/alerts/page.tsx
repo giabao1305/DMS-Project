@@ -101,8 +101,10 @@ export default function InventoryAlertsPage() {
     },
     {
       title: "Thao tác",
+      key: "actions",
       width: 160,
       align: "center",
+      fixed: "right",
       render: (_, record) => {
         const quantityToImport = Math.max(record.minStock - record.stock, 1);
 
@@ -194,6 +196,14 @@ export default function InventoryAlertsPage() {
           border: 1px solid #dbe4f0 !important;
           border-radius: 8px !important;
           box-shadow: 0 10px 24px rgba(15, 23, 42, 0.055) !important;
+          min-width: 0;
+          overflow: hidden;
+        }
+
+        .admin-stock-alert-table-card .ant-card-body {
+          min-width: 0;
+          max-width: 100%;
+          overflow: hidden;
         }
 
         .admin-stock-alert-icon {

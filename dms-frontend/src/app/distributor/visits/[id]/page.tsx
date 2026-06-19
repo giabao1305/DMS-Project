@@ -119,7 +119,7 @@ export default function DistributorVisitDetailPage() {
       {!visit ? (
         <DistributorDetailEmpty description="Không tìm thấy lượt ghé thăm" />
       ) : (
-        <>
+        <div className="distributor-visit-detail-page">
           <DistributorDetailCard
             title={getName(visit.customer)}
             description={`Lượt ghé do ${getName(visit.seller)} thực hiện.`}
@@ -176,7 +176,7 @@ export default function DistributorVisitDetailPage() {
               >
                 <div className="distributor-visit-field-grid">
                   <Field label="Khách hàng">{getName(visit.customer)}</Field>
-                  <Field label="DSR">{getName(visit.seller)}</Field>
+                  <Field label="Nhân viên">{getName(visit.seller)}</Field>
                   <Field label="Tuyến bán hàng">{getRoute(visit.route)}</Field>
                   <Field label="Trạng thái">
                     <Tag
@@ -230,103 +230,131 @@ export default function DistributorVisitDetailPage() {
             </Col>
 
             <Col xs={24} lg={8}>
-              <DistributorDetailCard
-                title="Dòng thời gian"
-                description="Tiến trình check-in và check-out tại điểm bán."
-              >
-                <Timeline
-                  items={[
-                    {
-                      color: "blue",
-                      dot: <EnvironmentOutlined />,
-                      children: (
-                        <div className="distributor-visit-timeline-item">
-                          <Text strong>Check-in</Text>
-                          <span>{formatDateTime(visit.checkInTime)}</span>
-                          <small>
-                            {formatCoordinate(
-                              visit.checkInLatitude,
-                              visit.checkInLongitude,
-                            )}
-                          </small>
-                        </div>
-                      ),
-                    },
-                    {
-                      color: visit.status === "checked_out" ? "green" : "gray",
-                      dot:
-                        visit.status === "checked_out" ? (
-                          <CheckCircleOutlined />
-                        ) : (
-                          <ClockCircleOutlined />
+              <Flex vertical gap={18} className="distributor-visit-side-stack">
+                <DistributorDetailCard
+                  title="Dòng thời gian"
+                  description="Tiến trình check-in và check-out tại điểm bán."
+                >
+                  <Timeline
+                    items={[
+                      {
+                        color: "blue",
+                        dot: <EnvironmentOutlined />,
+                        children: (
+                          <div className="distributor-visit-timeline-item">
+                            <Text strong>Check-in</Text>
+                            <span>{formatDateTime(visit.checkInTime)}</span>
+                            <small>
+                              {formatCoordinate(
+                                visit.checkInLatitude,
+                                visit.checkInLongitude,
+                              )}
+                            </small>
+                          </div>
                         ),
-                      children: (
-                        <div className="distributor-visit-timeline-item">
-                          <Text strong>Check-out</Text>
-                          <span>{formatDateTime(visit.checkOutTime)}</span>
-                          <small>
-                            {visit.status === "checked_out"
-                              ? formatCoordinate(
-                                  visit.checkOutLatitude,
-                                  visit.checkOutLongitude,
-                                )
-                              : "Chưa check-out"}
-                          </small>
-                        </div>
-                      ),
-                    },
-                  ]}
-                />
-              </DistributorDetailCard>
+                      },
+                      {
+                        color:
+                          visit.status === "checked_out" ? "green" : "gray",
+                        dot:
+                          visit.status === "checked_out" ? (
+                            <CheckCircleOutlined />
+                          ) : (
+                            <ClockCircleOutlined />
+                          ),
+                        children: (
+                          <div className="distributor-visit-timeline-item">
+                            <Text strong>Check-out</Text>
+                            <span>{formatDateTime(visit.checkOutTime)}</span>
+                            <small>
+                              {visit.status === "checked_out"
+                                ? formatCoordinate(
+                                    visit.checkOutLatitude,
+                                    visit.checkOutLongitude,
+                                  )
+                                : "Chưa check-out"}
+                            </small>
+                          </div>
+                        ),
+                      },
+                    ]}
+                  />
+                </DistributorDetailCard>
 
-              <DistributorDetailCard
-                title="Đối tượng liên quan"
-                description="DSR, khách hàng và tuyến ghé thăm."
-              >
-                <div className="distributor-visit-person-line">
-                  <span className="distributor-visit-person-icon">
-                    <TeamOutlined />
-                  </span>
-                  <span>
-                    <Text className="distributor-visit-person-label">DSR</Text>
-                    <Text className="distributor-visit-person-value">
-                      {getName(visit.seller)}
-                    </Text>
-                  </span>
-                </div>
-                <div className="distributor-visit-person-line">
-                  <span className="distributor-visit-person-icon">
-                    <ShopOutlined />
-                  </span>
-                  <span>
-                    <Text className="distributor-visit-person-label">
-                      Khách hàng
-                    </Text>
-                    <Text className="distributor-visit-person-value">
-                      {getName(visit.customer)}
-                    </Text>
-                  </span>
-                </div>
-                <div className="distributor-visit-person-line">
-                  <span className="distributor-visit-person-icon">
-                    <EnvironmentOutlined />
-                  </span>
-                  <span>
-                    <Text className="distributor-visit-person-label">
-                      Tuyến bán hàng
-                    </Text>
-                    <Text className="distributor-visit-person-value">
-                      {getRoute(visit.route)}
-                    </Text>
-                  </span>
-                </div>
-              </DistributorDetailCard>
+                <DistributorDetailCard
+                  title="Đối tượng liên quan"
+                  description="Nhân viên, khách hàng và tuyến ghé thăm."
+                >
+                  <div className="distributor-visit-person-line">
+                    <span className="distributor-visit-person-icon">
+                      <TeamOutlined />
+                    </span>
+                    <span>
+                      <Text className="distributor-visit-person-label">
+                        Nhân viên
+                      </Text>
+                      <Text className="distributor-visit-person-value">
+                        {getName(visit.seller)}
+                      </Text>
+                    </span>
+                  </div>
+                  <div className="distributor-visit-person-line">
+                    <span className="distributor-visit-person-icon">
+                      <ShopOutlined />
+                    </span>
+                    <span>
+                      <Text className="distributor-visit-person-label">
+                        Khách hàng
+                      </Text>
+                      <Text className="distributor-visit-person-value">
+                        {getName(visit.customer)}
+                      </Text>
+                    </span>
+                  </div>
+                  <div className="distributor-visit-person-line">
+                    <span className="distributor-visit-person-icon">
+                      <EnvironmentOutlined />
+                    </span>
+                    <span>
+                      <Text className="distributor-visit-person-label">
+                        Tuyến bán hàng
+                      </Text>
+                      <Text className="distributor-visit-person-value">
+                        {getRoute(visit.route)}
+                      </Text>
+                    </span>
+                  </div>
+                </DistributorDetailCard>
+              </Flex>
             </Col>
           </Row>
-        </>
+        </div>
       )}
 
       <style jsx global>{`
+        .distributor-visit-detail-page {
+          display: grid;
+          gap: 18px;
+        }
+
+        .distributor-visit-detail-page .distributor-detail-card {
+          border-color: #bfdbfe;
+          background: #ffffff;
+          box-shadow: 0 14px 30px rgba(37, 99, 235, 0.07);
+        }
+
+        .distributor-visit-detail-page .distributor-detail-card .ant-card-head {
+          background: linear-gradient(180deg, #f8fbff 0%, #edf5ff 100%);
+        }
+
+        .distributor-visit-detail-page .distributor-detail-card .ant-card-body {
+          background: #ffffff;
+        }
+
+        .distributor-visit-side-stack {
+          min-height: 100%;
+        }
+
         .distributor-visit-metrics {
           margin-bottom: 0;
         }
@@ -406,7 +434,7 @@ export default function DistributorVisitDetailPage() {
           padding: 12px;
           border: 1px solid #dbeafe;
           border-radius: 8px;
-          background: #ffffff;
+          background: #fbfdff;
         }
 
         .distributor-visit-field-value code {
@@ -453,7 +481,7 @@ export default function DistributorVisitDetailPage() {
           display: flex;
           gap: 12px;
           align-items: center;
-          padding: 12px 0;
+          padding: 14px 0;
         }
 
         .distributor-visit-person-line + .distributor-visit-person-line {

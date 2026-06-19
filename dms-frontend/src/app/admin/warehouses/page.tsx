@@ -198,7 +198,10 @@ export default function WarehousesPage() {
     },
     {
       title: "Thao tác",
-      align: "right",
+      align: "center",
+      key: "actions",
+      width: 190,
+      fixed: "right",
       render: (_, record) =>
         record.isActive ? (
           <Popconfirm
@@ -209,7 +212,9 @@ export default function WarehousesPage() {
             okButtonProps={{ danger: true }}
             onConfirm={() => handleWarehouseStatusChange(record, false)}
           >
-            <Button danger>Ngưng hợp tác</Button>
+            <Button danger className="admin-warehouse-stop-action">
+              Ngưng hợp tác
+            </Button>
           </Popconfirm>
         ) : (
           <Popconfirm
@@ -304,9 +309,11 @@ export default function WarehousesPage() {
             loading={loadingWarehouses}
             columns={warehouseColumns}
             dataSource={distributorWarehouses}
+            scroll={{ x: 900 }}
             pagination={false}
             rowSelection={{
               type: "radio",
+              columnWidth: 56,
               selectedRowKeys: activeWarehouseId ? [activeWarehouseId] : [],
               onChange: (keys) => setSelectedWarehouseId(String(keys[0])),
             }}
@@ -329,6 +336,7 @@ export default function WarehousesPage() {
             loading={loadingStocks}
             columns={stockColumns}
             dataSource={stocks}
+            scroll={{ x: 820 }}
             pagination={false}
             locale={{
               emptyText: (
@@ -459,6 +467,24 @@ export default function WarehousesPage() {
 
         .admin-warehouse-create-modal .ant-modal-footer .ant-btn-primary {
           box-shadow: 0 10px 22px rgba(37, 99, 235, 0.18);
+        }
+
+        .admin-warehouse-stop-action.ant-btn {
+          min-width: 136px !important;
+          height: 40px !important;
+          border-color: #dc2626 !important;
+          border-radius: 8px !important;
+          background: #dc2626 !important;
+          color: #ffffff !important;
+          font-weight: 800 !important;
+          box-shadow: 0 8px 18px rgba(220, 38, 38, 0.18) !important;
+        }
+
+        .admin-warehouse-stop-action.ant-btn:hover,
+        .admin-warehouse-stop-action.ant-btn:focus {
+          border-color: #b91c1c !important;
+          background: #b91c1c !important;
+          color: #ffffff !important;
         }
 
         .admin-warehouse-modal-title {

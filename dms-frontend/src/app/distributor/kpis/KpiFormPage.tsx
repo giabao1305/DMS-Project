@@ -115,7 +115,7 @@ export default function KpiFormPage({ mode }: { mode: KpiFormMode }) {
         message.success("Đã cập nhật KPI");
       } else {
         if (!values.seller) {
-          message.warning("Vui lòng chọn DSR");
+          message.warning("Vui lòng chọn nhân viên");
           return;
         }
 
@@ -140,7 +140,7 @@ export default function KpiFormPage({ mode }: { mode: KpiFormMode }) {
     <DistributorPageShell
       eyebrow="KPI"
       title={isEdit ? "Sửa KPI" : "Tạo KPI"}
-      description="Thiết lập mục tiêu doanh thu, đơn hàng và lượt ghé cho DSR."
+      description="Thiết lập mục tiêu doanh thu, đơn hàng và lượt ghé cho nhân viên."
       extra={
         <Button
           icon={<ArrowLeftOutlined />}
@@ -152,7 +152,7 @@ export default function KpiFormPage({ mode }: { mode: KpiFormMode }) {
     >
       <DistributorTableCard
         title={isEdit ? "Thông tin KPI" : "KPI mới"}
-        description="Chọn DSR, kỳ KPI và các mục tiêu cần theo dõi."
+        description="Chọn nhân viên, kỳ KPI và các mục tiêu cần theo dõi."
       >
         <Spin spinning={loadingKpis || loadingSellers}>
           <section className="distributor-kpi-form-shell">
@@ -172,10 +172,10 @@ export default function KpiFormPage({ mode }: { mode: KpiFormMode }) {
                   >
                     <div>
                       <Text className="distributor-kpi-section-title">
-                        DSR và kỳ KPI
+                        Nhân viên và kỳ KPI
                       </Text>
                       <Text className="distributor-kpi-section-desc">
-                        KPI được tính theo từng tháng cho từng DSR trong đội.
+                        KPI được tính theo từng tháng cho từng nhân viên bán hàng.
                       </Text>
                     </div>
                     <Tag color="blue" className="distributor-kpi-section-tag">
@@ -186,11 +186,11 @@ export default function KpiFormPage({ mode }: { mode: KpiFormMode }) {
                   <Row gutter={[18, 0]}>
                     <Col xs={24} md={12}>
                       <Form.Item
-                        label="DSR"
+                        label="Nhân viên"
                         name="seller"
                         rules={
                           !isEdit
-                            ? [{ required: true, message: "Vui lòng chọn DSR" }]
+                            ? [{ required: true, message: "Vui lòng chọn nhân viên" }]
                             : []
                         }
                       >
@@ -199,7 +199,7 @@ export default function KpiFormPage({ mode }: { mode: KpiFormMode }) {
                           showSearch
                           disabled={isEdit}
                           loading={loadingSellers}
-                          placeholder="Chọn DSR"
+                          placeholder="Chọn nhân viên"
                           optionFilterProp="label"
                           options={sellers.map((seller) => ({
                             value: seller._id,
@@ -332,7 +332,7 @@ export default function KpiFormPage({ mode }: { mode: KpiFormMode }) {
                     <CalendarOutlined />
                     <Text>
                       KPI sau khi tạo sẽ được dùng để so sánh với dữ liệu thực tế
-                      của DSR.
+                      của nhân viên.
                     </Text>
                   </Flex>
 

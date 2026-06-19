@@ -46,6 +46,13 @@ const statusMap = {
   rejected: { color: "red", text: "Từ chối" },
 };
 
+const operationalStatusMap = {
+  pending: { color: "default", text: "Chưa hoạt động" },
+  rejected: { color: "default", text: "Không hoạt động" },
+  active: { color: "green", text: "Hoạt động" },
+  inactive: { color: "default", text: "Ngưng hoạt động" },
+} as const;
+
 const getUserName = (value?: Customer["assignedSeller"]) => {
   if (!value) return "-";
   if (typeof value === "string") return /^[a-f\d]{24}$/i.test(value) ? "-" : value;
@@ -317,6 +324,15 @@ export default function DistributorCustomerDetailPage() {
   const [rejectCustomer, { isLoading: rejecting }] = useRejectCustomerMutation();
   const [rejectFormOpen, setRejectFormOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  const operationalStatus = customer
+    ? customer.status === "pending"
+      ? operationalStatusMap.pending
+      : customer.status === "rejected"
+        ? operationalStatusMap.rejected
+        : customer.isActive
+          ? operationalStatusMap.active
+          : operationalStatusMap.inactive
+    : null;
 
   const handleApprove = async () => {
     try {
@@ -383,11 +399,11 @@ export default function DistributorCustomerDetailPage() {
                     <Tag color={statusMap[customer.status].color}>
                       {statusMap[customer.status].text}
                     </Tag>
-                    {customer.isActive ? (
-                      <Tag color="green">Hoạt động</Tag>
-                    ) : (
-                      <Tag color="default">Ngưng hoạt động</Tag>
-                    )}
+                    {operationalStatus ? (
+                      <Tag color={operationalStatus.color}>
+                        {operationalStatus.text}
+                      </Tag>
+                    ) : null}
                   </div>
                   <h1 className="distributor-customer-title">{customer.name}</h1>
                   <p className="distributor-customer-subtitle">
@@ -452,7 +468,7 @@ export default function DistributorCustomerDetailPage() {
               <DetailSection title="Phân công và trạng thái">
                 <DetailLine
                   icon={<TeamOutlined />}
-                  label="DSR phụ trách"
+                  label="Nhân viên phụ trách"
                   value={getUserName(customer.assignedSeller)}
                   strong
                 />

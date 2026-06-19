@@ -43,6 +43,12 @@ const getCustomer = (customer: RouteCustomer["customer"]) => {
   };
 };
 
+const getCustomerId = (customer: RouteCustomer["customer"]) =>
+  typeof customer === "string" ? customer : customer._id;
+
+const getRouteCustomerKey = (routeCustomer: RouteCustomer) =>
+  `${getCustomerId(routeCustomer.customer)}-${routeCustomer.orderIndex}`;
+
 const sortRouteCustomers = (customers: RouteCustomer[]) =>
   [...customers].sort(
     (left, right) =>
@@ -106,7 +112,7 @@ export default function DistributorRouteDetailPage() {
   return (
     <DistributorDetailShell
       title="Chi tiết tuyến bán hàng"
-      description="Xem DSR phụ trách, lịch làm việc và tiến độ từng điểm bán."
+      description="Xem nhân viên phụ trách, lịch làm việc và tiến độ từng điểm bán."
       backHref="/distributor/routes"
     >
       {!route ? (
@@ -124,7 +130,7 @@ export default function DistributorRouteDetailPage() {
           >
             <Descriptions bordered column={{ xs: 1, md: 2 }}>
               <Descriptions.Item label="Tên tuyến">{route.name}</Descriptions.Item>
-              <Descriptions.Item label="DSR phụ trách">{getSeller(route.seller)}</Descriptions.Item>
+              <Descriptions.Item label="Nhân viên phụ trách">{getSeller(route.seller)}</Descriptions.Item>
               <Descriptions.Item label="Ngày làm việc">
                 {new Date(route.workDate).toLocaleDateString("vi-VN")}
               </Descriptions.Item>
@@ -144,7 +150,7 @@ export default function DistributorRouteDetailPage() {
           >
             <Table
               className="distributor-detail-table"
-              rowKey={(_, index) => String(index)}
+              rowKey={getRouteCustomerKey}
               columns={columns}
               dataSource={sortRouteCustomers(route.customers)}
               pagination={false}

@@ -138,7 +138,7 @@ export default function DistributorLeaveDetailPage() {
   return (
     <DistributorDetailShell
       title="Chi tiết nghỉ phép"
-      description="Xem lịch nghỉ, lý do và trạng thái phê duyệt của DSR."
+      description="Xem lịch nghỉ, lý do và trạng thái phê duyệt của nhân viên."
       backHref="/distributor/leaves"
     >
       {!leave ? (
@@ -228,7 +228,7 @@ export default function DistributorLeaveDetailPage() {
                 description="Khoảng thời gian nghỉ, người duyệt và nội dung phản hồi."
               >
                 <div className="distributor-leave-field-grid">
-                  <Field label="DSR">{getUser(leave.seller)}</Field>
+                  <Field label="Nhân viên">{getUser(leave.seller)}</Field>
                   <Field label="Trạng thái">
                     <Tag
                       color={statusMap[leave.status].color}
@@ -250,7 +250,7 @@ export default function DistributorLeaveDetailPage() {
                   <Flex justify="space-between" align="center" gap={12}>
                     <Text className="distributor-leave-note-title">Lý do nghỉ</Text>
                     <Tag color="blue" className="distributor-pill-tag">
-                      DSR gửi
+                      Nhân viên gửi
                     </Tag>
                   </Flex>
                   <Paragraph>{leave.reason || "-"}</Paragraph>
@@ -281,7 +281,7 @@ export default function DistributorLeaveDetailPage() {
                         rows={3}
                         value={adminNote}
                         onChange={(event) => setAdminNote(event.target.value)}
-                        placeholder="Nhập lý do từ chối để DSR nắm rõ"
+                        placeholder="Nhập lý do từ chối để nhân viên nắm rõ"
                       />
                       <Flex justify="end" gap={10} wrap="wrap">
                         <Button onClick={() => setRejectFormOpen(false)}>
@@ -348,15 +348,15 @@ export default function DistributorLeaveDetailPage() {
               </DistributorDetailCard>
 
               <DistributorDetailCard
-                title="DSR liên quan"
-                description="Nhân sự xin nghỉ trong đội."
+                title="Nhân viên liên quan"
+                description="Nhân viên xin nghỉ."
               >
                 <div className="distributor-leave-person-line">
                   <span className="distributor-leave-person-icon">
                     <TeamOutlined />
                   </span>
                   <span>
-                    <Text className="distributor-leave-person-label">DSR</Text>
+                    <Text className="distributor-leave-person-label">Nhân viên</Text>
                     <Text className="distributor-leave-person-value">
                       {getUser(leave.seller)}
                     </Text>

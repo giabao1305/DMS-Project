@@ -82,8 +82,9 @@ export default function DistributorKpisPage() {
 
   const columns: ColumnsType<Kpi> = [
     {
-      title: "DSR",
+      title: "Nhân viên",
       dataIndex: "seller",
+      width: 220,
       ellipsis: true,
       render: (seller: Kpi["seller"]) => (
         <Text strong className="distributor-row-strong">
@@ -121,7 +122,7 @@ export default function DistributorKpisPage() {
     },
     {
       title: "Thao tác",
-      width: 150,
+      width: 240,
       fixed: "right",
       render: (_, record) => (
         <Space size={4}>
@@ -150,8 +151,8 @@ export default function DistributorKpisPage() {
   return (
     <DistributorPageShell
       eyebrow="KPI"
-      title="KPI đội DSR"
-      description="Theo dõi mục tiêu, doanh thu, đơn hàng và lượt ghé để phát hiện DSR cần hỗ trợ."
+      title="KPI nhân viên bán hàng"
+      description="Theo dõi mục tiêu, doanh thu, đơn hàng và lượt ghé để phát hiện nhân viên cần hỗ trợ."
       extra={
         <Link href="/distributor/kpis/create">
           <Button type="primary" icon={<PlusOutlined />}>
@@ -161,9 +162,9 @@ export default function DistributorKpisPage() {
       }
     >
       <DistributorCommandCenter
-        eyebrow="Performance center"
-        title="Nắm hiệu suất đội DSR"
-        description="Tổng hợp mức đạt mục tiêu, doanh thu, đơn hàng và lượt ghé theo từng DSR."
+        eyebrow="Trung tâm hiệu suất"
+        title="Nắm hiệu suất nhân viên bán hàng"
+        description="Tổng hợp mức đạt mục tiêu, doanh thu, đơn hàng và lượt ghé theo từng nhân viên."
         meterValue={`${stats.averagePerformance}%`}
         meterLabel="Hiệu suất trung bình"
         stats={[
@@ -177,7 +178,7 @@ export default function DistributorKpisPage() {
         feature={
           topKpi ? (
             <>
-              <Text className="distributor-command-feature-label">DSR tốt nhất</Text>
+              <Text className="distributor-command-feature-label">Nhân viên tốt nhất</Text>
               <Text ellipsis className="distributor-command-feature-title">
                 {topKpi.seller?.fullName || topKpi.seller?.email || "-"}
               </Text>
@@ -210,7 +211,7 @@ export default function DistributorKpisPage() {
           loading={isLoading}
           columns={columns}
           dataSource={data}
-          scroll={{ x: 980 }}
+          scroll={{ x: 1200 }}
           pagination={{
             pageSize: 8,
             showSizeChanger: false,

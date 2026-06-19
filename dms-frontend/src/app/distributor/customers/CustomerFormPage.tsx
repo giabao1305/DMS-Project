@@ -138,7 +138,7 @@ export default function CustomerFormPage({ mode }: { mode: CustomerFormMode }) {
       <DistributorPageShell
         eyebrow="Khách hàng"
         title="Sửa khách hàng"
-        description="Cập nhật hồ sơ điểm bán, DSR phụ trách và thông tin định vị."
+        description="Cập nhật hồ sơ điểm bán, nhân viên phụ trách và thông tin định vị."
         extra={
           <Button
             icon={<ArrowLeftOutlined />}
@@ -165,7 +165,7 @@ export default function CustomerFormPage({ mode }: { mode: CustomerFormMode }) {
     <DistributorPageShell
       eyebrow="Khách hàng"
       title={isEdit ? "Sửa khách hàng" : "Thêm khách hàng"}
-      description="Cập nhật hồ sơ điểm bán, DSR phụ trách và thông tin định vị."
+      description="Cập nhật hồ sơ điểm bán, nhân viên phụ trách và thông tin định vị."
       extra={
         <Button
           icon={<ArrowLeftOutlined />}
@@ -177,7 +177,7 @@ export default function CustomerFormPage({ mode }: { mode: CustomerFormMode }) {
     >
       <DistributorTableCard
         title={isEdit ? "Thông tin khách hàng" : "Hồ sơ khách hàng mới"}
-        description="Điền thông tin điểm bán và gán đúng DSR phụ trách trong đội."
+        description="Điền thông tin điểm bán và gán đúng nhân viên phụ trách."
       >
         <section className="distributor-customer-form-shell">
           <div
@@ -214,12 +214,12 @@ export default function CustomerFormPage({ mode }: { mode: CustomerFormMode }) {
                 <Row gutter={[18, 0]}>
                   <Col xs={24} md={12}>
                     <Form.Item
-                      label="DSR phụ trách"
+                      label="Nhân viên phụ trách"
                       name="assignedSeller"
                       rules={[
                         {
                           required: true,
-                          message: "Vui lòng chọn DSR phụ trách",
+                          message: "Vui lòng chọn nhân viên phụ trách",
                         },
                       ]}
                     >
@@ -227,7 +227,7 @@ export default function CustomerFormPage({ mode }: { mode: CustomerFormMode }) {
                         showSearch
                         size="large"
                         optionFilterProp="label"
-                        placeholder="Chọn DSR trong đội"
+                        placeholder="Chọn nhân viên bán hàng"
                         options={sellerOptions}
                       />
                     </Form.Item>
@@ -307,7 +307,7 @@ export default function CustomerFormPage({ mode }: { mode: CustomerFormMode }) {
                       Địa chỉ và định vị
                     </Text>
                     <Text className="distributor-customer-section-desc">
-                      Địa chỉ và tọa độ giúp DSR check-in đúng vị trí điểm bán.
+                      Địa chỉ và tọa độ giúp nhân viên check-in đúng vị trí điểm bán.
                     </Text>
                   </div>
                 </Flex>

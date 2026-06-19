@@ -16,7 +16,6 @@ import {
   InputNumber,
   Row,
   Select,
-  Tag,
   Typography,
 } from "antd";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -253,9 +252,6 @@ export default function CreateInventoryPage() {
                     Chọn sản phẩm, loại giao dịch và số lượng cần cập nhật.
                   </Text>
                 </div>
-                <Tag color="blue" className="admin-inventory-form-section-tag">
-                  Required
-                </Tag>
               </Flex>
 
               <Row gutter={[18, 0]}>

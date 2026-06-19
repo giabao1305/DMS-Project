@@ -82,7 +82,7 @@ export default function DistributorVisitsPage() {
       ),
     },
     {
-      title: "DSR",
+      title: "Nhân viên",
       dataIndex: "seller",
       ellipsis: true,
       width: 180,
@@ -144,7 +144,7 @@ export default function DistributorVisitsPage() {
   return (
     <DistributorPageShell
       eyebrow="Ghé thăm"
-      title="Lượt ghé của đội DSR"
+      title="Lượt ghé của nhân viên bán hàng"
       description="Theo dõi check-in, check-out và khoảng cách GPS để nắm chất lượng thực thi tại điểm bán."
     >
       <DistributorCommandCenter

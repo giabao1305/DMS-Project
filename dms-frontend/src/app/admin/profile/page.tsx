@@ -10,9 +10,9 @@ export default function AdminProfilePage() {
       <AdminBreadcrumb />
       <AdminPageHeader
         title="Hồ sơ cá nhân"
-        description="Cập nhật thông tin tài khoản và đổi mật khẩu đăng nhập."
+        description="Cập nhật thông tin tài khoản quản trị hệ thống."
       />
-      <AccountSettingsPage accent="admin" />
+      <AccountSettingsPage accent="admin" showPasswordTab={false} />
     </>
   );
 }

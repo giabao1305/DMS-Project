@@ -161,11 +161,11 @@ export default function DistributorNotificationsPage() {
     <DistributorPageShell
       eyebrow="Thông báo"
       title="Trung tâm thông báo"
-      description="Theo dõi các cập nhật liên quan đến đơn hàng, tuyến, ghé thăm và hoạt động của đội DSR."
+      description="Theo dõi các cập nhật liên quan đến đơn hàng, tuyến, ghé thăm và hoạt động của nhân viên bán hàng."
     >
       <DistributorCommandCenter
         eyebrow="Notification center"
-        title="Không bỏ lỡ cập nhật đội"
+        title="Không bỏ lỡ cập nhật bán hàng"
         description="Theo dõi thông báo mới, loại nghiệp vụ phát sinh và các cập nhật cần distributor xem trong ngày."
         meterValue={unread}
         meterLabel="Thông báo chưa đọc"

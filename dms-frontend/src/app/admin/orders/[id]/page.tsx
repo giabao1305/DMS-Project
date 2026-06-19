@@ -582,6 +582,7 @@ export default function AdminOrderDetailPage() {
         <Table<OrderItem>
           size="small"
           pagination={false}
+          scroll={{ x: 620 }}
           rowKey={(record) =>
             typeof record.product === "string"
               ? record.product

@@ -20,7 +20,6 @@ import {
   Row,
   Select,
   Space,
-  Tag,
   Typography,
 } from "antd";
 import { useParams, useRouter } from "next/navigation";
@@ -513,9 +512,6 @@ export default function UserFormPage({ mode }: { mode: UserFormMode }) {
                     Chọn vai trò và tỉnh/thành trước để hệ thống tự sinh mã nhân sự.
                   </Text>
                 </div>
-                <Tag color="blue" className="admin-user-form-section-tag">
-                  Bắt buộc
-                </Tag>
               </Flex>
 
               <Row gutter={[18, 0]}>

@@ -11,15 +11,15 @@ type SalesMenuItem = {
 };
 
 const distributorMenuItems: SalesMenuItem[] = [
-  { key: "/distributor/dashboard", label: "Tổng quan" },
-  { key: "/distributor/team", label: "Đội DSR" },
-  { key: "/distributor/customers", label: "Khách hàng đội" },
+  { key: "/distributor/dashboard", label: "Tổng quan bán hàng" },
+  { key: "/distributor/team", label: "Nhân viên bán hàng" },
+  { key: "/distributor/customers", label: "Điểm bán phụ trách" },
   { key: "/distributor/orders", label: "Đơn" },
   { key: "/distributor/warehouse", label: "Kho của tôi" },
-  { key: "/distributor/routes", label: "Tuyến đội" },
+  { key: "/distributor/routes", label: "Tuyến bán hàng" },
   { key: "/distributor/visits", label: "Ghé thăm" },
-  { key: "/distributor/kpis", label: "KPI đội" },
   { key: "/distributor/leaves", label: "Nghỉ phép" },
+  { key: "/distributor/kpis", label: "KPI nhân viên" },
   { key: "/distributor/notifications", label: "Thông báo" },
   { key: "/distributor/profile", label: "Tài khoản" },
 ];
@@ -27,7 +27,6 @@ const distributorMenuItems: SalesMenuItem[] = [
 export default function SellerBreadcrumb() {
   const pathname = usePathname();
   const paths = pathname.split("/").filter(Boolean);
-  const dashboardPath = "/distributor/dashboard";
 
   const currentMenu = [...distributorMenuItems]
     .sort((first, second) => second.key.length - first.key.length)
@@ -46,17 +45,9 @@ export default function SellerBreadcrumb() {
     actionLabel = "Chi tiết";
   }
 
-  const items: ItemType[] = [
-    {
-      title: (
-        <Link href={dashboardPath} className="seller-breadcrumb-link">
-          Tổng quan
-        </Link>
-      ),
-    },
-  ];
+  const items: ItemType[] = [];
 
-  if (currentMenu && currentMenu.key !== dashboardPath) {
+  if (currentMenu) {
     items.push({
       title: actionLabel ? (
         <Link href={currentMenu.key} className="seller-breadcrumb-link">

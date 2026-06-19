@@ -226,6 +226,7 @@ export default function CreateSupplyOrderPage() {
               rowKey={(record) => record.product._id}
               pagination={false}
               dataSource={items}
+              scroll={{ x: 760 }}
               locale={{ emptyText: <Empty description="Chưa có sản phẩm" /> }}
               columns={[
                 {
@@ -250,7 +251,11 @@ export default function CreateSupplyOrderPage() {
                     money(record.product.price * record.quantity),
                 },
                 {
-                  title: "",
+                  title: "Thao tác",
+                  key: "actions",
+                  width: 120,
+                  align: "center",
+                  fixed: "right",
                   render: (_, record) => (
                     <Button
                       danger

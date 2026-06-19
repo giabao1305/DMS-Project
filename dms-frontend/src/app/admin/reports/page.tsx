@@ -585,6 +585,7 @@ export default function AdminReportsPage() {
                   yField="revenue"
                   shapeField="smooth"
                   colorField={() => "#2563eb"}
+                  legend={false}
                   point={{ sizeField: 3 }}
                   axis={{
                     y: {
@@ -645,6 +646,7 @@ export default function AdminReportsPage() {
                   xField="seller"
                   yField="revenue"
                   colorField={() => "#0ea5e9"}
+                  legend={false}
                   axis={{
                     x: { labelAutoHide: true, labelAutoRotate: false },
                     y: {

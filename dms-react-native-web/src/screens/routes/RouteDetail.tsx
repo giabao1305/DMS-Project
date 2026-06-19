@@ -3,7 +3,12 @@ import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { sellerApi } from "../../api/sellerApi";
-import { ErrorBanner, SuccessBanner, Timeline, TimelineItem } from "../../components/Ui";
+import {
+  ErrorBanner,
+  SuccessBanner,
+  Timeline,
+  TimelineItem,
+} from "../../components/Ui";
 import { bento, bentoSoftShadow } from "../../theme";
 import type { AuthUser, RoutePlan, RouteStatus } from "../../types/domain";
 import { toVietnameseError } from "../../utils/errorMessage";
@@ -52,6 +57,7 @@ export function RouteDetail({
   const routeCustomers = sortRouteCustomers(route.customers);
   const substitute = isSubstituteRoute(route, user);
   const nextAction = getRouteAction(route.status, progress.done, progress.total);
+  const remainingStops = Math.max(progress.total - progress.done, 0);
 
   const changeRouteStatus = async (status: RouteStatus) => {
     setSubmittingStatus(true);
@@ -115,54 +121,77 @@ export function RouteDetail({
           </View>
         </View>
 
-        <View
-          style={[
-            styles.heroCard,
-            {
-              backgroundColor: bento.surface,
-              borderColor: tone.border,
-              borderLeftColor: tone.text,
-            },
-          ]}
-        >
+        <View style={styles.routeOverview}>
           <View style={styles.heroTop}>
+            <View
+              style={[
+                styles.heroMark,
+                { backgroundColor: tone.text, borderColor: tone.text },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="map-marker-path"
+                size={22}
+                color="#FFFFFF"
+              />
+            </View>
             <View style={styles.heroText}>
               <Text style={styles.heroLabel}>Tuyến hôm nay</Text>
               <Text style={styles.routeName} numberOfLines={2}>
                 {route.name}
               </Text>
-              <Text style={styles.routeDate}>
-                {shortDate(route.workDate)}
-                {substitute ? " · Đi thay" : ""}
-              </Text>
-            </View>
-            <View
-              style={[
-                styles.statusPill,
-                { backgroundColor: bento.surface, borderColor: tone.border },
-              ]}
-            >
-              <Text style={[styles.statusText, { color: tone.text }]}>
-                {statusLabel(route.status)}
-              </Text>
+              <View style={styles.routeMetaLine}>
+                <Text style={styles.routeDate}>
+                  {shortDate(route.workDate)}
+                  {substitute ? " · Đi thay" : ""}
+                </Text>
+                <View
+                  style={[
+                    styles.overviewStatusPill,
+                    { backgroundColor: tone.bg, borderColor: tone.border },
+                  ]}
+                >
+                  <Text
+                    style={[styles.overviewStatusText, { color: tone.text }]}
+                  >
+                    {statusLabel(route.status)}
+                  </Text>
+                </View>
+              </View>
             </View>
           </View>
-          <View style={styles.heroProgressLine}>
-            <View>
-              <Text style={styles.heroProgressValue}>
-                {progress.done}/{progress.total}
-              </Text>
-              <Text style={styles.heroProgressLabel}>điểm đã xử lý</Text>
+          <View style={styles.progressPanel}>
+            <View style={styles.heroProgressLine}>
+              <View>
+                <Text style={styles.heroProgressValue}>
+                  {progress.done}/{progress.total}
+                </Text>
+                <Text style={styles.heroProgressLabel}>điểm đã xử lý</Text>
+              </View>
+              <View
+                style={[
+                  styles.percentBadge,
+                  { backgroundColor: tone.bg, borderColor: tone.border },
+                ]}
+              >
+                <Text style={[styles.heroPercent, { color: tone.text }]}>
+                  {progress.percent}%
+                </Text>
+              </View>
             </View>
-            <Text style={styles.heroPercent}>{progress.percent}%</Text>
-          </View>
-          <View style={styles.progressTrackDark}>
-            <View
-              style={[
-                styles.progressFillDark,
-                { width: `${progress.percent}%` },
-              ]}
-            />
+            <View style={styles.progressTrackDark}>
+              <View
+                style={[
+                  styles.progressFillDark,
+                  { width: `${progress.percent}%`, backgroundColor: tone.text },
+                ]}
+              />
+            </View>
+            <View style={styles.heroStats}>
+              <MiniStat label="Đã xử lý" value={progress.done} />
+              <MiniStat label="Còn lại" value={remainingStops} />
+              <MiniStat label="Tổng điểm" value={progress.total} />
+            </View>
           </View>
           {nextAction ? (
             <Pressable
@@ -242,7 +271,7 @@ export function RouteDetail({
                     style={[
                       styles.stopCard,
                       {
-                        backgroundColor: itemTone.bg,
+                        backgroundColor: bento.surface,
                         borderColor: itemTone.border,
                         borderLeftColor: itemTone.text,
                       },
@@ -334,6 +363,15 @@ function getRelationId(value?: string | { _id: string }) {
   return typeof value === "string" ? value : value._id;
 }
 
+function MiniStat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <View style={styles.miniStat}>
+      <Text style={styles.miniStatValue}>{value}</Text>
+      <Text style={styles.miniStatLabel}>{label}</Text>
+    </View>
+  );
+}
+
 function SectionTitle({
   icon,
   title,
@@ -386,12 +424,14 @@ function InfoTile({
       >
         <MaterialCommunityIcons name={icon} size={18} color="#FFFFFF" />
       </View>
-      <Text style={styles.infoValue} numberOfLines={1}>
-        {value}
-      </Text>
-      <Text style={styles.infoLabel} numberOfLines={1}>
-        {label}
-      </Text>
+      <View style={styles.infoText}>
+        <Text style={styles.infoLabel} numberOfLines={1}>
+          {label}
+        </Text>
+        <Text style={styles.infoValue} numberOfLines={1}>
+          {value}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -431,7 +471,8 @@ function getRouteAction(status: RouteStatus, done: number, total: number) {
   if (status === "in_progress") {
     return {
       status: "completed" as RouteStatus,
-      label: total > 0 && done < total ? "Chưa xử lý hết điểm bán" : "Hoàn tất tuyến",
+      label:
+        total > 0 && done < total ? "Chưa xử lý hết điểm bán" : "Hoàn tất tuyến",
       icon: "check-circle-outline" as IconName,
       disabled: total > 0 && done < total,
     };
@@ -505,7 +546,7 @@ const styles = StyleSheet.create({
   scrollContent: { minHeight: "100%", paddingBottom: 24 },
   page: {
     alignSelf: "center",
-    gap: 16,
+    gap: 14,
     maxWidth: 760,
     paddingHorizontal: 20,
     paddingTop: 18,
@@ -544,37 +585,66 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 46,
   },
-  heroCard: {
-    backgroundColor: bento.surface,
-    borderColor: bento.border,
-    borderLeftWidth: 3,
+  routeOverview: {
+    borderColor: bento.route,
     borderRadius: 8,
-    borderWidth: 1,
-    gap: 16,
+    borderWidth: 2,
+    gap: 14,
     padding: 16,
-    ...bentoSoftShadow,
+    shadowColor: "#0F2A5F",
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.18,
+    shadowRadius: 22,
+    elevation: 6,
+    zIndex: 2,
   },
   heroTop: {
     alignItems: "flex-start",
     flexDirection: "row",
-    gap: 12,
-    justifyContent: "space-between",
+    gap: 13,
+    paddingLeft: 2,
+  },
+  heroMark: {
+    alignItems: "center",
+    borderRadius: 8,
+    borderWidth: 0,
+    height: 54,
+    justifyContent: "center",
+    width: 54,
+    shadowColor: "#0F2A5F",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.14,
+    shadowRadius: 16,
+    elevation: 4,
   },
   heroText: { flex: 1, minWidth: 0 },
-  heroLabel: { color: bento.textSecondary, fontSize: 12, fontWeight: "600" },
+  heroLabel: { color: bento.textSecondary, fontSize: 13, fontWeight: "700" },
   routeName: {
     color: bento.text,
-    fontSize: 21,
+    fontSize: 23,
     fontWeight: "700",
-    lineHeight: 27,
-    marginTop: 4,
+    lineHeight: 29,
+    marginTop: 3,
+  },
+  routeMetaLine: {
+    alignItems: "center",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 6,
   },
   routeDate: {
     color: bento.textSecondary,
-    fontSize: 12,
-    fontWeight: "600",
-    marginTop: 5,
+    fontSize: 13,
+    fontWeight: "700",
   },
+  overviewStatusPill: {
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  overviewStatusText: { fontSize: 11, fontWeight: "700" },
   statusPill: {
     borderRadius: 8,
     borderWidth: 1,
@@ -583,28 +653,68 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   statusText: { fontSize: 10, fontWeight: "700" },
+  progressPanel: {
+    backgroundColor: bento.surface,
+    borderColor: "#E5EEF8",
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 12,
+    padding: 13,
+    shadowColor: "#0F2A5F",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 3,
+  },
   heroProgressLine: {
     alignItems: "flex-end",
     flexDirection: "row",
     justifyContent: "space-between",
   },
-  heroProgressValue: { color: bento.text, fontSize: 28, fontWeight: "700" },
+  heroProgressValue: { color: bento.text, fontSize: 30, fontWeight: "700" },
   heroProgressLabel: {
     color: bento.textSecondary,
     fontSize: 12,
     fontWeight: "600",
   },
-  heroPercent: { color: bento.primaryDark, fontSize: 28, fontWeight: "700" },
-  progressTrackDark: {
-    backgroundColor: bento.surfaceAlt,
+  percentBadge: {
+    alignItems: "center",
     borderRadius: 8,
-    height: 9,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 56,
+    minWidth: 92,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  heroPercent: { fontSize: 24, fontWeight: "700" },
+  progressTrackDark: {
+    backgroundColor: "#F4F8FD",
+    borderRadius: 8,
+    height: 10,
     overflow: "hidden",
   },
   progressFillDark: {
-    backgroundColor: bento.primaryDark,
     borderRadius: 8,
     height: "100%",
+  },
+  heroStats: { flexDirection: "row", gap: 8 },
+  miniStat: {
+    backgroundColor: "#FBFDFF",
+    borderColor: "#E5EEF8",
+    borderRadius: 8,
+    borderWidth: 1,
+    flex: 1,
+    minHeight: 66,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+  },
+  miniStatValue: { color: bento.text, fontSize: 18, fontWeight: "700" },
+  miniStatLabel: {
+    color: bento.textSecondary,
+    fontSize: 10,
+    fontWeight: "600",
+    marginTop: 2,
   },
   routeActionButton: {
     alignItems: "center",
@@ -614,23 +724,29 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
     justifyContent: "center",
-    minHeight: 46,
+    minHeight: 56,
     paddingHorizontal: 14,
+    shadowColor: "#0F2A5F",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.14,
+    shadowRadius: 18,
+    elevation: 5,
   },
-  routeActionButtonDisabled: {
-    backgroundColor: bento.textMuted,
-  },
-  routeActionText: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
+  routeActionButtonDisabled: { backgroundColor: bento.textMuted },
+  routeActionText: { color: "#FFFFFF", fontSize: 16, fontWeight: "700" },
   infoGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   infoTile: {
+    alignItems: "center",
     backgroundColor: bento.surface,
     borderColor: bento.border,
     borderRadius: 8,
     borderWidth: 1,
     flexBasis: "47%",
+    flexDirection: "row",
     flexGrow: 1,
-    minHeight: 104,
-    padding: 13,
+    gap: 10,
+    minHeight: 68,
+    padding: 11,
     ...bentoSoftShadow,
   },
   infoIcon: {
@@ -641,25 +757,25 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 38,
   },
-  infoValue: {
-    color: bento.text,
-    fontSize: 14,
-    fontWeight: "700",
-    marginTop: 11,
-  },
+  infoText: { flex: 1, minWidth: 0 },
   infoLabel: {
     color: bento.textSecondary,
     fontSize: 11,
     fontWeight: "600",
-    marginTop: 3,
+  },
+  infoValue: {
+    color: bento.text,
+    fontSize: 14,
+    fontWeight: "700",
+    marginTop: 2,
   },
   card: {
     backgroundColor: bento.surface,
     borderColor: bento.border,
     borderRadius: 8,
     borderWidth: 1,
-    gap: 14,
-    padding: 16,
+    gap: 13,
+    padding: 14,
     ...bentoSoftShadow,
   },
   sectionHeader: { alignItems: "center", flexDirection: "row", gap: 10 },
@@ -678,29 +794,29 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderRadius: 8,
     borderWidth: 1,
-    gap: 10,
+    gap: 9,
     paddingHorizontal: 11,
-    paddingVertical: 11,
+    paddingVertical: 10,
   },
-  stopTop: { alignItems: "center", flexDirection: "row", gap: 9 },
+  stopTop: { alignItems: "center", flexDirection: "row", gap: 8 },
   stopIndex: {
     alignItems: "center",
     backgroundColor: bento.surface,
     borderColor: bento.border,
     borderRadius: 8,
     borderWidth: 1,
-    height: 34,
+    height: 32,
     justifyContent: "center",
-    width: 34,
+    width: 32,
   },
   stopIndexText: { color: bento.text, fontSize: 12, fontWeight: "700" },
   customerInfo: { flex: 1, minWidth: 0 },
-  customerName: { color: bento.text, fontSize: 14, fontWeight: "700" },
+  customerName: { color: bento.text, fontSize: 13, fontWeight: "700" },
   customerNote: {
     color: bento.textSecondary,
     fontSize: 12,
-    fontWeight: "700",
-    marginTop: 3,
+    fontWeight: "600",
+    marginTop: 2,
   },
   checkInButton: {
     alignItems: "center",
@@ -709,7 +825,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     flexDirection: "row",
     gap: 6,
-    minHeight: 36,
+    minHeight: 34,
     paddingHorizontal: 12,
   },
   checkInText: { color: "#FFFFFF", fontSize: 12, fontWeight: "700" },

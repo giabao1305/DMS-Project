@@ -239,7 +239,7 @@ export default function DistributorOrderDetailPage() {
   return (
     <DistributorDetailShell
       title="Chi tiết đơn hàng"
-      description="Xem đơn hàng do đội DSR tạo, sản phẩm và giá trị thanh toán."
+      description="Xem đơn hàng do nhân viên bán hàng tạo, sản phẩm và giá trị thanh toán."
       backHref="/distributor/orders"
     >
       {!order ? (
@@ -350,7 +350,7 @@ export default function DistributorOrderDetailPage() {
                 </Descriptions.Item>
               )}
               <Descriptions.Item
-                label={isSupplyOrder ? "Nguồn cấp" : "DSR tạo đơn"}
+                label={isSupplyOrder ? "Nguồn cấp" : "Nhân viên tạo đơn"}
               >
                 {isSupplyOrder ? "Nestlé" : getName(order.seller)}
               </Descriptions.Item>

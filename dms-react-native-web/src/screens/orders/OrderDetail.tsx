@@ -89,6 +89,10 @@ export function OrderDetail({
     transferPaymentUrl || transferNote,
   )}`;
   const suggestedPaymentAmount = Number(paymentAmount || balanceDue);
+  const totalQuantity = itemQuantity(order);
+  const paymentComplete = order.status === "delivered" && balanceDue <= 0;
+  const isReturnFlow =
+    order.status === "return_requested" || order.status === "returned";
 
   useEffect(() => {
     if (paymentMethod !== "bank_transfer") {
@@ -124,14 +128,24 @@ export function OrderDetail({
     return () => {
       isMounted = false;
     };
-  }, [balanceDue, order._id, paymentAmount, paymentMethod, suggestedPaymentAmount]);
+  }, [
+    balanceDue,
+    order._id,
+    paymentAmount,
+    paymentMethod,
+    suggestedPaymentAmount,
+  ]);
 
   useEffect(() => {
     setTransferPaymentDone(false);
   }, [order._id]);
 
   useEffect(() => {
-    if (!transferPaymentUrl || paymentMethod !== "bank_transfer" || balanceDue <= 0)
+    if (
+      !transferPaymentUrl ||
+      paymentMethod !== "bank_transfer" ||
+      balanceDue <= 0
+    )
       return;
 
     let isMounted = true;
@@ -360,16 +374,7 @@ export function OrderDetail({
           )}
         </View>
 
-        <View
-          style={[
-            styles.heroCard,
-            {
-              backgroundColor: bento.surface,
-              borderColor: tone.border,
-              borderLeftColor: tone.text,
-            },
-          ]}
-        >
+        <View style={styles.heroCard}>
           <View style={styles.heroTop}>
             <View>
               <Text style={styles.heroLabel}>Khách hàng</Text>
@@ -380,7 +385,7 @@ export function OrderDetail({
             <View
               style={[
                 styles.statusPill,
-                { backgroundColor: bento.surface, borderColor: tone.border },
+                { backgroundColor: tone.bg, borderColor: tone.border },
               ]}
             >
               <Text style={[styles.statusText, { color: tone.text }]}>
@@ -400,36 +405,75 @@ export function OrderDetail({
         <ErrorBanner message={error} />
         <SuccessBanner message={message} />
 
-        <View style={[styles.timelineCard, { borderLeftColor: tone.text }]}>
-          <SectionTitle
-            icon="timeline-check-outline"
-            title="Tiến trình đơn hàng"
-            tone="routeAlt"
-          />
-          <StepTimeline
-            steps={ORDER_STEPS.map((step, index) => ({
-              ...step,
-              state: stepState(order.status, index),
-            }))}
-          />
-          <View style={styles.progressTrack}>
-            <View
-              style={[
-                styles.progressFill,
-                { width: `${progress}%`, backgroundColor: tone.text },
-              ]}
+        {isReturnFlow ? (
+          <View style={styles.returnTimelineCard}>
+            <SectionTitle
+              icon="backup-restore"
+              title="Trạng thái trả hàng"
+              tone={order.status === "returned" ? "success" : "blue"}
             />
+            <View style={styles.returnTimelineBody}>
+              <View
+                style={[
+                  styles.returnTimelineIcon,
+                  { backgroundColor: tone.bg, borderColor: tone.border },
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name={
+                    order.status === "returned"
+                      ? "check-circle-outline"
+                      : "clock-outline"
+                  }
+                  size={24}
+                  color={tone.text}
+                />
+              </View>
+              <View style={styles.returnTimelineText}>
+                <Text style={styles.returnTimelineTitle}>
+                  {order.status === "returned"
+                    ? "Đã hoàn tất trả hàng"
+                    : "Đang chờ duyệt trả hàng"}
+                </Text>
+                <Text style={styles.returnTimelineHint}>
+                  {order.status === "returned"
+                    ? "Đơn đã được xử lý trả hàng và cập nhật hoàn tiền theo quy trình."
+                    : "Yêu cầu trả hàng đã được gửi, đang chờ NPP kiểm tra và duyệt."}
+                </Text>
+              </View>
+            </View>
           </View>
-          <Text style={styles.progressText}>{progress}% hoàn tất</Text>
-        </View>
+        ) : (
+          <View style={styles.timelineCard}>
+            <SectionTitle
+              icon="timeline-check-outline"
+              title="Tiến trình đơn hàng"
+              tone="routeAlt"
+            />
+            <StepTimeline
+              steps={ORDER_STEPS.map((step, index) => ({
+                ...step,
+                state: stepState(order.status, index),
+              }))}
+            />
+            <View style={styles.progressTrack}>
+              <View
+                style={[
+                  styles.progressFill,
+                  { width: `${progress}%`, backgroundColor: tone.text },
+                ]}
+              />
+            </View>
+            <Text style={styles.progressText}>{progress}% hoàn tất</Text>
+          </View>
+        )}
 
-        <View style={styles.card}>
+        <View style={styles.productsCard}>
           <SectionTitle
-            icon="clipboard-list-outline"
-            title="Chi tiết đơn"
+            icon="package-variant-closed"
+            title="Sản phẩm trong đơn"
             tone="blue"
           />
-          <Text style={styles.subSectionLabel}>Sản phẩm</Text>
           <View style={styles.productList}>
             {order.items.map((item, index) => (
               <View
@@ -451,27 +495,61 @@ export function OrderDetail({
               </View>
             ))}
           </View>
-          <Text style={styles.subSectionLabel}>Thanh toán</Text>
-          <DetailRow
-            label="Số loại sản phẩm"
-            value={`${order.items.length} loại`}
+        </View>
+
+        <View style={styles.paymentCard}>
+          <SectionTitle
+            icon="cash-multiple"
+            title="Tổng kết thanh toán"
+            tone="primary"
           />
-          <DetailRow
-            label="Tổng số lượng"
-            value={`${itemQuantity(order)} sản phẩm`}
-          />
-          <DetailRow label="Tạm tính" value={currency(order.totalAmount)} />
-          <DetailRow label="Giảm giá" value={currency(order.discountAmount)} />
-          <DetailRow
-            label="Thành tiền"
-            value={currency(order.finalAmount)}
-            strong
-          />
-          <DetailRow label="Đã thu" value={currency(paidAmount)} />
-          <DetailRow label="Đã hoàn" value={currency(refundedAmount)} />
-          <DetailRow label="Thực giữ" value={currency(netCollected)} />
-          <DetailRow label="Còn nợ" value={currency(balanceDue)} strong />
-          {order.status === "delivered" && balanceDue <= 0 ? (
+          <View style={styles.summaryGrid}>
+            <SummaryTile
+              label="Thành tiền"
+              value={currency(order.finalAmount)}
+              tone="primary"
+            />
+            <SummaryTile
+              label="Đã thu"
+              value={currency(paidAmount)}
+              tone="success"
+            />
+            <SummaryTile
+              label="Còn nợ"
+              value={currency(balanceDue)}
+              tone={balanceDue > 0 ? "warning" : "success"}
+            />
+            <SummaryTile
+              label="Số lượng"
+              value={`${totalQuantity}`}
+              tone="violet"
+            />
+          </View>
+          <View style={styles.detailGroup}>
+            <DetailRow
+              label="Số loại sản phẩm"
+              value={`${order.items.length} loại`}
+            />
+            <DetailRow
+              label="Tổng số lượng"
+              value={`${totalQuantity} sản phẩm`}
+            />
+            <DetailRow label="Tạm tính" value={currency(order.totalAmount)} />
+            <DetailRow
+              label="Giảm giá"
+              value={currency(order.discountAmount)}
+            />
+            <DetailRow
+              label="Thành tiền"
+              value={currency(order.finalAmount)}
+              strong
+            />
+            <DetailRow label="Đã thu" value={currency(paidAmount)} />
+            <DetailRow label="Đã hoàn" value={currency(refundedAmount)} />
+            <DetailRow label="Thực giữ" value={currency(netCollected)} />
+            <DetailRow label="Còn nợ" value={currency(balanceDue)} strong />
+          </View>
+          {paymentComplete ? (
             <View style={styles.paymentDoneBox}>
               <View style={styles.paymentDoneIcon}>
                 <MaterialCommunityIcons
@@ -493,152 +571,161 @@ export function OrderDetail({
             value={shortDateTime(order.deliveredAt)}
           />
           <DetailRow label="Lý do trả" value={order.returnReason || "-"} />
-          {order.status === "delivered" && balanceDue > 0 ? (
-            <View style={styles.returnBox}>
-              <Text style={styles.subSectionLabel}>
-                Ghi nhận tiền khách trả
-              </Text>
-              <Field
-                label="Số tiền thu"
-                value={paymentAmount}
-                onChangeText={setPaymentAmount}
-                placeholder={`${balanceDue}`}
-                keyboardType="number-pad"
-              />
-              <View style={styles.paymentMethods}>
-                {(
-                  [
-                    ["cash", "Tiền mặt"],
-                    ["bank_transfer", "Chuyển khoản"],
-                    ["other", "Khác"],
-                  ] as Array<[PaymentMethod, string]>
-                ).map(([method, label]) => (
-                  <Pressable
-                    key={method}
-                    onPress={() => selectPaymentMethod(method)}
-                    style={[
-                      styles.paymentMethod,
-                      paymentMethod === method && styles.paymentMethodActive,
-                    ]}
+        </View>
+
+        {order.status === "delivered" && balanceDue > 0 ? (
+          <View style={styles.collectionCard}>
+            <SectionTitle
+              icon="cash-check"
+              title="Ghi nhận tiền khách trả"
+              tone="success"
+            />
+            <Field
+              label="Số tiền thu"
+              value={paymentAmount}
+              onChangeText={setPaymentAmount}
+              placeholder={`${balanceDue}`}
+              keyboardType="number-pad"
+            />
+            <View style={styles.paymentMethods}>
+              {(
+                [
+                  ["cash", "Tiền mặt"],
+                  ["bank_transfer", "Chuyển khoản"],
+                  ["other", "Khác"],
+                ] as Array<[PaymentMethod, string]>
+              ).map(([method, label]) => (
+                <Pressable
+                  key={method}
+                  onPress={() => selectPaymentMethod(method)}
+                  style={[
+                    styles.paymentMethod,
+                    paymentMethod === method && styles.paymentMethodActive,
+                  ]}
+                >
+                  <Text
+                    style={
+                      paymentMethod === method
+                        ? styles.paymentMethodActiveText
+                        : styles.paymentMethodText
+                    }
                   >
-                    <Text
-                      style={
-                        paymentMethod === method
-                          ? styles.paymentMethodActiveText
-                          : styles.paymentMethodText
-                      }
-                    >
-                      {label}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-              {paymentMethod === "bank_transfer" ? (
-                <View style={styles.paymentQrBox}>
-                  <View style={styles.paymentQrHeader}>
-                    <View style={styles.paymentQrIcon}>
-                      <MaterialCommunityIcons
-                        name="qrcode-scan"
-                        size={20}
-                        color={bento.primaryDark}
-                      />
-                    </View>
-                    <View style={styles.paymentQrText}>
-                      <Text style={styles.paymentQrTitle}>QR chuyển khoản</Text>
-                      <Text style={styles.paymentQrSubtitle}>
-                        {transferPaymentDone
-                          ? "Thanh toán đã được ghi nhận"
-                          : transferQrLoading
+                    {label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            {paymentMethod === "bank_transfer" ? (
+              <View style={styles.paymentQrBox}>
+                <View style={styles.paymentQrHeader}>
+                  <View style={styles.paymentQrIcon}>
+                    <MaterialCommunityIcons
+                      name="qrcode-scan"
+                      size={20}
+                      color={bento.primaryDark}
+                    />
+                  </View>
+                  <View style={styles.paymentQrText}>
+                    <Text style={styles.paymentQrTitle}>QR chuyển khoản</Text>
+                    <Text style={styles.paymentQrSubtitle}>
+                      {transferPaymentDone
+                        ? "Thanh toán đã được ghi nhận"
+                        : transferQrLoading
                           ? "Đang tạo QR VNPay sandbox"
                           : transferPaymentUrl
                             ? "Quét để thanh toán sandbox"
                             : "Nội dung là mã đơn hàng"}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={styles.paymentQrBody}>
-                    <View style={styles.paymentQrImageWrap}>
-                      {transferQrLoading ? (
-                        <ActivityIndicator color={bento.primaryDark} />
-                      ) : (
-                        <Image
-                          source={{ uri: transferQrUrl }}
-                          style={styles.paymentQrImage}
-                          resizeMode="contain"
-                        />
-                      )}
-                    </View>
-                    <View style={styles.paymentQrMeta}>
-                      <Text style={styles.paymentQrLabel}>Nội dung</Text>
-                      <Text style={styles.paymentQrValue}>{transferNote}</Text>
-                      <Text style={styles.paymentQrLabel}>Số tiền</Text>
-                      <Text style={styles.paymentQrAmount}>
-                        {currency(suggestedPaymentAmount)}
-                      </Text>
-                      {transferQrError ? (
-                        <Text style={styles.paymentQrError}>
-                          {transferQrError}
-                        </Text>
-                      ) : null}
-                      {transferPaymentUrl ? (
-                        <Pressable
-                          onPress={openTransferPayment}
-                          style={({ pressed }) => [
-                            styles.paymentQrLink,
-                            pressed && styles.pressed,
-                          ]}
-                        >
-                          <MaterialCommunityIcons
-                            name="open-in-new"
-                            size={16}
-                            color="#FFFFFF"
-                          />
-                          <Text style={styles.paymentQrLinkText}>
-                            Mở VNPay sandbox
-                          </Text>
-                        </Pressable>
-                      ) : null}
-                    </View>
+                    </Text>
                   </View>
                 </View>
-              ) : null}
-              <Field
-                label="Ghi chú thu tiền"
-                value={paymentNote}
-                onChangeText={setPaymentNote}
-                placeholder="Tùy chọn"
-              />
-              <PrimaryButton
-                label="Ghi nhận thu tiền"
-                onPress={recordPayment}
-                loading={submitting}
-                icon="cash-check"
-              />
+                <View style={styles.paymentQrBody}>
+                  <View style={styles.paymentQrImageWrap}>
+                    {transferQrLoading ? (
+                      <ActivityIndicator color={bento.primaryDark} />
+                    ) : (
+                      <Image
+                        source={{ uri: transferQrUrl }}
+                        style={styles.paymentQrImage}
+                        resizeMode="contain"
+                      />
+                    )}
+                  </View>
+                  <View style={styles.paymentQrMeta}>
+                    <Text style={styles.paymentQrLabel}>Nội dung</Text>
+                    <Text style={styles.paymentQrValue}>{transferNote}</Text>
+                    <Text style={styles.paymentQrLabel}>Số tiền</Text>
+                    <Text style={styles.paymentQrAmount}>
+                      {currency(suggestedPaymentAmount)}
+                    </Text>
+                    {transferQrError ? (
+                      <Text style={styles.paymentQrError}>
+                        {transferQrError}
+                      </Text>
+                    ) : null}
+                    {transferPaymentUrl ? (
+                      <Pressable
+                        onPress={openTransferPayment}
+                        style={({ pressed }) => [
+                          styles.paymentQrLink,
+                          pressed && styles.pressed,
+                        ]}
+                      >
+                        <MaterialCommunityIcons
+                          name="open-in-new"
+                          size={16}
+                          color="#FFFFFF"
+                        />
+                        <Text style={styles.paymentQrLinkText}>
+                          Mở VNPay sandbox
+                        </Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
+                </View>
+              </View>
+            ) : null}
+            <Field
+              label="Ghi chú thu tiền"
+              value={paymentNote}
+              onChangeText={setPaymentNote}
+              placeholder="Tùy chọn"
+            />
+            <PrimaryButton
+              label="Ghi nhận thu tiền"
+              onPress={recordPayment}
+              loading={submitting}
+              icon="cash-check"
+            />
+          </View>
+        ) : null}
+        {canRequestReturn ? (
+          <View style={styles.returnActionCard}>
+            <View style={styles.returnActionText}>
+              <Text style={styles.actionTitle}>Xử lý trả hàng</Text>
+              <Text style={styles.actionHint}>
+                Tạo yêu cầu trả hàng để NPP kiểm tra và duyệt hoàn tiền.
+              </Text>
             </View>
-          ) : null}
-          {canRequestReturn ? (
-            <View style={styles.returnBox}>
-              <PrimaryButton
-                label="Trả hàng"
-                onPress={() => {
-                  setError("");
-                  setMessage("");
-                  setReturnReason("");
-                  setReturnFormOpen(true);
-                }}
-                loading={submitting}
-                variant="muted"
-                icon="backup-restore"
-              />
-            </View>
-          ) : null}
-          {order.status === "return_requested" ? (
-            <Text style={styles.refundHint}>
-              Yêu cầu trả hàng đang chờ NPP duyệt. Khi duyệt, hệ thống sẽ tự
-              ghi nhận hoàn tiền và trả hàng.
-            </Text>
-          ) : null}
-        </View>
+            <PrimaryButton
+              label="Trả hàng"
+              onPress={() => {
+                setError("");
+                setMessage("");
+                setReturnReason("");
+                setReturnFormOpen(true);
+              }}
+              loading={submitting}
+              variant="muted"
+              icon="backup-restore"
+            />
+          </View>
+        ) : null}
+        {order.status === "return_requested" ? (
+          <Text style={styles.refundHint}>
+            Yêu cầu trả hàng đang chờ NPP duyệt. Khi duyệt, hệ thống sẽ tự ghi
+            nhận hoàn tiền và trả hàng.
+          </Text>
+        ) : null}
 
         {canEdit ? (
           <View style={styles.actionCard}>
@@ -682,7 +769,8 @@ export function OrderDetail({
               <View style={styles.returnModalCard}>
                 <Text style={styles.returnModalTitle}>Trả hàng</Text>
                 <Text style={styles.returnModalHint}>
-                  Nhập lý do trả hàng để gửi yêu cầu xử lý đơn {order.orderCode}.
+                  Nhập lý do trả hàng để gửi yêu cầu xử lý đơn {order.orderCode}
+                  .
                 </Text>
                 <ScrollView
                   style={styles.returnModalScroll}
@@ -690,51 +778,65 @@ export function OrderDetail({
                   keyboardShouldPersistTaps="handled"
                   showsVerticalScrollIndicator={false}
                 >
-                <View style={styles.returnPreviewBox}>
-                  <Text style={styles.returnPreviewTitle}>Thông tin khách hàng</Text>
-                  <DetailRow
-                    label="Khách hàng"
-                    value={getCustomerName(order.customer)}
-                  />
-                  <DetailRow
-                    label="Số điện thoại"
-                    value={customerPhone(order.customer)}
-                  />
-                  <DetailRow
-                    label="Địa chỉ"
-                    value={customerAddress(order.customer)}
-                  />
-                </View>
-                <View style={styles.returnPreviewBox}>
-                  <Text style={styles.returnPreviewTitle}>Sản phẩm trả hàng</Text>
-                  {order.items.map((item, index) => (
-                    <View
-                      key={`return-${order._id}-${productDisplayName(item)}-${index}`}
-                      style={styles.returnProductRow}
-                    >
-                      <ProductThumb item={item} />
-                      <View style={styles.returnProductBody}>
-                        <Text style={styles.returnProductName} numberOfLines={2}>
-                          {productDisplayName(item)}
-                        </Text>
-                        <Text style={styles.returnProductMeta}>
-                          SL {item.quantity} x {currency(item.price)}
+                  <View style={styles.returnPreviewBox}>
+                    <Text style={styles.returnPreviewTitle}>
+                      Thông tin khách hàng
+                    </Text>
+                    <DetailRow
+                      label="Khách hàng"
+                      value={getCustomerName(order.customer)}
+                    />
+                    <DetailRow
+                      label="Số điện thoại"
+                      value={customerPhone(order.customer)}
+                    />
+                    <DetailRow
+                      label="Địa chỉ"
+                      value={customerAddress(order.customer)}
+                    />
+                  </View>
+                  <View style={styles.returnPreviewBox}>
+                    <Text style={styles.returnPreviewTitle}>
+                      Sản phẩm trả hàng
+                    </Text>
+                    {order.items.map((item, index) => (
+                      <View
+                        key={`return-${order._id}-${productDisplayName(item)}-${index}`}
+                        style={styles.returnProductRow}
+                      >
+                        <ProductThumb item={item} />
+                        <View style={styles.returnProductBody}>
+                          <Text
+                            style={styles.returnProductName}
+                            numberOfLines={2}
+                          >
+                            {productDisplayName(item)}
+                          </Text>
+                          <Text style={styles.returnProductMeta}>
+                            SL {item.quantity} x {currency(item.price)}
+                          </Text>
+                        </View>
+                        <Text style={styles.returnProductAmount}>
+                          {currency(item.subtotal)}
                         </Text>
                       </View>
-                      <Text style={styles.returnProductAmount}>
-                        {currency(item.subtotal)}
-                      </Text>
-                    </View>
-                  ))}
-                  <DetailRow label="Giá trị đơn" value={currency(order.finalAmount)} />
-                  <DetailRow label="Tiền đã thu" value={currency(netCollected)} strong />
-                </View>
-                <Field
-                  label="Lý do trả hàng"
-                  value={returnReason}
-                  onChangeText={setReturnReason}
-                  multiline
-                />
+                    ))}
+                    <DetailRow
+                      label="Giá trị đơn"
+                      value={currency(order.finalAmount)}
+                    />
+                    <DetailRow
+                      label="Tiền đã thu"
+                      value={currency(netCollected)}
+                      strong
+                    />
+                  </View>
+                  <Field
+                    label="Lý do trả hàng"
+                    value={returnReason}
+                    onChangeText={setReturnReason}
+                    multiline
+                  />
                 </ScrollView>
                 <View style={styles.modalActions}>
                   <PrimaryButton
@@ -758,6 +860,33 @@ export function OrderDetail({
         </Modal>
       </View>
     </ScrollView>
+  );
+}
+
+function SummaryTile({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: ToneName;
+}) {
+  const color = toneColors(tone);
+  return (
+    <View
+      style={[
+        styles.summaryTile,
+        { backgroundColor: color.bg, borderColor: color.border },
+      ]}
+    >
+      <Text style={[styles.summaryTileLabel, { color: color.text }]}>
+        {label}
+      </Text>
+      <Text style={styles.summaryTileValue} numberOfLines={1}>
+        {value}
+      </Text>
+    </View>
   );
 }
 
@@ -994,14 +1123,10 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   heroCard: {
-    backgroundColor: bento.surface,
-    borderColor: bento.border,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderLeftWidth: 3,
-    gap: 18,
-    padding: 16,
-    ...bentoSoftShadow,
+    backgroundColor: "transparent",
+    gap: 16,
+    paddingHorizontal: 2,
+    paddingVertical: 6,
   },
   heroTop: {
     alignItems: "flex-start",
@@ -1034,6 +1159,7 @@ const styles = StyleSheet.create({
   },
   heroAmount: {
     gap: 3,
+    paddingTop: 4,
   },
   amountLabelLight: {
     color: bento.textSecondary,
@@ -1042,7 +1168,7 @@ const styles = StyleSheet.create({
   },
   amountHero: {
     color: bento.primaryDark,
-    fontSize: 31,
+    fontSize: 29,
     fontWeight: "700",
   },
   createdAt: {
@@ -1051,14 +1177,45 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   timelineCard: {
-    backgroundColor: bento.surface,
-    borderColor: bento.border,
+    backgroundColor: "transparent",
+    gap: 15,
+    paddingHorizontal: 2,
+    paddingTop: 4,
+  },
+  returnTimelineCard: {
+    backgroundColor: "transparent",
+    gap: 14,
+    paddingHorizontal: 2,
+    paddingTop: 4,
+  },
+  returnTimelineBody: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 12,
+  },
+  returnTimelineIcon: {
+    alignItems: "center",
     borderRadius: 8,
     borderWidth: 1,
-    borderLeftWidth: 3,
-    gap: 15,
-    padding: 16,
-    ...bentoSoftShadow,
+    height: 48,
+    justifyContent: "center",
+    width: 48,
+  },
+  returnTimelineText: {
+    flex: 1,
+    gap: 4,
+    minWidth: 0,
+  },
+  returnTimelineTitle: {
+    color: bento.text,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  returnTimelineHint: {
+    color: bento.textSecondary,
+    fontSize: 12,
+    fontWeight: "600",
+    lineHeight: 18,
   },
   sectionTitleRow: {
     alignItems: "center",
@@ -1102,6 +1259,59 @@ const styles = StyleSheet.create({
     padding: 16,
     ...bentoSoftShadow,
   },
+  productsCard: {
+    backgroundColor: "transparent",
+    gap: 14,
+    paddingHorizontal: 2,
+    paddingTop: 4,
+  },
+  paymentCard: {
+    backgroundColor: "transparent",
+    gap: 14,
+    paddingHorizontal: 2,
+    paddingTop: 4,
+  },
+  collectionCard: {
+    backgroundColor: "transparent",
+    gap: 13,
+    paddingHorizontal: 2,
+    paddingTop: 4,
+  },
+  returnActionCard: {
+    backgroundColor: "transparent",
+    gap: 12,
+    paddingHorizontal: 2,
+    paddingTop: 4,
+  },
+  returnActionText: {
+    gap: 4,
+  },
+  summaryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  summaryTile: {
+    borderRadius: 8,
+    borderWidth: 1,
+    flexBasis: "47%",
+    flexGrow: 1,
+    gap: 5,
+    minHeight: 72,
+    padding: 11,
+  },
+  summaryTileLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  summaryTileValue: {
+    color: bento.text,
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  detailGroup: {
+    gap: 0,
+  },
   detailRow: {
     alignItems: "flex-start",
     borderTopColor: bento.border,
@@ -1138,8 +1348,8 @@ const styles = StyleSheet.create({
   },
   productRow: {
     alignItems: "center",
-    backgroundColor: bento.surface,
-    borderColor: bento.border,
+    backgroundColor: "#FBFDFF",
+    borderColor: "#DDE7F3",
     borderRadius: 8,
     borderWidth: 1,
     flexDirection: "row",
@@ -1176,9 +1386,11 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   productSubtotal: {
-    color: bento.text,
+    color: bento.primaryDark,
     fontSize: 12,
     fontWeight: "700",
+    maxWidth: 96,
+    textAlign: "right",
   },
   returnBox: {
     gap: 12,

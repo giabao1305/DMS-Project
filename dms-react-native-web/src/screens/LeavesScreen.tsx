@@ -59,6 +59,7 @@ export function LeavesScreen({
   const [formMessage, setFormMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [activePicker, setActivePicker] = useState<DateTarget>("start");
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(() =>
     startOfMonth(new Date()),
   );
@@ -116,6 +117,7 @@ export function LeavesScreen({
       setShowForm(false);
       setFormMessage("Đã gửi đơn nghỉ phép.");
       setActivePicker("start");
+      setPickerOpen(false);
       setCalendarMonth(startOfMonth(new Date()));
       await reload();
     } catch (err) {
@@ -138,6 +140,7 @@ export function LeavesScreen({
     }
     setEndDate(date);
     if (startDate && date < startDate) setStartDate(date);
+    setPickerOpen(false);
   };
 
   if (loading) return <LoadingState />;
@@ -190,31 +193,30 @@ export function LeavesScreen({
           />
         </SummaryStrip>
 
-        <View style={styles.card}>
-          <CalendarPicker
-            month={calendarMonth}
-            startDate={showForm ? startDate : ""}
-            endDate={showForm ? endDate : ""}
-            activePicker={activePicker}
-            leavesByDate={leavesByDate}
-            selecting={showForm}
-            onChangeMonth={setCalendarMonth}
-            onSelect={(date) => {
-              if (showForm) selectDate(date);
-              else {
+        {!showForm ? (
+          <View style={styles.card}>
+            <CalendarPicker
+              month={calendarMonth}
+              startDate=""
+              endDate=""
+              activePicker={activePicker}
+              leavesByDate={leavesByDate}
+              selecting={false}
+              onChangeMonth={setCalendarMonth}
+              onSelect={(date) => {
                 const leave = leavesByDate[date]?.[0];
                 if (leave) setDetail(leave);
-              }
-            }}
-          />
-        </View>
+              }}
+            />
+          </View>
+        ) : null}
 
         {showForm ? (
           <View style={styles.card}>
             <SectionHeader
               icon="calendar-edit"
               title="Đề xuất nghỉ phép"
-              subtitle="Chọn ngày bắt đầu và kết thúc trên lịch phía trên."
+              subtitle="Bấm vào ô ngày để mở bảng chọn ngày."
               color={bento.primary}
               bg={bento.primarySoft}
             />
@@ -225,15 +227,35 @@ export function LeavesScreen({
                 label="Ngày bắt đầu"
                 value={startDate}
                 active={activePicker === "start"}
-                onPress={() => setActivePicker("start")}
+                onPress={() => {
+                  setActivePicker("start");
+                  setPickerOpen(true);
+                }}
               />
               <DateSelectCard
                 label="Ngày kết thúc"
                 value={endDate}
                 active={activePicker === "end"}
-                onPress={() => setActivePicker("end")}
+                onPress={() => {
+                  setActivePicker("end");
+                  setPickerOpen(true);
+                }}
               />
             </View>
+            {pickerOpen ? (
+              <View style={styles.inlineCalendarCard}>
+                <CalendarPicker
+                  month={calendarMonth}
+                  startDate={startDate}
+                  endDate={endDate}
+                  activePicker={activePicker}
+                  leavesByDate={leavesByDate}
+                  selecting
+                  onChangeMonth={setCalendarMonth}
+                  onSelect={selectDate}
+                />
+              </View>
+            ) : null}
             <Field
               label="Lý do"
               value={reason}
@@ -502,6 +524,7 @@ function CalendarPicker({
   onSelect: (date: string) => void;
 }) {
   const days = useMemo(() => calendarDays(month), [month]);
+  const todayKey = useMemo(() => toDateKey(new Date()), []);
   const weeks = useMemo(
     () =>
       Array.from({ length: 6 }, (_, index) =>
@@ -563,6 +586,7 @@ function CalendarPicker({
           <View key={`week-${weekIndex}`} style={styles.dayWeek}>
             {week.map((item) => {
               const isSelected = item.key === startDate || item.key === endDate;
+              const isToday = item.key === todayKey;
               const inRange = Boolean(
                 startDate &&
                 endDate &&
@@ -586,6 +610,7 @@ function CalendarPicker({
                       borderWidth: 1,
                     },
                     inRange && styles.dayCellRange,
+                    isToday && !isSelected && styles.dayCellToday,
                     isSelected && styles.dayCellSelected,
                     pressed && styles.pressed,
                   ]}
@@ -595,6 +620,7 @@ function CalendarPicker({
                       styles.dayText,
                       !item.inMonth && styles.dayTextMuted,
                       hasLeave && { color: leaveTone?.color },
+                      isToday && !isSelected && styles.dayTextToday,
                       isSelected && styles.dayTextSelected,
                     ]}
                   >
@@ -793,6 +819,13 @@ const styles = StyleSheet.create({
     backgroundColor: bento.primarySoft,
     borderColor: bento.primary,
   },
+  inlineCalendarCard: {
+    backgroundColor: bento.surfaceAlt,
+    borderColor: bento.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    padding: 12,
+  },
   dateLabel: { color: bento.textSecondary, fontSize: 12, fontWeight: "600" },
   dateLabelActive: { color: bento.primary },
   dateValue: {
@@ -959,9 +992,15 @@ const styles = StyleSheet.create({
   },
   dayCellMuted: { backgroundColor: "transparent" },
   dayCellRange: { backgroundColor: bento.primarySoft },
+  dayCellToday: {
+    backgroundColor: bento.primarySoft,
+    borderColor: bento.primary,
+    borderWidth: 1,
+  },
   dayCellSelected: { backgroundColor: bento.primary, ...bentoSoftShadow },
   dayText: { color: bento.text, fontSize: 13, fontWeight: "700" },
   dayTextMuted: { color: bento.textMuted },
+  dayTextToday: { color: bento.primary },
   dayTextSelected: { color: "#fff" },
   leaveDot: {
     borderRadius: 3,

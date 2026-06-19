@@ -305,14 +305,14 @@ export default function DistributorTeamDetailPage() {
 
   return (
     <DistributorDetailShell
-      title="Chi tiết DSR"
-      description="Thông tin định danh, liên hệ và trạng thái hoạt động của DSR."
+      title="Chi tiết nhân viên"
+      description="Thông tin định danh, liên hệ và trạng thái hoạt động của nhân viên."
       backHref="/distributor/team"
     >
       {!user ? (
         <section className="distributor-user-detail-shell">
           <div className="distributor-user-detail-frame">
-            <Empty description="Không tìm thấy DSR" />
+            <Empty description="Không tìm thấy nhân viên" />
           </div>
           <DetailStyles />
         </section>
@@ -335,7 +335,7 @@ export default function DistributorTeamDetailPage() {
                     <Tag color={user.isActive ? "green" : "default"}>
                       {user.isActive ? "Hoạt động" : "Khóa"}
                     </Tag>
-                    <Tag color="blue">DSR</Tag>
+                    <Tag color="blue">Nhân viên</Tag>
                   </div>
                   <h1 className="distributor-user-title">{user.fullName}</h1>
                   <p className="distributor-user-email">{user.email}</p>
@@ -348,7 +348,7 @@ export default function DistributorTeamDetailPage() {
                     icon={<EditOutlined />}
                     className="distributor-user-detail-action"
                   >
-                    Sửa DSR
+                    Sửa nhân viên
                   </Button>
                 </Link>
               </Space>
@@ -362,7 +362,7 @@ export default function DistributorTeamDetailPage() {
                   value={user.code}
                   strong
                 />
-                <DetailLine icon={<TeamOutlined />} label="Vai trò" value="DSR" />
+                <DetailLine icon={<TeamOutlined />} label="Vai trò" value="Nhân viên bán hàng" />
                 <DetailLine
                   icon={<ShopOutlined />}
                   label="NPP quản lý"

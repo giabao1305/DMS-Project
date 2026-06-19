@@ -1,9 +1,28 @@
 "use client";
 
 import { Button, Result, Space, Typography } from "antd";
+import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
+import { getRoleHomePath } from "@/features/auth/roleUtils";
+
 const { Text } = Typography;
+
+function getStoredHomePath() {
+  if (typeof window === "undefined") return "/auth/login";
+
+  const token = localStorage.getItem("token");
+  const user = localStorage.getItem("user");
+
+  if (!token || !user) return "/auth/login";
+
+  try {
+    const parsedUser = JSON.parse(user) as { role?: string | null };
+    return getRoleHomePath(parsedUser.role);
+  } catch {
+    return "/auth/login";
+  }
+}
 
 export default function ErrorPage({
   error,
@@ -12,6 +31,8 @@ export default function ErrorPage({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const router = useRouter();
+
   useEffect(() => {
     console.error(error);
   }, [error]);
@@ -34,7 +55,7 @@ export default function ErrorPage({
             <Button type="primary" onClick={reset}>
               Thử lại
             </Button>
-            <Button onClick={() => window.location.assign("/")}>
+            <Button onClick={() => router.replace(getStoredHomePath())}>
               Về trang chính
             </Button>
           </Space>

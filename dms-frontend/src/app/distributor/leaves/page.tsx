@@ -60,7 +60,7 @@ export default function DistributorLeavesPage() {
 
   const columns: ColumnsType<LeaveRequest> = [
     {
-      title: "DSR",
+      title: "Nhân viên",
       dataIndex: "seller",
       ellipsis: true,
       width: 220,
@@ -116,12 +116,12 @@ export default function DistributorLeavesPage() {
   return (
     <DistributorPageShell
       eyebrow="Nghỉ phép"
-      title="Lịch nghỉ của đội DSR"
+      title="Lịch nghỉ của nhân viên bán hàng"
       description="Theo dõi yêu cầu nghỉ phép để chủ động phân bổ tuyến, khách hàng và mục tiêu ngày."
     >
       <DistributorCommandCenter
         eyebrow="Leave planning"
-        title="Theo dõi lịch nghỉ của đội"
+        title="Theo dõi lịch nghỉ của nhân viên"
         description="Nắm nhanh số đơn chờ duyệt và lịch nghỉ đã xác nhận để điều phối nhân sự ngoài thị trường."
         meterValue={`${approvedRate}%`}
         meterLabel="Đơn nghỉ đã duyệt"
@@ -164,7 +164,7 @@ export default function DistributorLeavesPage() {
 
       <DistributorTableCard
         title="Danh sách đơn nghỉ"
-        description="Distributor theo dõi và duyệt nghỉ phép của DSR trong đội."
+        description="Nhà phân phối theo dõi và duyệt nghỉ phép của nhân viên bán hàng."
       >
         <Table
           rowKey="_id"

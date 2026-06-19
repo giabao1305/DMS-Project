@@ -91,7 +91,7 @@ export default function DistributorRoutesPage() {
       ),
     },
     {
-      title: "DSR",
+      title: "Nhân viên",
       dataIndex: "seller",
       ellipsis: true,
       width: 190,
@@ -164,8 +164,8 @@ export default function DistributorRoutesPage() {
   return (
     <DistributorPageShell
       eyebrow="Tuyến bán hàng"
-      title="Tuyến của đội DSR"
-      description="Theo dõi lịch đi tuyến, trạng thái thực thi và độ phủ điểm bán của từng DSR."
+      title="Tuyến bán hàng"
+      description="Theo dõi lịch đi tuyến, trạng thái thực thi và độ phủ điểm bán của từng nhân viên."
       extra={
         <Link href="/distributor/routes/create">
           <Button
@@ -180,7 +180,7 @@ export default function DistributorRoutesPage() {
     >
       <DistributorCommandCenter
         eyebrow="Route execution"
-        title="Nắm nhanh toàn bộ tuyến đội"
+        title="Nắm nhanh toàn bộ tuyến bán hàng"
         description="Theo dõi ngày làm việc, lượng điểm bán cần ghé và trạng thái thực hiện để chủ động điều phối."
         meterValue={`${activeRate}%`}
         meterLabel="Tuyến đã bắt đầu hoặc hoàn thành"

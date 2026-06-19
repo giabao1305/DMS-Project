@@ -6,7 +6,6 @@ import {
   EyeOutlined,
   PlusOutlined,
   SendOutlined,
-  SettingOutlined,
   ShopOutlined,
 } from "@ant-design/icons";
 import {
@@ -15,8 +14,6 @@ import {
   Card,
   Empty,
   Flex,
-  InputNumber,
-  Modal,
   Popconfirm,
   Segmented,
   Select,
@@ -36,14 +33,8 @@ import {
   useApproveOrderMutation,
   useDeliverOrderMutation,
   useGetOrdersPageQuery,
-  useUpdateSupplyPricingMutation,
 } from "@/features/orders/orderService";
-import type {
-  Order,
-  OrderItem,
-  OrderStatus,
-} from "@/features/orders/orderTypes";
-import type { Product } from "@/features/products/productTypes";
+import type { Order, OrderStatus } from "@/features/orders/orderTypes";
 import { useGetUsersQuery } from "@/features/users/userService";
 import type { User } from "@/features/users/userTypes";
 import { useRealtimeRefetch } from "@/hooks/useRealtimeRefetch";
@@ -79,26 +70,12 @@ const getDistributorName = (distributor?: Order["distributor"]) => {
 const getUserPhone = (user?: string | User) =>
   !user || typeof user === "string" ? "-" : user.phone || "-";
 
-const getProductId = (item: OrderItem) =>
-  typeof item.product === "string"
-    ? item.product
-    : (item.product as Product)._id;
-
-type PricingRow = {
-  product: string;
-  productName: string;
-  quantity: number;
-  price: number;
-};
-
 export default function AdminSupplyOrdersPage() {
   const { message } = App.useApp();
   const [status, setStatus] = useState<StatusFilter>("all");
   const [distributor, setDistributor] = useState<string>();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [pricingOrder, setPricingOrder] = useState<Order>();
-  const [pricingRows, setPricingRows] = useState<PricingRow[]>([]);
 
   const { data: users = [] } = useGetUsersQuery();
   const distributors = useMemo(
@@ -129,8 +106,6 @@ export default function AdminSupplyOrdersPage() {
   });
   const [approveOrder, { isLoading: approving }] = useApproveOrderMutation();
   const [deliverOrder, { isLoading: delivering }] = useDeliverOrderMutation();
-  const [updateSupplyPricing, { isLoading: savingPricing }] =
-    useUpdateSupplyPricingMutation();
 
   useRealtimeRefetch(["new-notification", "order-updated"], refetch);
 
@@ -167,54 +142,6 @@ export default function AdminSupplyOrdersPage() {
       message.success("Đã xác nhận giao hàng về kho NPP");
     } catch (error: unknown) {
       message.error(orderApiMessage(error, "Không thể xác nhận giao kho"));
-    }
-  };
-
-  const openPricingModal = (order: Order) => {
-    setPricingOrder(order);
-    setPricingRows(
-      order.items.map((item) => ({
-        product: getProductId(item),
-        productName: item.productName,
-        quantity: item.quantity,
-        price: item.price,
-      })),
-    );
-  };
-
-  const updatePricingRow = (product: string, value: number | null) => {
-    setPricingRows((current) =>
-      current.map((row) =>
-        row.product === product ? { ...row, price: value ?? 0 } : row,
-      ),
-    );
-  };
-
-  const savePricing = async () => {
-    if (!pricingOrder) return;
-
-    if (pricingRows.some((row) => row.price < 0)) {
-      message.warning("Giá vốn NPP không được nhỏ hơn 0");
-      return;
-    }
-
-    try {
-      await updateSupplyPricing({
-        id: pricingOrder._id,
-        body: {
-          items: pricingRows.map((row) => ({
-            product: row.product,
-            price: row.price,
-          })),
-        },
-      }).unwrap();
-      message.success("Đã cập nhật giá vốn NPP");
-      setPricingOrder(undefined);
-      setPricingRows([]);
-    } catch (error: unknown) {
-      message.error(
-        orderApiMessage(error, "Không thể cập nhật giá cho đơn nhập kho"),
-      );
     }
   };
 
@@ -333,16 +260,6 @@ export default function AdminSupplyOrdersPage() {
       render: (value: number) => <Text strong>{money(value)}</Text>,
     },
     {
-      title: "Giá vốn NPP",
-      width: 150,
-      render: (_, record) => {
-        const firstItem = record.items[0];
-        if (!firstItem) return "-";
-
-        return <Text type="secondary">{money(firstItem.price)}</Text>;
-      },
-    },
-    {
       title: "Trạng thái",
       dataIndex: "status",
       width: 150,
@@ -353,21 +270,21 @@ export default function AdminSupplyOrdersPage() {
     },
     {
       title: "Thao tác",
-      width: 210,
+      key: "actions",
+      width: 160,
       align: "center",
+      fixed: "right",
+      className: "admin-supply-actions-cell",
       render: (_, record) => (
-        <Space>
+        <Space size={12} className="admin-supply-actions">
           <Link href={`/admin/orders/${record._id}`}>
-            <Button icon={<EyeOutlined />}>Chi tiết</Button>
-          </Link>
-          {(record.status === "pending" || record.status === "approved") && (
             <Button
-              icon={<SettingOutlined />}
-              onClick={() => openPricingModal(record)}
+              icon={<EyeOutlined />}
+              className="admin-supply-detail-action"
             >
-              Giá vốn
+              Chi tiết
             </Button>
-          )}
+          </Link>
         </Space>
       ),
     },
@@ -460,7 +377,7 @@ export default function AdminSupplyOrdersPage() {
             loading={isLoading}
             columns={columns}
             dataSource={supplyOrders}
-            scroll={{ x: 1660 }}
+            scroll={{ x: 1460 }}
             pagination={{
               current: page,
               pageSize,
@@ -480,69 +397,6 @@ export default function AdminSupplyOrdersPage() {
         </Card>
       </Flex>
 
-      <Modal
-        title={`Cài giá vốn nhập kho ${pricingOrder?.orderCode || ""}`}
-        open={Boolean(pricingOrder)}
-        onCancel={() => {
-          setPricingOrder(undefined);
-          setPricingRows([]);
-        }}
-        onOk={savePricing}
-        okText="Lưu giá vốn"
-        cancelText="Đóng"
-        confirmLoading={savingPricing}
-        width={860}
-      >
-        <Table<PricingRow>
-          rowKey="product"
-          pagination={false}
-          dataSource={pricingRows}
-          scroll={{ x: 760 }}
-          columns={[
-            {
-              title: "Sản phẩm",
-              dataIndex: "productName",
-              width: 260,
-              render: (value: string, row) => (
-                <Space direction="vertical" size={0}>
-                  <Text strong>{value}</Text>
-                  <Text type="secondary">
-                    SL: {row.quantity.toLocaleString("vi-VN")}
-                  </Text>
-                </Space>
-              ),
-            },
-            {
-              title: "Giá vốn NPP",
-              dataIndex: "price",
-              width: 220,
-              render: (value: number, row) => (
-                <InputNumber
-                  min={0}
-                  value={value}
-                  style={{ width: "100%" }}
-                  formatter={(input) =>
-                    `${input}`.replace(/\B(?=(\d{3})+(?!\d))/g, ".")
-                  }
-                  parser={(input) =>
-                    Number((input || "").replace(/[^\d]/g, ""))
-                  }
-                  onChange={(nextValue) =>
-                    updatePricingRow(row.product, nextValue)
-                  }
-                />
-              ),
-            },
-            {
-              title: "Thành tiền vốn",
-              width: 160,
-              align: "right",
-              render: (_, row) => money(row.price * row.quantity),
-            },
-          ]}
-        />
-      </Modal>
-
       <style jsx global>{`
         .admin-supply-primary-action.ant-btn-primary,
         .admin-supply-deliver-action.ant-btn-primary {
@@ -553,15 +407,56 @@ export default function AdminSupplyOrdersPage() {
           box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18) !important;
         }
 
+        .admin-supply-primary-action.ant-btn-primary {
+          border-color: #f59e0b !important;
+          background: #f59e0b !important;
+          color: #ffffff !important;
+          box-shadow: 0 8px 18px rgba(245, 158, 11, 0.22) !important;
+        }
+
+        .admin-supply-primary-action.ant-btn-primary:hover {
+          border-color: #d97706 !important;
+          background: #d97706 !important;
+          color: #ffffff !important;
+        }
+
+        .admin-supply-detail-action.ant-btn {
+          min-width: 118px !important;
+          border-color: #2563eb !important;
+          background: #2563eb !important;
+          color: #ffffff !important;
+          font-weight: 800 !important;
+          box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18) !important;
+        }
+
+        .admin-supply-detail-action.ant-btn:hover {
+          border-color: #1d4ed8 !important;
+          background: #1d4ed8 !important;
+          color: #ffffff !important;
+        }
+
+        .admin-supply-actions-cell {
+          min-width: 160px !important;
+        }
+
+        .admin-supply-actions-cell .admin-supply-actions {
+          width: 100%;
+          display: inline-flex !important;
+          flex-wrap: nowrap !important;
+          justify-content: center !important;
+        }
+
         .admin-supply-deliver-action.ant-btn-primary {
           border-color: #16a34a !important;
           background: #16a34a !important;
+          color: #ffffff !important;
           box-shadow: 0 8px 18px rgba(22, 163, 74, 0.18) !important;
         }
 
         .admin-supply-deliver-action.ant-btn-primary:hover {
           border-color: #15803d !important;
           background: #15803d !important;
+          color: #ffffff !important;
         }
       `}</style>
     </>

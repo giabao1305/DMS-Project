@@ -116,7 +116,7 @@ export default function DistributorCustomersPage() {
     },
     { title: "Địa chỉ", dataIndex: "address", ellipsis: true },
     {
-      title: "DSR phụ trách",
+      title: "Nhân viên phụ trách",
       dataIndex: "assignedSeller",
       width: 190,
       render: (value) => (
@@ -160,7 +160,7 @@ export default function DistributorCustomersPage() {
               icon={<EditOutlined />}
               className="distributor-row-action distributor-row-action-edit"
             >
-              Sửa/Gán
+              Sửa
             </Button>
           </Link>
         </Space>
@@ -171,8 +171,8 @@ export default function DistributorCustomersPage() {
   return (
     <DistributorPageShell
       eyebrow="Khách hàng"
-      title="Khách hàng đội DSR"
-      description="Theo dõi điểm bán được gán cho các DSR cấp dưới."
+      title="Điểm bán phụ trách"
+      description="Theo dõi điểm bán được gán cho nhân viên bán hàng."
       extra={
         <Link href="/distributor/customers/create">
           <Button
@@ -188,7 +188,7 @@ export default function DistributorCustomersPage() {
       <DistributorCommandCenter
         eyebrow="Outlet coverage"
         title="Nắm độ phủ điểm bán"
-        description="Theo dõi trạng thái duyệt, hồ sơ điểm bán và DSR phụ trách để đảm bảo đội có đủ khách hàng hoạt động."
+        description="Theo dõi trạng thái duyệt, hồ sơ điểm bán và nhân viên phụ trách để đảm bảo nhân sự bán hàng có đủ điểm bán hoạt động."
         meterValue={`${approvedRate}%`}
         meterLabel="Điểm bán đã duyệt"
         stats={[
@@ -216,7 +216,7 @@ export default function DistributorCustomersPage() {
             </>
           ) : (
             <Text className="distributor-command-feature-empty">
-              Chưa có khách hàng trong đội.
+              Chưa có điểm bán phụ trách.
             </Text>
           )
         }
@@ -230,7 +230,7 @@ export default function DistributorCustomersPage() {
 
       <DistributorTableCard
         title="Danh sách điểm bán"
-        description="Theo dõi trạng thái duyệt và DSR đang phụ trách từng khách hàng."
+        description="Theo dõi trạng thái duyệt và nhân viên đang phụ trách từng khách hàng."
       >
         <Table
           rowKey="_id"

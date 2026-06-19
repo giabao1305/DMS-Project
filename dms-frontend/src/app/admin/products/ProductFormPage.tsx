@@ -19,7 +19,6 @@ import {
   Row,
   Select,
   Space,
-  Tag,
   Typography,
 } from "antd";
 import { useParams, useRouter } from "next/navigation";
@@ -276,9 +275,6 @@ export default function ProductFormPage({ mode }: { mode: ProductFormMode }) {
                     Mã sản phẩm, tên, danh mục và đơn vị bán.
                   </Text>
                 </div>
-                <Tag color="blue" className="admin-product-form-section-tag">
-                  Required
-                </Tag>
               </Flex>
 
               <Row gutter={[18, 0]}>

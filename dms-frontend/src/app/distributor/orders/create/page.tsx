@@ -232,7 +232,7 @@ export default function DistributorCreateOrderPage() {
 
   const handleSubmit = async (values: CreateOrderRequest) => {
     if (!selectedSellerId || !selectedCustomerId) {
-      message.error("Vui lòng chọn DSR và khách hàng");
+      message.error("Vui lòng chọn nhân viên và khách hàng");
       return;
     }
 
@@ -270,7 +270,7 @@ export default function DistributorCreateOrderPage() {
       render: (value: string, record) => (
         <Space direction="vertical" size={0}>
           <Text strong>{value}</Text>
-          <Text type="secondary">Tồn DSR: {money.format(record.stock)}</Text>
+          <Text type="secondary">Tồn của nhân viên: {money.format(record.stock)}</Text>
         </Space>
       ),
     },
@@ -320,7 +320,7 @@ export default function DistributorCreateOrderPage() {
     <DistributorPageShell
       eyebrow="Đơn hàng"
       title="Tạo đơn"
-      description="Tạo đơn bán hàng cho đúng DSR phụ trách, khách hàng đã duyệt và sản phẩm còn tồn trong kho DSR."
+      description="Tạo đơn bán hàng cho đúng nhân viên phụ trách, khách hàng đã duyệt và sản phẩm còn tồn trong kho nhân viên."
       extra={
         <Button
           icon={<ArrowLeftOutlined />}
@@ -332,13 +332,13 @@ export default function DistributorCreateOrderPage() {
     >
       <DistributorCommandCenter
         eyebrow="Đơn bán hàng"
-        title="Tạo đơn cho DSR"
-        description="Chọn DSR, khách hàng và sản phẩm để tạo đơn nhanh khi cần xử lý từ web NPP."
+        title="Tạo đơn cho nhân viên"
+        description="Chọn nhân viên, khách hàng và sản phẩm để tạo đơn nhanh khi cần xử lý từ web NPP."
         meterValue={`${money.format(finalAmount)} đ`}
         meterLabel="Tổng thanh toán dự kiến"
         stats={[
-          { label: "DSR khả dụng", value: sellers.length },
-          { label: "Khách theo DSR", value: sellerCustomers.length },
+          { label: "Nhân viên khả dụng", value: sellers.length },
+          { label: "Khách theo nhân viên", value: sellerCustomers.length },
           { label: "Sản phẩm đã chọn", value: cartItems.length },
         ]}
         progressLabel="Hoàn thiện đơn"
@@ -350,11 +350,11 @@ export default function DistributorCreateOrderPage() {
               Quy trình NPP
             </Text>
             <Text className="distributor-command-feature-title">
-              Gán đúng DSR
+              Gán đúng nhân viên
             </Text>
             <div className="distributor-command-feature-meta">
               <span>Khách đã duyệt</span>
-              <span>Kho DSR</span>
+              <span>Kho nhân viên</span>
             </div>
             <Tag color="blue" className="distributor-pill-tag">
               Đơn bán hàng
@@ -365,7 +365,7 @@ export default function DistributorCreateOrderPage() {
 
       <DistributorTableCard
         title="Thông tin đơn hàng"
-        description="Chọn DSR, khách hàng, sản phẩm và kiểm tra tổng thanh toán trước khi tạo đơn."
+        description="Chọn nhân viên, khách hàng, sản phẩm và kiểm tra tổng thanh toán trước khi tạo đơn."
       >
         <section className="distributor-order-form-shell">
           <div className="distributor-order-form-frame">
@@ -383,8 +383,8 @@ export default function DistributorCreateOrderPage() {
                       Người bán và khách hàng
                     </Text>
                     <Text className="distributor-order-section-desc">
-                      Chọn DSR trước, sau đó chọn khách hàng đã được duyệt
-                      thuộc DSR đó.
+                      Chọn nhân viên trước, sau đó chọn khách hàng đã được duyệt
+                      thuộc nhân viên đó.
                     </Text>
                   </div>
                   <Tag color="blue" className="distributor-order-section-tag">
@@ -395,15 +395,15 @@ export default function DistributorCreateOrderPage() {
                 <Row gutter={[18, 0]}>
                   <Col xs={24} md={8}>
                     <Form.Item
-                      label="DSR phụ trách"
+                      label="Nhân viên phụ trách"
                       name="seller"
-                      rules={[{ required: true, message: "Vui lòng chọn DSR" }]}
+                      rules={[{ required: true, message: "Vui lòng chọn nhân viên" }]}
                     >
                       <Select
                         showSearch
                         size="large"
                         loading={loadingUsers}
-                        placeholder="Chọn DSR"
+                        placeholder="Chọn nhân viên"
                         optionFilterProp="label"
                         onChange={handleSellerChange}
                         options={sellers.map((seller) => ({
@@ -430,7 +430,7 @@ export default function DistributorCreateOrderPage() {
                         size="large"
                         loading={loadingCustomers}
                         disabled={!selectedSellerId}
-                        placeholder="Chọn khách đã gán cho DSR"
+                        placeholder="Chọn khách đã gán cho nhân viên"
                         optionFilterProp="label"
                         onChange={setSelectedCustomerId}
                         options={sellerCustomers.map((customer: Customer) => ({
@@ -482,7 +482,7 @@ export default function DistributorCreateOrderPage() {
                       Sản phẩm trong đơn
                     </Text>
                     <Text className="distributor-order-section-desc">
-                      Thêm sản phẩm từ kho DSR và điều chỉnh số lượng theo tồn
+                      Thêm sản phẩm từ kho nhân viên và điều chỉnh số lượng theo tồn
                       hiện có.
                     </Text>
                   </div>
@@ -492,7 +492,7 @@ export default function DistributorCreateOrderPage() {
                   >
                     {selectedSellerId
                       ? `${activeProducts.length} sản phẩm còn tồn`
-                      : "Chưa chọn DSR"}
+                      : "Chưa chọn nhân viên"}
                   </Tag>
                 </Flex>
 
@@ -507,7 +507,7 @@ export default function DistributorCreateOrderPage() {
                     size="large"
                     loading={loadingStocks}
                     disabled={!selectedSellerId}
-                    placeholder="Chọn sản phẩm trong kho DSR"
+                    placeholder="Chọn sản phẩm trong kho nhân viên"
                     optionFilterProp="label"
                     value={selectedProductId}
                     onChange={setSelectedProductId}

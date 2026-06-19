@@ -199,7 +199,7 @@ export default function DistributorOrdersPage() {
       ),
     },
     {
-      title: "DSR",
+      title: "Nhân viên",
       dataIndex: "seller",
       width: 190,
       ellipsis: true,
@@ -260,7 +260,7 @@ export default function DistributorOrdersPage() {
     <DistributorPageShell
       eyebrow="Đơn hàng"
       title="Đơn hàng"
-      description="Theo dõi đơn bán ra tiệm của đội DSR, giá trị và trạng thái xử lý."
+      description="Theo dõi đơn bán ra tiệm của nhân viên bán hàng, giá trị và trạng thái xử lý."
       extra={
         <Link href="/distributor/orders/create">
           <Button
@@ -276,7 +276,7 @@ export default function DistributorOrdersPage() {
       <DistributorCommandCenter
         eyebrow="Order pipeline"
         title="Theo dõi đơn hàng"
-        description="Nắm nhanh số đơn, trạng thái xử lý, doanh thu và hiệu quả của đội DSR."
+        description="Nắm nhanh số đơn, trạng thái xử lý, doanh thu và hiệu quả của nhân viên bán hàng."
         meterValue={`${money.format(stats.totalRevenue)} đ`}
         meterLabel="Doanh thu đơn thị trường đã giao"
         stats={[

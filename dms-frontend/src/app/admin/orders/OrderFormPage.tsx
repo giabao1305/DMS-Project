@@ -509,9 +509,6 @@ export default function OrderFormPage({ mode }: { mode: OrderFormMode }) {
                     thuộc đúng tuyến.
                   </Text>
                 </div>
-                <Tag color="blue" className="admin-order-form-section-tag">
-                  Required
-                </Tag>
               </Flex>
 
               <Row gutter={[18, 0]}>
@@ -749,8 +746,10 @@ export default function OrderFormPage({ mode }: { mode: OrderFormMode }) {
                   },
                   {
                     title: "Hành động",
+                    key: "actions",
                     width: 128,
                     align: "center",
+                    fixed: "right",
                     render: (_, record) => (
                       <Button
                         color="danger"

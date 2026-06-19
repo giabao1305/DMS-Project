@@ -83,6 +83,9 @@ type SelectedCustomer = {
 
 type InsertPosition = "start" | "end" | `after:${string}`;
 
+const EMPTY_USERS: User[] = [];
+const EMPTY_CUSTOMERS: Customer[] = [];
+
 const getSellerId = (seller: string | User) =>
   typeof seller === "string" ? seller : seller._id;
 
@@ -239,18 +242,22 @@ export default function RouteFormPage({
     [],
   );
 
-  const { data: adminUsers = [] } = useGetUsersQuery(undefined, {
+  const { data: adminUsersData } = useGetUsersQuery(undefined, {
     skip: isDistributorScope,
   });
-  const { data: distributorSellers = [] } = useGetSellerUsersQuery(undefined, {
+  const { data: distributorSellersData } = useGetSellerUsersQuery(undefined, {
     skip: !isDistributorScope,
   });
-  const { data: adminCustomers = [] } = useGetCustomersQuery(undefined, {
+  const { data: adminCustomersData } = useGetCustomersQuery(undefined, {
     skip: isDistributorScope,
   });
-  const { data: distributorCustomers = [] } = useGetMyCustomersQuery(undefined, {
+  const { data: distributorCustomersData } = useGetMyCustomersQuery(undefined, {
     skip: !isDistributorScope,
   });
+  const adminUsers = adminUsersData ?? EMPTY_USERS;
+  const distributorSellers = distributorSellersData ?? EMPTY_USERS;
+  const adminCustomers = adminCustomersData ?? EMPTY_CUSTOMERS;
+  const distributorCustomers = distributorCustomersData ?? EMPTY_CUSTOMERS;
   const { data: route, isLoading: loadingRoute } = useGetRouteByIdQuery(
     routeId || "",
     { skip: !isEdit || !routeId },
@@ -790,9 +797,6 @@ export default function RouteFormPage({
                     Tên tuyến, người phụ trách và ngày triển khai.
                   </Text>
                 </div>
-                <Tag color="blue" className="admin-route-form-section-tag">
-                  Required
-                </Tag>
               </Flex>
 
               <Row gutter={[18, 0]}>

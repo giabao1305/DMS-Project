@@ -77,19 +77,21 @@ export function LeaveDetail({
                 color="#FFFFFF"
               />
             </View>
+            <View style={styles.heroText}>
+              <Text style={styles.leaveCode}>Mã {shortCode(leave._id)}</Text>
+              <Text style={styles.leaveRange}>
+                {shortDate(leave.startDate)} - {shortDate(leave.endDate)}
+              </Text>
+              <Text style={styles.createdAt}>
+                Tạo lúc {shortDateTime(leave.createdAt)}
+              </Text>
+            </View>
             <View style={[styles.statusPill, { borderColor: tone.border }]}>
               <Text style={[styles.statusText, { color: tone.color }]}>
                 {statusLabel(leave.status)}
               </Text>
             </View>
           </View>
-          <Text style={styles.leaveCode}>Mã {shortCode(leave._id)}</Text>
-          <Text style={styles.leaveRange}>
-            {shortDate(leave.startDate)} - {shortDate(leave.endDate)}
-          </Text>
-          <Text style={styles.createdAt}>
-            Tạo lúc {shortDateTime(leave.createdAt)}
-          </Text>
         </View>
 
         <View style={styles.infoGrid}>
@@ -139,6 +141,7 @@ export function LeaveDetail({
           <DetailRow
             label="Ghi chú quản lý"
             value={leave.adminNote || "Chưa có phản hồi"}
+            multiline
           />
           <DetailRow label="Cập nhật" value={shortDateTime(leave.updatedAt)} />
         </View>
@@ -198,20 +201,33 @@ function InfoTile({
       >
         <MaterialCommunityIcons name={icon} size={18} color="#FFFFFF" />
       </View>
-      <Text style={styles.infoValue} numberOfLines={1}>
-        {value}
-      </Text>
-      <Text style={styles.infoLabel} numberOfLines={1}>
-        {label}
-      </Text>
+      <View style={styles.infoText}>
+        <Text style={styles.infoLabel} numberOfLines={1}>
+          {label}
+        </Text>
+        <Text style={styles.infoValue} numberOfLines={1}>
+          {value}
+        </Text>
+      </View>
     </View>
   );
 }
-function DetailRow({ label, value }: { label: string; value: string }) {
+function DetailRow({
+  label,
+  value,
+  multiline,
+}: {
+  label: string;
+  value: string;
+  multiline?: boolean;
+}) {
   return (
-    <View style={styles.detailRow}>
+    <View style={[styles.detailRow, multiline && styles.detailRowStacked]}>
       <Text style={styles.detailLabel}>{label}</Text>
-      <Text style={styles.detailValue} numberOfLines={2}>
+      <Text
+        style={[styles.detailValue, multiline && styles.detailValueStacked]}
+        numberOfLines={multiline ? undefined : 2}
+      >
         {value}
       </Text>
     </View>
@@ -304,14 +320,13 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderRadius: 8,
     borderWidth: 1,
-    gap: 8,
-    padding: 14,
+    padding: 13,
     ...bentoSoftShadow,
   },
   heroTop: {
-    alignItems: "center",
+    alignItems: "flex-start",
     flexDirection: "row",
-    justifyContent: "space-between",
+    gap: 11,
   },
   heroIcon: {
     alignItems: "center",
@@ -322,6 +337,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 44,
   },
+  heroText: { flex: 1, minWidth: 0 },
   statusPill: {
     backgroundColor: bento.surface,
     borderRadius: 8,
@@ -336,18 +352,27 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "700",
     lineHeight: 25,
+    marginTop: 3,
   },
-  createdAt: { color: bento.textSecondary, fontSize: 13, fontWeight: "600" },
+  createdAt: {
+    color: bento.textSecondary,
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 3,
+  },
   infoGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   infoTile: {
+    alignItems: "center",
     backgroundColor: bento.surface,
     borderColor: bento.border,
     borderRadius: 8,
     borderWidth: 1,
     flexBasis: "47%",
+    flexDirection: "row",
     flexGrow: 1,
-    minHeight: 104,
-    padding: 13,
+    gap: 10,
+    minHeight: 68,
+    padding: 11,
     ...bentoSoftShadow,
   },
   infoIcon: {
@@ -359,17 +384,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 38,
   },
-  infoValue: {
-    color: bento.text,
-    fontSize: 14,
-    fontWeight: "700",
-    marginTop: 11,
-  },
+  infoText: { flex: 1, minWidth: 0 },
   infoLabel: {
     color: bento.textSecondary,
     fontSize: 11,
     fontWeight: "600",
-    marginTop: 3,
+  },
+  infoValue: {
+    color: bento.text,
+    fontSize: 14,
+    fontWeight: "700",
+    marginTop: 2,
   },
   card: {
     backgroundColor: bento.surface,
@@ -407,6 +432,10 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingTop: 10,
   },
+  detailRowStacked: {
+    flexDirection: "column",
+    gap: 7,
+  },
   detailLabel: {
     color: bento.textSecondary,
     flex: 1,
@@ -419,6 +448,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
     textAlign: "right",
+  },
+  detailValueStacked: {
+    backgroundColor: bento.surfaceAlt,
+    borderColor: bento.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    flex: 0,
+    lineHeight: 20,
+    padding: 10,
+    textAlign: "left",
+    width: "100%",
   },
   pressed: { opacity: 0.72 },
 });

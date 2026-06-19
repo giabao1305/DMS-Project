@@ -343,7 +343,7 @@ export default function DistributorDashboardPage() {
       ),
     },
     {
-      title: "DSR",
+      title: "Nhân viên",
       dataIndex: "seller",
       ellipsis: true,
       width: 180,
@@ -401,7 +401,7 @@ export default function DistributorDashboardPage() {
       ),
     },
     {
-      title: "DSR",
+      title: "Nhân viên",
       dataIndex: "seller",
       ellipsis: true,
       width: 170,
@@ -442,7 +442,7 @@ export default function DistributorDashboardPage() {
       <DistributorPageHeader
         eyebrow="Điều hành nhà phân phối"
         title="Tổng quan nhà phân phối"
-        description="Theo dõi nhanh hoạt động bán hàng, đội DSR, đơn hàng và tuyến ghé thăm hôm nay."
+        description="Theo dõi nhanh hoạt động bán hàng, nhân viên bán hàng, đơn hàng và tuyến ghé thăm hôm nay."
       />
 
       <Flex
@@ -499,7 +499,7 @@ export default function DistributorDashboardPage() {
                         className="distributor-dashboard-profile-text"
                         style={{ color: "rgba(255,255,255,0.9)" }}
                       >
-                        Quản lý đội DSR, tuyến bán hàng và hiệu suất điểm bán
+                        Quản lý nhân viên bán hàng, tuyến bán hàng và hiệu suất điểm bán
                       </Text>
                     </Flex>
                   </Flex>
@@ -556,7 +556,7 @@ export default function DistributorDashboardPage() {
                   <Col xs={24} md={8}>
                     <Flex vertical gap={6}>
                       <Text className="distributor-dashboard-summary-label">
-                        Đội DSR hoạt động
+                        Nhân viên đang hoạt động
                       </Text>
                       <Text
                         strong
@@ -577,7 +577,7 @@ export default function DistributorDashboardPage() {
                       icon={<TeamOutlined />}
                       className="distributor-dashboard-button"
                     >
-                      Xem đội DSR
+                      Xem nhân viên bán hàng
                     </Button>
                   </Link>
                   <Link href="/distributor/routes">
@@ -593,7 +593,7 @@ export default function DistributorDashboardPage() {
                       icon={<RiseOutlined />}
                       className="distributor-dashboard-button"
                     >
-                      KPI đội
+                      KPI nhân viên
                     </Button>
                   </Link>
                 </Flex>
@@ -605,12 +605,12 @@ export default function DistributorDashboardPage() {
         <Row gutter={[16, 16]}>
           <Col xs={24} sm={12} xl={6}>
             <DashboardMetricCard
-              title="DSR trong đội"
+              title="Nhân viên bán hàng"
               value={stats.team}
               icon={<TeamOutlined />}
               loading={isTeamLoading}
               tone="blue"
-              description="Nhân sự được gán trực tiếp cho distributor."
+              description="Nhân viên được gán trực tiếp cho nhà phân phối."
             />
           </Col>
           <Col xs={24} sm={12} xl={6}>
@@ -630,7 +630,7 @@ export default function DistributorDashboardPage() {
               icon={<ShoppingCartOutlined />}
               loading={isOrdersLoading}
               tone="green"
-              description="Đơn hàng đội DSR tạo trong ngày."
+              description="Đơn hàng nhân viên bán hàng tạo trong ngày."
             />
           </Col>
           <Col xs={24} sm={12} xl={6}>
@@ -698,7 +698,7 @@ export default function DistributorDashboardPage() {
                 </div>
                 <Flex vertical gap={5}>
                   <Text className="distributor-dashboard-active-label">
-                    DSR đang ghé thăm
+                    Nhân viên đang ghé thăm
                   </Text>
                   <Title
                     level={4}
@@ -739,7 +739,7 @@ export default function DistributorDashboardPage() {
               className="distributor-panel-card distributor-table-card"
             >
               <Text className="distributor-table-card-description">
-                Danh sách tuyến đội DSR cần thực thi trong ngày.
+                Danh sách tuyến nhân viên bán hàng cần thực thi trong ngày.
               </Text>
               <Table
                 rowKey="_id"
@@ -776,7 +776,7 @@ export default function DistributorDashboardPage() {
               className="distributor-panel-card distributor-table-card"
             >
               <Text className="distributor-table-card-description">
-                Các đơn mới phát sinh từ đội DSR.
+                Các đơn mới phát sinh từ nhân viên bán hàng.
               </Text>
               <Table
                 rowKey="_id"
@@ -812,17 +812,17 @@ export default function DistributorDashboardPage() {
               {
                 href: "/distributor/team",
                 icon: <TeamOutlined />,
-                text: "Đội DSR",
+                text: "Nhân viên bán hàng",
               },
               {
                 href: "/distributor/customers",
                 icon: <CheckCircleOutlined />,
-                text: "Khách hàng đội",
+                text: "Điểm bán phụ trách",
               },
               {
                 href: "/distributor/orders",
                 icon: <ShoppingCartOutlined />,
-                text: "Đơn hàng đội",
+                text: "Đơn bán hàng",
               },
               {
                 href: "/distributor/visits",
@@ -969,6 +969,9 @@ export default function DistributorDashboardPage() {
             display: flex;
             flex-direction: column;
             justify-content: center;
+            border: 0 !important;
+            border-radius: 0 !important;
+            background: #ffffff !important;
           }
 
           .distributor-dashboard-summary-panel .ant-row:first-child {
@@ -1022,7 +1025,12 @@ export default function DistributorDashboardPage() {
           }
 
           .distributor-dashboard-summary-description,
-          .distributor-dashboard-metric-description,
+          .distributor-dashboard-metric-description {
+            color: #475569 !important;
+            font-size: 13px;
+            line-height: 1.5;
+          }
+
           .distributor-dashboard-active-description {
             color: #475569 !important;
             font-size: 13px;

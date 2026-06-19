@@ -428,7 +428,7 @@ export default function AdminDashboardPage() {
     {
       label: "Duyệt nhập kho",
       value: dashboard.pendingSupplyOrdersCount,
-      caption: "Đơn NPP chờ admin xử lý",
+      caption: "Đơn NPP chờ quản trị xử lý",
       icon: <DatabaseOutlined />,
       toneKey: "blue",
       loading: loadingSupplyOrders,
@@ -490,7 +490,7 @@ export default function AdminDashboardPage() {
 
       <AdminPageHeader
         title="Tổng quan điều hành"
-        description="Theo dõi nhanh các khu vực đang hiện trên sidebar: nhập kho, tồn kho, dữ liệu hệ thống và báo cáo."
+        description="Theo dõi nhanh các khu vực đang hiện trên menu: nhập kho, tồn kho, dữ liệu hệ thống và báo cáo."
         extra={
           <Flex gap={10} wrap="wrap">
             <Link href="/admin/orders/supply">
@@ -513,7 +513,7 @@ export default function AdminDashboardPage() {
               Tổng quan tháng {reportParams.month}/{reportParams.year}
             </Title>
             <Text className="admin-dash-hero-description">
-              Tập trung vào những module admin đang dùng thường xuyên: cấp hàng
+              Tập trung vào những phân hệ quản trị đang dùng thường xuyên: cấp hàng
               cho NPP, tồn kho, sản phẩm, nhân sự và báo cáo vận hành.
             </Text>
 
@@ -603,14 +603,20 @@ export default function AdminDashboardPage() {
           <Col xs={24} lg={8}>
             <Card
               variant="borderless"
-              className="admin-dash-panel admin-dash-ops-panel"
+              className="admin-dash-stock-alert-panel"
+              data-no-hover="true"
               title={
                 <PanelTitle
                   title="Cảnh báo tồn kho"
                   description="Sản phẩm cần nhập hoặc điều chuyển sớm"
                   extra={
                     <Link href="/admin/inventory">
-                      <Button size="small">Xem kho</Button>
+                      <Button
+                        size="small"
+                        className="admin-dash-stock-alert-action"
+                      >
+                        Xem kho
+                      </Button>
                     </Link>
                   }
                 />
@@ -695,8 +701,8 @@ export default function AdminDashboardPage() {
               title={
                 <PanelTitle
                   title="Quản trị dữ liệu"
-                  description="Lối tắt đến các module đang hiện trên sidebar"
-                  extra={<Tag color="blue">Sidebar</Tag>}
+                  description="Lối tắt đến các phân hệ đang hiện trên menu"
+                  extra={<Tag color="blue">Menu</Tag>}
                 />
               }
             >
@@ -709,10 +715,10 @@ export default function AdminDashboardPage() {
                     <strong>Nhân viên</strong>
                     <small>
                       {dashboard.activeManagersCount} quản lí ·{" "}
-                      {dashboard.activeSellersCount} seller đang hoạt động
+                      {dashboard.activeSellersCount} nhân viên bán hàng đang hoạt động
                     </small>
                   </span>
-                  <Tag color="blue">User</Tag>
+                  <Tag color="blue">Người dùng</Tag>
                 </Link>
                 <Link href="/admin/categories" className="admin-dash-management-row">
                   <span className="admin-dash-row-icon admin-dash-row-icon-blue">
@@ -722,7 +728,7 @@ export default function AdminDashboardPage() {
                     <strong>Danh mục</strong>
                     <small>Tổ chức nhóm sản phẩm</small>
                   </span>
-                  <Tag color="cyan">Data</Tag>
+                  <Tag color="cyan">Dữ liệu</Tag>
                 </Link>
                 <Link href="/admin/promotions" className="admin-dash-management-row">
                   <span className="admin-dash-row-icon admin-dash-row-icon-amber">
@@ -732,7 +738,7 @@ export default function AdminDashboardPage() {
                     <strong>Khuyến mãi</strong>
                     <small>Chính sách hỗ trợ bán hàng</small>
                   </span>
-                  <Tag color="orange">Sales</Tag>
+                  <Tag color="orange">Bán hàng</Tag>
                 </Link>
               </Space>
             </Card>
@@ -863,7 +869,7 @@ export default function AdminDashboardPage() {
               }
             >
               {dashboard.sellerRevenueChartData.length === 0 ? (
-                <Empty description="Chưa có dữ liệu seller" />
+                <Empty description="Chưa có dữ liệu nhà phân phối" />
               ) : (
                 <Column
                   height={310}
@@ -882,7 +888,7 @@ export default function AdminDashboardPage() {
                     },
                   }}
                   tooltip={{
-                    title: "seller",
+                    title: "Nhà phân phối",
                     items: [
                       {
                         field: "revenue",
@@ -903,9 +909,9 @@ export default function AdminDashboardPage() {
               className="admin-dash-panel"
               title={
                 <PanelTitle
-                  title="Tóm tắt module"
-                  description="Những khu vực chính đang mở trên sidebar"
-                  extra={<Tag color="green">Admin</Tag>}
+                  title="Tóm tắt phân hệ"
+                  description="Những khu vực chính đang mở trên menu"
+                  extra={<Tag color="green">Quản trị</Tag>}
                 />
               }
             >
@@ -1079,6 +1085,14 @@ export default function AdminDashboardPage() {
           animation: admin-dash-fade-up 260ms ease-out 80ms both;
         }
 
+        .admin-dash-progress-card:hover {
+          border-color: rgba(125, 211, 252, 0.18) !important;
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.12),
+            0 18px 38px rgba(0, 0, 0, 0.16) !important;
+          transform: none !important;
+        }
+
         .admin-dash-progress-card .ant-progress-text {
           color: #ffffff !important;
         }
@@ -1183,9 +1197,9 @@ export default function AdminDashboardPage() {
 
         .admin-dash-stat-card:hover,
         .admin-dash-panel:hover {
-          border-color: #b9cce5 !important;
-          box-shadow: 0 16px 32px rgba(15, 23, 42, 0.08) !important;
-          transform: translateY(-1px);
+          border-color: #dbe4f0 !important;
+          box-shadow: 0 10px 24px rgba(15, 23, 42, 0.055) !important;
+          transform: none !important;
         }
 
         .admin-dash-stat-card {
@@ -1256,6 +1270,60 @@ export default function AdminDashboardPage() {
 
         .admin-dash-panel .ant-card-body {
           padding: 18px !important;
+        }
+
+        .admin-dash-stock-alert-panel.ant-card {
+          height: 100%;
+          overflow: hidden;
+          border: 1px solid #dbe4f0 !important;
+          border-radius: 8px !important;
+          background: #ffffff !important;
+          box-shadow: 0 10px 24px rgba(15, 23, 42, 0.055) !important;
+          transform: none !important;
+          transition: none !important;
+          animation: admin-dash-fade-up 240ms ease-out 40ms both;
+          pointer-events: none !important;
+        }
+
+        .admin-dash-stock-alert-panel.ant-card:hover,
+        .admin-dash-stock-alert-panel.ant-card:focus,
+        .admin-dash-stock-alert-panel.ant-card:focus-within,
+        .admin-dash-stock-alert-panel.ant-card[data-no-hover="true"]:hover {
+          border-color: #dbe4f0 !important;
+          background: #ffffff !important;
+          box-shadow: 0 10px 24px rgba(15, 23, 42, 0.055) !important;
+          transform: none !important;
+          transition: none !important;
+        }
+
+        .admin-dash-stock-alert-panel .ant-card-head,
+        .admin-dash-stock-alert-panel:hover .ant-card-head,
+        .admin-dash-stock-alert-panel[data-no-hover="true"] .ant-card-head {
+          min-height: 78px;
+          border-bottom: 1px solid #e7edf5 !important;
+          background: #fbfdff !important;
+          transition: none !important;
+          pointer-events: auto !important;
+        }
+
+        .admin-dash-stock-alert-panel .ant-card-body,
+        .admin-dash-stock-alert-panel:hover .ant-card-body,
+        .admin-dash-stock-alert-panel[data-no-hover="true"] .ant-card-body {
+          min-height: 304px;
+          padding: 18px !important;
+          background: #ffffff !important;
+          transition: none !important;
+        }
+
+        .admin-dash-stock-alert-panel .ant-empty,
+        .admin-dash-stock-alert-panel .ant-empty * {
+          pointer-events: none !important;
+          transform: none !important;
+          transition: none !important;
+        }
+
+        .admin-dash-stock-alert-panel .admin-dash-stock-alert-action.ant-btn {
+          pointer-events: auto !important;
         }
 
         .admin-dash-ops-panel .ant-card-body {

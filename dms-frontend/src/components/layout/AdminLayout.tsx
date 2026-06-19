@@ -2,19 +2,23 @@
 
 import {
   BellOutlined,
+  CheckOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  NotificationOutlined,
 } from "@ant-design/icons";
 import {
   Avatar,
   Badge,
   Button,
   Drawer,
+  Empty,
   Flex,
   Grid,
   Layout,
   Menu,
+  Popover,
   Tag,
   Tooltip,
   Typography,
@@ -31,15 +35,60 @@ import {
 } from "@/config/adminMenu";
 import { useLogoutSessionMutation } from "@/features/auth/authService";
 import { logout } from "@/features/auth/authSlice";
-import { useGetUnreadCountQuery } from "@/features/notifications/notificationService";
+import {
+  useGetNotificationsQuery,
+  useGetUnreadCountQuery,
+  useMarkAllAsReadMutation,
+} from "@/features/notifications/notificationService";
+import type { Notification } from "@/features/notifications/notificationTypes";
 import { useSocketStatus } from "@/hooks/useSocketStatus";
 import { getSocket, resetSocket } from "@/lib/socket";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { resetApiState } from "@/store/resetApiState";
 
 const { Header, Sider, Content } = Layout;
-const { Title, Text } = Typography;
+const { Text } = Typography;
 const { useBreakpoint } = Grid;
+
+type NotificationFilter = "all" | "unread" | "reminder";
+
+const notificationTypeLabel: Record<Notification["type"], string> = {
+  order: "Đơn hàng",
+  leave: "Nghỉ phép",
+  visit: "Ghé thăm",
+  route: "Tuyến",
+  inventory: "Tồn kho",
+  promotion: "Khuyến mãi",
+  system: "Hệ thống",
+};
+
+const reminderTypes = new Set<Notification["type"]>([
+  "leave",
+  "visit",
+  "route",
+  "inventory",
+]);
+
+const getNotificationLink = (notification: Notification) => {
+  if (!notification.relatedId) {
+    return notification.type === "inventory" ? "/admin/inventory" : null;
+  }
+
+  switch (notification.type) {
+    case "order":
+      return `/admin/orders/${notification.relatedId}`;
+    case "leave":
+      return `/admin/leaves/${notification.relatedId}`;
+    case "visit":
+      return `/admin/visits/${notification.relatedId}`;
+    case "route":
+      return `/admin/routes/${notification.relatedId}`;
+    case "inventory":
+      return "/admin/inventory";
+    default:
+      return null;
+  }
+};
 
 function SidebarIcon({
   children,
@@ -67,14 +116,39 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   const [collapsed, setCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [notificationFilter, setNotificationFilter] =
+    useState<NotificationFilter>("all");
 
   const isSocketConnected = useSocketStatus();
   const { data: unreadData, refetch } = useGetUnreadCountQuery();
+  const { data: notifications = [] } = useGetNotificationsQuery();
+  const [markAllAsRead, { isLoading: markingAllNotifications }] =
+    useMarkAllAsReadMutation();
 
-  const unreadCount = unreadData?.unreadCount ?? 0;
+  const computedUnreadCount = notifications.filter((item) => !item.isRead).length;
+  const unreadCount = unreadData?.unreadCount ?? computedUnreadCount;
   const isDesktopCollapsed = collapsed && !isMobile;
   const adminName = admin?.fullName || "Admin";
   const adminInitial = adminName.trim().charAt(0).toUpperCase() || "A";
+  const sortedNotifications = useMemo(
+    () =>
+      [...notifications].sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      ),
+    [notifications],
+  );
+  const reminderCount = sortedNotifications.filter((item) =>
+    reminderTypes.has(item.type),
+  ).length;
+  const visibleNotifications = sortedNotifications
+    .filter((item) => {
+      if (notificationFilter === "unread") return !item.isRead;
+      if (notificationFilter === "reminder") return reminderTypes.has(item.type);
+      return true;
+    })
+    .slice(0, 4);
 
   useEffect(() => {
     const socket = getSocket();
@@ -96,16 +170,17 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     }
   }, [isMobile, pathname]);
 
-  const activeRoute = useMemo(() => {
-    return (
+  const matchedRoute = useMemo(
+    () =>
       [...adminSidebarRoutes]
         .sort((a, b) => b.key.length - a.key.length)
         .find(
           (route) =>
             pathname === route.key || pathname.startsWith(`${route.key}/`),
-        ) ?? adminSidebarRoutes[0]
-    );
-  }, [pathname]);
+        ),
+    [pathname],
+  );
+  const activeRoute = matchedRoute ?? adminSidebarRoutes[0];
 
   const menuItems: MenuProps["items"] = useMemo(
     () =>
@@ -181,6 +256,147 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       setCollapsed((prev) => !prev);
     });
   }, []);
+
+  const handleNotificationNavigate = useCallback(
+    (notification: Notification) => {
+      const link = getNotificationLink(notification) ?? "/admin/notifications";
+      setNotificationOpen(false);
+      router.push(link);
+    },
+    [router],
+  );
+
+  const handleViewAllNotifications = useCallback(() => {
+    setNotificationOpen(false);
+    router.push("/admin/notifications");
+  }, [router]);
+
+  const handleMarkAllNotifications = useCallback(async () => {
+    try {
+      await markAllAsRead().unwrap();
+    } catch {
+      // The full notification page can still handle retrying this action.
+    }
+  }, [markAllAsRead]);
+
+  useEffect(() => {
+    if (!matchedRoute || typeof window === "undefined") return;
+
+    const currentValidPath = sessionStorage.getItem("dms:current-valid-path");
+
+    if (currentValidPath && currentValidPath !== pathname) {
+      sessionStorage.setItem("dms:previous-valid-path", currentValidPath);
+    }
+
+    sessionStorage.setItem("dms:current-valid-path", pathname);
+  }, [matchedRoute, pathname]);
+
+  const notificationDropdown = (
+    <div className="admin-notification-popover">
+      <div className="admin-notification-popover-head">
+        <Text className="admin-notification-popover-title">Thông báo</Text>
+        <Tooltip title="Đánh dấu tất cả đã đọc">
+          <Button
+            size="small"
+            shape="circle"
+            icon={<CheckOutlined />}
+            loading={markingAllNotifications}
+            disabled={unreadCount === 0}
+            onClick={handleMarkAllNotifications}
+            className="admin-notification-mark-all"
+          />
+        </Tooltip>
+      </div>
+
+      <div className="admin-notification-filter-row">
+        {[
+          { key: "all", label: "Tất cả", count: notifications.length },
+          { key: "unread", label: "Chưa đọc", count: unreadCount },
+          { key: "reminder", label: "Nhắc nhở", count: reminderCount },
+        ].map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            className={`admin-notification-filter ${
+              notificationFilter === item.key ? "is-active" : ""
+            }`}
+            onClick={() => setNotificationFilter(item.key as NotificationFilter)}
+          >
+            <span>{item.label}</span>
+            <strong>{item.count}</strong>
+          </button>
+        ))}
+      </div>
+
+      <div className="admin-notification-popover-list">
+        {visibleNotifications.length === 0 ? (
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description="Chưa có thông báo"
+          />
+        ) : (
+          visibleNotifications.map((item) => (
+            <div
+              key={item._id}
+              role="button"
+              tabIndex={0}
+              className={`admin-notification-popover-item ${
+                item.isRead ? "" : "is-unread"
+              }`}
+              onClick={() => handleNotificationNavigate(item)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  handleNotificationNavigate(item);
+                }
+              }}
+            >
+              <span className="admin-notification-popover-icon">
+                <NotificationOutlined />
+              </span>
+              <div className="admin-notification-popover-copy">
+                <div className="admin-notification-popover-meta">
+                  <Text>{notificationTypeLabel[item.type]}</Text>
+                  <time>
+                    {new Date(item.createdAt).toLocaleString("vi-VN", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                    })}
+                  </time>
+                </div>
+                <Text className="admin-notification-popover-message">
+                  {item.message || item.title}
+                </Text>
+                <button
+                  type="button"
+                  className="admin-notification-popover-link"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    handleNotificationNavigate(item);
+                  }}
+                >
+                  Kiểm tra ngay
+                </button>
+              </div>
+              {!item.isRead && <span className="admin-notification-unread-dot" />}
+            </div>
+          ))
+        )}
+      </div>
+
+      <Button
+        block
+        type="primary"
+        onClick={handleViewAllNotifications}
+        className="admin-notification-more"
+      >
+        Xem thêm thông báo trước đó
+      </Button>
+    </div>
+  );
 
   const sidebarPanel = (
     <div
@@ -344,15 +560,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 />
               )}
 
-              <div className="admin-page-heading">
-                <Title level={3} className="admin-page-title">
-                  {activeRoute.title}
-                </Title>
-
-                <Text className="admin-page-description">
-                  {activeRoute.description}
-                </Text>
-              </div>
             </Flex>
 
             <Flex align="center" gap={10} className="admin-header-actions">
@@ -370,17 +577,24 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 </div>
               )}
 
-              <Tooltip title="Thông báo">
+              <Popover
+                open={notificationOpen}
+                onOpenChange={setNotificationOpen}
+                trigger="click"
+                placement="bottomRight"
+                arrow={false}
+                content={notificationDropdown}
+                overlayClassName="admin-notification-popover-overlay"
+              >
                 <Badge count={unreadCount} overflowCount={99} size="small">
                   <Button
                     type="text"
                     icon={<BellOutlined />}
-                    onClick={() => router.push("/admin/notifications")}
                     className="admin-icon-button"
                     aria-label="Mở thông báo"
                   />
                 </Badge>
-              </Tooltip>
+              </Popover>
 
               {!isMobile && (
                 <div className="admin-header-user">
@@ -431,13 +645,14 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           --admin-sidebar-hover: rgba(125, 211, 252, 0.12);
           --admin-sidebar-border: rgba(125, 211, 252, 0.16);
           --admin-sidebar-text: #d8edf7;
+          --admin-table-header-bg: #24566d;
           --admin-page-bg: #f4f7fb;
           --admin-card-bg: #ffffff;
           --admin-surface-soft: #f8fafc;
           --admin-text-main: #0f172a;
           --admin-text-secondary: #64748b;
           --admin-text-muted: #94a3b8;
-          --admin-border: #dbe4f0;
+          --admin-border: #b8c6d8;
           --admin-success: #10b981;
           --admin-warning: #f59e0b;
           --admin-error: #ef4444;
@@ -479,6 +694,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           background: var(--admin-page-bg);
         }
 
+        html:has(.admin-layout-root),
+        body:has(.admin-layout-root) {
+          height: 100%;
+          overflow: hidden;
+        }
+
         .admin-layout-sider {
           position: relative !important;
           height: 100dvh;
@@ -486,7 +707,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           z-index: 30;
           background: var(--admin-sidebar-deep) !important;
           border-right: 1px solid var(--admin-sidebar-border);
-          box-shadow: 18px 0 36px rgba(7, 26, 36, 0.18);
+          box-shadow: none;
           transition:
             width var(--admin-layout-motion),
             min-width var(--admin-layout-motion),
@@ -677,18 +898,22 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           flex: 1;
           min-height: 0;
           margin-top: 14px;
-          padding-right: 2px;
+          padding-right: 0;
           overflow-y: auto;
           overflow-x: hidden;
-          scrollbar-color: rgba(125, 211, 252, 0.28) transparent;
+          scrollbar-width: none;
           contain: layout paint;
           animation: admin-fade-float var(--admin-enter-motion) 190ms both;
+        }
+
+        .admin-menu-scroll::-webkit-scrollbar {
+          width: 0;
+          height: 0;
         }
 
         .admin-sidebar-shell.is-collapsed .admin-menu-scroll {
           margin-top: 10px;
           padding-right: 0;
-          scrollbar-width: none;
         }
 
         .admin-sidebar-shell.is-collapsed
@@ -1025,7 +1250,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           padding: 0 24px !important;
           display: flex !important;
           align-items: center !important;
-          justify-content: space-between !important;
+          justify-content: flex-end !important;
           gap: 18px;
           background: #ffffff !important;
           border-bottom: 1px solid var(--admin-border);
@@ -1069,6 +1294,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         }
 
         .admin-header-actions {
+          margin-left: auto;
           min-width: 0;
           flex-shrink: 0;
         }
@@ -1129,6 +1355,236 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           background: var(--admin-primary-soft) !important;
           box-shadow: 0 12px 24px rgba(37, 99, 235, 0.12);
           transform: translateY(-1px);
+        }
+
+        .admin-notification-popover-overlay .ant-popover-inner {
+          padding: 0 !important;
+          border: 1px solid var(--admin-border);
+          border-radius: var(--admin-radius-lg);
+          background: #ffffff;
+          box-shadow: 0 22px 46px rgba(15, 23, 42, 0.18);
+          overflow: hidden;
+        }
+
+        .admin-notification-popover-overlay .ant-popover-content {
+          width: 360px;
+        }
+
+        .admin-notification-popover {
+          width: 360px;
+          padding: 12px;
+          background: #ffffff;
+        }
+
+        .admin-notification-popover-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 2px 0 10px;
+        }
+
+        .admin-notification-popover-title {
+          color: var(--admin-table-header-bg) !important;
+          font-size: 15px;
+          font-weight: 900;
+        }
+
+        .admin-notification-mark-all.ant-btn {
+          width: 30px;
+          height: 30px;
+          border-color: #c5d0df !important;
+          background: #f8fafc !important;
+          color: var(--admin-table-header-bg) !important;
+          box-shadow: none !important;
+        }
+
+        .admin-notification-mark-all.ant-btn:hover:not(:disabled),
+        .admin-notification-mark-all.ant-btn:focus:not(:disabled) {
+          border-color: var(--admin-table-header-bg) !important;
+          background: #e9f2f5 !important;
+          color: #173849 !important;
+        }
+
+        .admin-notification-filter-row {
+          display: flex;
+          gap: 8px;
+          padding-bottom: 12px;
+        }
+
+        .admin-notification-filter {
+          min-height: 30px;
+          padding: 0 12px;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          border: 1px solid var(--admin-border);
+          border-radius: 999px;
+          background: #f8fafc;
+          color: var(--admin-text-secondary);
+          font: inherit;
+          font-size: 12px;
+          font-weight: 800;
+          cursor: pointer;
+        }
+
+        .admin-notification-filter strong {
+          color: var(--admin-error);
+          font-size: 11px;
+          font-weight: 900;
+        }
+
+        .admin-notification-filter:hover,
+        .admin-notification-filter:focus,
+        .admin-notification-filter.is-active {
+          border-color: var(--admin-table-header-bg);
+          background: #e9f2f5;
+          color: var(--admin-table-header-bg);
+          outline: none;
+        }
+
+        .admin-notification-popover-list {
+          display: grid;
+          gap: 10px;
+          max-height: 390px;
+          overflow-y: auto;
+          padding-right: 2px;
+        }
+
+        .admin-notification-popover-list::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        .admin-notification-popover-list::-webkit-scrollbar-thumb {
+          border-radius: 999px;
+          background: #cbd5e1;
+        }
+
+        .admin-notification-popover-item {
+          position: relative;
+          min-height: 92px;
+          padding: 12px 22px 12px 12px;
+          display: grid;
+          grid-template-columns: 38px minmax(0, 1fr);
+          gap: 10px;
+          border: 1px solid #d7e2ea;
+          border-radius: var(--admin-radius-lg);
+          background: #f8fafc;
+          cursor: pointer;
+          transition:
+            border-color var(--admin-motion),
+            background-color var(--admin-motion);
+        }
+
+        .admin-notification-popover-item.is-unread {
+          border-color: #b8c6d8;
+          background: #eef5f8;
+        }
+
+        .admin-notification-popover-item:hover,
+        .admin-notification-popover-item:focus {
+          border-color: var(--admin-table-header-bg);
+          background: #e9f2f5;
+          outline: none;
+        }
+
+        .admin-notification-popover-icon {
+          width: 34px;
+          height: 34px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: var(--admin-radius);
+          background: var(--admin-table-header-bg);
+          color: #ffffff;
+          font-size: 17px;
+        }
+
+        .admin-notification-popover-copy {
+          min-width: 0;
+          display: grid;
+          gap: 4px;
+        }
+
+        .admin-notification-popover-meta {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+        }
+
+        .admin-notification-popover-meta .ant-typography {
+          color: var(--admin-table-header-bg) !important;
+          font-size: 12px;
+          font-weight: 900;
+          line-height: 1.3;
+        }
+
+        .admin-notification-popover-meta time {
+          flex: 0 0 auto;
+          color: var(--admin-text-secondary);
+          font-size: 11px;
+          font-weight: 700;
+        }
+
+        .admin-notification-popover-message {
+          display: -webkit-box;
+          overflow: hidden;
+          color: var(--admin-text-main) !important;
+          font-size: 12.5px;
+          font-weight: 700;
+          line-height: 1.45;
+          -webkit-box-orient: vertical;
+          -webkit-line-clamp: 2;
+        }
+
+        .admin-notification-popover-link {
+          width: fit-content;
+          padding: 0;
+          border: 0;
+          background: transparent;
+          color: var(--admin-primary);
+          font: inherit;
+          font-size: 12px;
+          font-weight: 900;
+          cursor: pointer;
+        }
+
+        .admin-notification-popover-link:hover,
+        .admin-notification-popover-link:focus {
+          color: var(--admin-primary-hover);
+          text-decoration: underline;
+          outline: none;
+        }
+
+        .admin-notification-unread-dot {
+          position: absolute;
+          top: 50%;
+          right: 10px;
+          width: 5px;
+          height: 5px;
+          border-radius: 999px;
+          background: var(--admin-error);
+          transform: translateY(-50%);
+        }
+
+        .admin-notification-more.ant-btn {
+          height: 34px;
+          margin-top: 12px;
+          border-color: var(--admin-table-header-bg) !important;
+          border-radius: var(--admin-radius) !important;
+          background: var(--admin-table-header-bg) !important;
+          color: #ffffff !important;
+          font-size: 12px;
+          font-weight: 800;
+          box-shadow: none !important;
+        }
+
+        .admin-notification-more.ant-btn:hover,
+        .admin-notification-more.ant-btn:focus {
+          border-color: #173849 !important;
+          background: #173849 !important;
+          color: #ffffff !important;
         }
 
         .admin-header-user {
@@ -1200,11 +1656,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
         .admin-content-frame {
           min-height: calc(100dvh - 116px);
-          padding: 22px;
-          border-radius: var(--admin-radius-lg);
-          border: 1px solid var(--admin-border);
-          background: #ffffff;
-          box-shadow: var(--admin-shadow-sm);
+          padding: 0;
+          border-radius: 0;
+          border: 0;
+          background: transparent;
+          box-shadow: none;
           transform-origin: top center;
           animation: none;
         }
@@ -1457,12 +1913,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         }
 
         .admin-content-frame .ant-table-thead > tr > th {
-          color: #374151 !important;
+          color: #ffffff !important;
           font-size: 12px;
           font-weight: 800 !important;
           text-transform: uppercase;
-          border-bottom: 1px solid var(--admin-border) !important;
-          background: var(--admin-surface-soft) !important;
+          border-bottom: 1px solid #173849 !important;
+          background: var(--admin-table-header-bg) !important;
           letter-spacing: 0;
         }
 
@@ -1471,7 +1927,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           .ant-table-thead
           > tr
           > th.ant-table-cell-fix-right {
-          background: var(--admin-surface-soft) !important;
+          background: var(--admin-table-header-bg) !important;
         }
 
         .admin-content-frame .ant-table-tbody > tr > td {
@@ -1637,6 +2093,688 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           }
         }
 
+        .admin-layout-root .admin-content-frame {
+          display: flow-root;
+        }
+
+        .admin-layout-root .admin-content-frame > :not(style) + :not(style) {
+          margin-top: 18px;
+        }
+
+        .admin-layout-root .admin-content-frame {
+          --admin-border: #b8c6d8;
+          --admin-border-strong: #9fb0c7;
+          --admin-border-soft: #c5d0df;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          *:not(.ant-btn):not(.ant-tag):not(.ant-badge):not(.ant-switch):not(
+            .ant-radio-inner
+          ):not(.ant-checkbox-inner):not(.ant-progress-inner):not(
+            .ant-progress-bg
+          ) {
+          border-color: var(--admin-border) !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          :is(
+            .ant-card,
+            .ant-card-head,
+            .ant-card-body,
+            .ant-table-wrapper,
+            .ant-table-container,
+            .ant-descriptions-view,
+            .ant-descriptions-item-label,
+            .ant-descriptions-item-content,
+            .ant-list-item,
+            .ant-collapse,
+            .ant-collapse-item,
+            .ant-collapse-content,
+            .ant-modal-content,
+            .admin-page-card,
+            [class*="-card"],
+            [class*="-panel"],
+            [class*="-frame"],
+            [class*="-box"],
+            [class*="-row"],
+            [class*="-item"],
+            [class*="-section"],
+            [class*="-summary"],
+            [class*="-toolbar"],
+            [class*="-filter"]
+          ) {
+          border-color: var(--admin-border) !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          :is(
+            .ant-input,
+            .ant-input-affix-wrapper,
+            .ant-input-number,
+            .ant-input-number-affix-wrapper,
+            .ant-picker,
+            .ant-select-selector,
+            .ant-segmented,
+            .ant-upload-wrapper .ant-upload-drag,
+            .ant-pagination-item
+          ) {
+          border-color: var(--admin-border) !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          :is(
+            .ant-input:hover,
+            .ant-input-affix-wrapper:hover,
+            .ant-input-number:hover,
+            .ant-input-number-affix-wrapper:hover,
+            .ant-picker:hover,
+            .ant-select-selector:hover,
+            .ant-pagination-item:hover
+          ) {
+          border-color: var(--admin-border-strong) !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          :is(
+            [class*="-divider"],
+            [class*="-separator"],
+            [class*="-head"],
+            [class*="-footer"],
+            [class*="-meta"],
+            [class*="-info-row"],
+            [class*="-money-list"],
+            [class*="-total"],
+            [class*="-stat"],
+            [class*="-metric"],
+            [class*="-queue"]
+          ) {
+          border-color: var(--admin-border-soft) !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          :is([class*="-filter-card"], [class*="-table-card"], .ant-card) {
+          border-color: var(--admin-border) !important;
+          box-shadow: var(--admin-shadow-sm) !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          :is([class*="-filter-card"], [class*="-table-card"], .ant-card):hover {
+          border-color: var(--admin-border) !important;
+          box-shadow: var(--admin-shadow-sm) !important;
+          transform: none !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          .admin-dash-progress-card:hover {
+          border-color: rgba(125, 211, 252, 0.18) !important;
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.12),
+            0 18px 38px rgba(0, 0, 0, 0.16) !important;
+          transform: none !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          .admin-dash-panel.ant-card:hover {
+          border-color: #dbe4f0 !important;
+          box-shadow: 0 10px 24px rgba(15, 23, 42, 0.055) !important;
+          transform: none !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          .admin-dash-stock-alert-panel.ant-card,
+        .admin-layout-root
+          .admin-content-frame
+          .admin-dash-stock-alert-panel.ant-card:hover,
+        .admin-layout-root
+          .admin-content-frame
+          .admin-dash-stock-alert-panel.ant-card:focus,
+        .admin-layout-root
+          .admin-content-frame
+          .admin-dash-stock-alert-panel.ant-card:focus-within,
+        .admin-layout-root
+          .admin-content-frame
+          .admin-dash-stock-alert-panel.ant-card[data-no-hover="true"]:hover {
+          border-color: #dbe4f0 !important;
+          background: #ffffff !important;
+          box-shadow: 0 10px 24px rgba(15, 23, 42, 0.055) !important;
+          transform: none !important;
+          transition: none !important;
+          pointer-events: none !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          .admin-dash-stock-alert-panel.ant-card
+          :is(.ant-card-head, .ant-card-body),
+        .admin-layout-root
+          .admin-content-frame
+          .admin-dash-stock-alert-panel.ant-card:hover
+          :is(.ant-card-head, .ant-card-body) {
+          border-color: #dbe4f0 !important;
+          background: #ffffff !important;
+          box-shadow: none !important;
+          transform: none !important;
+          transition: none !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          .admin-dash-stock-alert-panel.ant-card
+          .ant-card-head,
+        .admin-layout-root
+          .admin-content-frame
+          .admin-dash-stock-alert-panel.ant-card
+          .admin-dash-stock-alert-action.ant-btn {
+          pointer-events: auto !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          .admin-dash-stock-alert-panel.ant-card
+          .ant-empty,
+        .admin-layout-root
+          .admin-content-frame
+          .admin-dash-stock-alert-panel.ant-card
+          .ant-empty
+          * {
+          pointer-events: none !important;
+          transform: none !important;
+          transition: none !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          .admin-dash-stock-alert-action.ant-btn,
+        .admin-layout-root
+          .admin-content-frame
+          .admin-dash-stock-alert-action.ant-btn:hover,
+        .admin-layout-root
+          .admin-content-frame
+          .admin-dash-stock-alert-action.ant-btn:focus {
+          border-color: #dbe4f0 !important;
+          background: #ffffff !important;
+          color: #0f172a !important;
+          box-shadow: none !important;
+          transform: none !important;
+          transition: none !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          :is([class*="-table-card"], .admin-page-card)
+          .ant-card-body {
+          padding: 18px !important;
+        }
+
+        .admin-layout-root .admin-content-frame .ant-table-wrapper {
+          overflow: visible !important;
+          border: 0 !important;
+          border-radius: 0 !important;
+          background: transparent !important;
+          box-shadow: none !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          min-width: 0 !important;
+        }
+
+        .admin-layout-root .admin-content-frame .ant-table-container {
+          overflow: hidden !important;
+          border: 1px solid var(--admin-border) !important;
+          border-radius: var(--admin-radius) !important;
+          background: #ffffff !important;
+          box-shadow: none !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          min-width: 0 !important;
+        }
+
+        .admin-layout-root .admin-content-frame .ant-table-content,
+        .admin-layout-root .admin-content-frame .ant-table-body {
+          border-radius: inherit !important;
+        }
+
+        .admin-layout-root .admin-content-frame .ant-table-thead > tr > th:first-child {
+          border-start-start-radius: var(--admin-radius) !important;
+        }
+
+        .admin-layout-root .admin-content-frame .ant-table-thead > tr > th:last-child {
+          border-start-end-radius: var(--admin-radius) !important;
+        }
+
+        .admin-layout-root .admin-content-frame .ant-table-tbody > tr > td,
+        .admin-layout-root
+          .admin-content-frame
+          .ant-table-tbody
+          > tr
+          > td.ant-table-cell-fix-left,
+        .admin-layout-root
+          .admin-content-frame
+          .ant-table-tbody
+          > tr
+          > td.ant-table-cell-fix-right {
+          background: #ffffff !important;
+        }
+
+        .admin-layout-root .admin-content-frame .ant-table-tbody > tr:hover > td,
+        .admin-layout-root
+          .admin-content-frame
+          .ant-table-tbody
+          > tr:hover
+          > td.ant-table-cell-fix-left,
+        .admin-layout-root
+          .admin-content-frame
+          .ant-table-tbody
+          > tr:hover
+          > td.ant-table-cell-fix-right {
+          background: #f8fbff !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          .ant-table-cell-fix-left-last::after,
+        .admin-layout-root
+          .admin-content-frame
+          .ant-table-cell-fix-right-first::after,
+        .admin-layout-root
+          .admin-content-frame
+          .ant-table-ping-left
+          .ant-table-cell-fix-left-last::after,
+        .admin-layout-root
+          .admin-content-frame
+          .ant-table-ping-right
+          .ant-table-cell-fix-right-first::after {
+          box-shadow: none !important;
+        }
+
+        .admin-layout-root .admin-content-frame .ant-table-pagination.ant-pagination {
+          margin: 16px 0 0 !important;
+        }
+
+        .admin-layout-root .admin-content-frame .ant-table-container {
+          position: relative !important;
+          border-color: #9fb0c7 !important;
+          border-radius: 10px !important;
+          background: #ffffff !important;
+          box-shadow: inset 0 0 0 1px #9fb0c7 !important;
+          outline: 1px solid #9fb0c7;
+          outline-offset: -1px;
+        }
+
+        .admin-layout-root .admin-content-frame .ant-table-container::after {
+          display: none !important;
+        }
+
+        .admin-layout-root .admin-content-frame .ant-table,
+        .admin-layout-root .admin-content-frame .ant-table-content,
+        .admin-layout-root .admin-content-frame .ant-table-body {
+          border-radius: inherit !important;
+          background: #ffffff !important;
+          max-width: 100% !important;
+          min-width: 0 !important;
+        }
+
+        .admin-layout-root .admin-content-frame .ant-table-content,
+        .admin-layout-root .admin-content-frame .ant-table-body {
+          display: block !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          overflow-x: auto !important;
+          overflow-y: hidden !important;
+          scrollbar-color: #94a3b8 #eef2f7;
+          scrollbar-width: thin;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          :is(.ant-table-content, .ant-table-body)::-webkit-scrollbar {
+          height: 10px;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          :is(.ant-table-content, .ant-table-body)::-webkit-scrollbar-track {
+          border-radius: 999px;
+          background: #eef2f7;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          :is(.ant-table-content, .ant-table-body)::-webkit-scrollbar-thumb {
+          border: 2px solid #eef2f7;
+          border-radius: 999px;
+          background: #94a3b8;
+        }
+
+        .admin-layout-root .admin-content-frame .ant-table {
+          width: 100% !important;
+          max-width: 100% !important;
+          min-width: 0 !important;
+        }
+
+        .admin-layout-root .admin-content-frame .ant-table table {
+          border-collapse: separate !important;
+          border-spacing: 0 !important;
+          min-width: 100% !important;
+        }
+
+        .admin-layout-root .admin-content-frame .ant-table-thead > tr > th {
+          padding: 16px 20px !important;
+          border-color: #173849 !important;
+          border-bottom: 1px solid #173849 !important;
+          background: var(--admin-table-header-bg) !important;
+          color: #ffffff !important;
+          font-size: 12.5px !important;
+          font-weight: 900 !important;
+          white-space: nowrap !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          .ant-table-thead
+          > tr
+          > th:not(:last-child)::before {
+          top: 50% !important;
+          right: 0 !important;
+          width: 1px !important;
+          height: 22px !important;
+          transform: translateY(-50%) !important;
+          background: linear-gradient(
+            180deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.2) 18%,
+            rgba(255, 255, 255, 0.42) 50%,
+            rgba(255, 255, 255, 0.2) 82%,
+            transparent 100%
+          ) !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          .ant-table-thead
+          > tr
+          > th
+          :is(
+            .ant-table-column-title,
+            .ant-table-cell-content,
+            .ant-table-column-sorters,
+            .ant-table-filter-column
+          ) {
+          color: #ffffff !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          .ant-table-thead
+          > tr
+          > th
+          :is(.ant-table-column-sorter, .ant-table-filter-trigger) {
+          color: #9ed7eb !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          .ant-table-thead
+          > tr
+          > th:hover,
+        .admin-layout-root
+          .admin-content-frame
+          .ant-table-thead
+          > tr
+          > th.ant-table-column-has-sorters:hover,
+        .admin-layout-root
+          .admin-content-frame
+          .ant-table-thead
+          > tr
+          > th.ant-table-column-sort {
+          background: var(--admin-table-header-bg) !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          .ant-table-thead
+          > tr
+          > th.ant-table-cell-fix-left,
+        .admin-layout-root
+          .admin-content-frame
+          .ant-table-thead
+          > tr
+          > th.ant-table-cell-fix-right {
+          background: var(--admin-table-header-bg) !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          .ant-table-thead
+          > tr
+          > th:first-child {
+          border-start-start-radius: 0 !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          .ant-table-thead
+          > tr
+          > th:last-child {
+          border-start-end-radius: 0 !important;
+        }
+
+        .admin-layout-root .admin-content-frame .ant-table-tbody > tr > td,
+        .admin-layout-root
+          .admin-content-frame
+          .ant-table-tbody
+          > tr
+          > td.ant-table-cell-fix-left,
+        .admin-layout-root
+          .admin-content-frame
+          .ant-table-tbody
+          > tr
+          > td.ant-table-cell-fix-right {
+          padding: 16px 20px !important;
+          border-bottom-color: #b8c6d8 !important;
+          background: #ffffff !important;
+          white-space: nowrap !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          .ant-table
+          :is(th.ant-table-selection-column, td.ant-table-selection-column) {
+          width: 56px !important;
+          min-width: 56px !important;
+          max-width: 56px !important;
+          padding: 0 !important;
+          text-align: center !important;
+          vertical-align: middle !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          .ant-table-selection-column
+          :is(.ant-radio-wrapper, .ant-checkbox-wrapper) {
+          margin-inline-end: 0 !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          .ant-table-selection-column
+          :is(.ant-radio, .ant-checkbox) {
+          top: 0 !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          :is(
+            .ant-table-cell-fix-left,
+            .ant-table-cell-fix-left-first,
+            .ant-table-cell-fix-left-last
+          ) {
+          position: static !important;
+          left: auto !important;
+          z-index: auto !important;
+          border-radius: 0 !important;
+          box-shadow: none !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          :is(
+            .ant-table-cell-fix-left::before,
+            .ant-table-cell-fix-left::after,
+            .ant-table-cell-fix-left-first::before,
+            .ant-table-cell-fix-left-first::after,
+            .ant-table-cell-fix-left-last::before,
+            .ant-table-cell-fix-left-last::after
+          ) {
+          display: none !important;
+          box-shadow: none !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          .ant-table:has(
+            .ant-table-tbody
+              > tr
+              > td:last-child
+              :is(
+                [class*="action"],
+                [class*="Action"],
+                .ant-btn,
+                .ant-dropdown-trigger
+              )
+          )
+          .ant-table-thead
+          > tr
+          > th:last-child,
+        .admin-layout-root
+          .admin-content-frame
+          .ant-table-tbody
+          > tr
+          > td:last-child:has(
+            :is(
+              [class*="action"],
+              [class*="Action"],
+              .ant-btn,
+              .ant-dropdown-trigger
+            )
+          ) {
+          position: sticky !important;
+          right: 0 !important;
+          z-index: 3 !important;
+          min-width: 124px !important;
+          text-align: center !important;
+          border-left: 1px solid #8fa3bd !important;
+          background-clip: padding-box !important;
+          box-shadow: -6px 0 12px rgba(15, 23, 42, 0.045) !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          .ant-table:has(
+            .ant-table-tbody
+              > tr
+              > td:last-child
+              :is(
+                [class*="action"],
+                [class*="Action"],
+                .ant-btn,
+                .ant-dropdown-trigger
+              )
+          )
+          .ant-table-thead
+          > tr
+          > th:last-child
+          .ant-table-cell-content,
+        .admin-layout-root
+          .admin-content-frame
+          .ant-table-tbody
+          > tr
+          > td:last-child:has(
+            :is(
+              [class*="action"],
+              [class*="Action"],
+              .ant-btn,
+              .ant-dropdown-trigger
+            )
+          )
+          .ant-table-cell-content {
+          justify-content: center !important;
+          text-align: center !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          .ant-table:has(
+            .ant-table-tbody
+              > tr
+              > td:last-child
+              :is(
+                [class*="action"],
+                [class*="Action"],
+                .ant-btn,
+                .ant-dropdown-trigger
+              )
+          )
+          .ant-table-thead
+          > tr
+          > th:last-child {
+          z-index: 5 !important;
+          background: var(--admin-table-header-bg) !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          .ant-table
+          .ant-table-thead
+          > tr
+          > th,
+        .admin-layout-root
+          .admin-content-frame
+          .ant-table
+          .ant-table-thead
+          > tr
+          > th:is(
+            .ant-table-cell-fix-left,
+            .ant-table-cell-fix-left-first,
+            .ant-table-cell-fix-left-last,
+            .ant-table-cell-fix-right,
+            .ant-table-cell-fix-right-first,
+            .ant-table-cell-fix-right-last,
+            .ant-table-selection-column,
+            .ant-table-column-sort
+          ) {
+          background: var(--admin-table-header-bg) !important;
+          background-color: var(--admin-table-header-bg) !important;
+          color: #ffffff !important;
+        }
+
+        .admin-layout-root
+          .admin-content-frame
+          .ant-table-tbody
+          > tr:hover
+          > td:last-child:has(
+            :is(
+              [class*="action"],
+              [class*="Action"],
+              .ant-btn,
+              .ant-dropdown-trigger
+            )
+          ) {
+          background: #f8fbff !important;
+        }
+
         @media (max-width: 1199px) {
           .admin-header {
             padding: 0 18px !important;
@@ -1739,6 +2877,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
           .admin-content-frame .ant-card-body {
             padding: 14px !important;
+          }
+
+          .admin-layout-root .admin-content-frame .ant-table-thead > tr > th,
+          .admin-layout-root .admin-content-frame .ant-table-tbody > tr > td {
+            padding: 12px 14px !important;
           }
         }
 

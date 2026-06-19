@@ -80,24 +80,24 @@ export default function DistributorTeamPage() {
 
     try {
       await toggleUserStatus(user._id).unwrap();
-      message.success(nextActive ? "Đã mở khóa DSR" : "Đã khóa DSR");
+      message.success(nextActive ? "Đã mở khóa nhân viên" : "Đã khóa nhân viên");
     } catch (error) {
-      message.error(orderApiMessage(error, "Không thể cập nhật trạng thái DSR"));
+      message.error(orderApiMessage(error, "Không thể cập nhật trạng thái nhân viên"));
     }
   };
 
   const handleDelete = async (user: User) => {
     try {
       await deleteUser(user._id).unwrap();
-      message.success("Xóa DSR thành công");
+      message.success("Xóa nhân viên thành công");
     } catch (error) {
-      message.error(orderApiMessage(error, "Không thể xóa DSR"));
+      message.error(orderApiMessage(error, "Không thể xóa nhân viên"));
     }
   };
 
   const columns: ColumnsType<User> = [
     {
-      title: "DSR",
+      title: "Nhân viên",
       dataIndex: "fullName",
       ellipsis: true,
       width: 260,
@@ -216,8 +216,8 @@ export default function DistributorTeamPage() {
             </Button>
           </Link>
           <Popconfirm
-            title="Xóa DSR này?"
-            description="Thao tác này sẽ xóa tài khoản DSR khỏi danh sách quản lý."
+            title="Xóa nhân viên này?"
+            description="Thao tác này sẽ xóa tài khoản nhân viên khỏi danh sách quản lý."
             okText="Xóa"
             cancelText="Hủy"
             okButtonProps={{ danger: true, loading: deleting }}
@@ -240,9 +240,9 @@ export default function DistributorTeamPage() {
 
   return (
     <DistributorPageShell
-      eyebrow="Đội bán hàng"
-      title="Đội DSR của tôi"
-      description="Danh sách DSR được gán quản lý trực tiếp cho nhà phân phối."
+      eyebrow="Nhân sự bán hàng"
+      title="Nhân viên bán hàng của tôi"
+      description="Danh sách nhân viên bán hàng được gán quản lý trực tiếp cho nhà phân phối."
       extra={
         <Link href="/distributor/team/create">
           <Button
@@ -250,37 +250,37 @@ export default function DistributorTeamPage() {
             icon={<PlusOutlined />}
             className="distributor-team-create-button"
           >
-            Thêm DSR
+            Thêm nhân viên
           </Button>
         </Link>
       }
     >
       <DistributorCommandCenter
         eyebrow="Team command"
-        title="Theo dõi sức khỏee đội DSR"
+        title="Theo dõi tình trạng nhân viên bán hàng"
         description="Nắm nhanh số nhân sự đang hoạt động, hồ sơ liên hệ và trạng thái sẵn sàng nhận tuyến."
         meterValue={`${activeRate}%`}
-        meterLabel="DSR đang hoạt động"
+        meterLabel="Nhân viên đang hoạt động"
         stats={[
-          { label: "Tổng DSR", value: stats.total },
+          { label: "Tổng nhân viên", value: stats.total },
           { label: "Hoạt động", value: stats.active },
           { label: "Có liên hệ", value: stats.hasPhone },
         ]}
-        progressLabel="Tỷ lệ đội đang hoạt động"
+        progressLabel="Tỷ lệ nhân viên đang hoạt động"
         progressValue={`${stats.active}/${stats.total}`}
         progressPercent={activeRate}
         feature={
           highlightDsr ? (
             <>
               <Text className="distributor-command-feature-label">
-                DSR nổi bật
+                Nhân viên nổi bật
               </Text>
               <Text ellipsis className="distributor-command-feature-title">
                 {highlightDsr.fullName}
               </Text>
               <div className="distributor-command-feature-meta">
                 <span>{highlightDsr.email}</span>
-                <span>{highlightDsr.code || "Chưa có mã DSR"}</span>
+                <span>{highlightDsr.code || "Chưa có mã nhân viên"}</span>
                 <span>{highlightDsr.phone || "Chưa có SĐT"}</span>
                 <span>{highlightDsr.taxCode || "Chưa có MST"}</span>
               </div>
@@ -293,12 +293,12 @@ export default function DistributorTeamPage() {
             </>
           ) : (
             <Text className="distributor-command-feature-empty">
-              Chưa có DSR trong đội.
+              Chưa có nhân viên bán hàng.
             </Text>
           )
         }
         statusItems={[
-          { label: "Tổng DSR", value: stats.total, icon: <TeamOutlined /> },
+          { label: "Tổng nhân viên", value: stats.total, icon: <TeamOutlined /> },
           {
             label: "Hoạt động",
             value: stats.active,
@@ -310,7 +310,7 @@ export default function DistributorTeamPage() {
       />
 
       <DistributorTableCard
-        title="Danh sách DSR"
+        title="Danh sách nhân viên"
         description="Theo dõi trạng thái, khu vực và thông tin liên hệ của từng nhân sự."
       >
         <div className="distributor-team-list">
@@ -323,9 +323,9 @@ export default function DistributorTeamPage() {
             pagination={{
               pageSize: 8,
               showSizeChanger: false,
-              showTotal: (total) => `Tổng ${total} DSR`,
+              showTotal: (total) => `Tổng ${total} nhân viên`,
             }}
-            locale={{ emptyText: <Empty description="Chưa có DSR trong đội" /> }}
+            locale={{ emptyText: <Empty description="Chưa có nhân viên bán hàng" /> }}
           />
         </div>
       </DistributorTableCard>
@@ -370,7 +370,29 @@ export default function DistributorTeamPage() {
           background: #f0fdf4 !important;
         }
 
+        .distributor-shell
+          .distributor-team-status-button.is-active.ant-btn.ant-btn-default,
+        .distributor-shell
+          .distributor-team-status-button.is-active.ant-btn.ant-btn-color-default,
+        .distributor-shell
+          .distributor-team-status-button.is-active.ant-btn.ant-btn-variant-outlined {
+          border-color: #bbf7d0 !important;
+          color: #15803d !important;
+          background: #f0fdf4 !important;
+        }
+
         .distributor-team-status-button.is-inactive.ant-btn {
+          border-color: #fecdd3 !important;
+          color: #be123c !important;
+          background: #fff1f2 !important;
+        }
+
+        .distributor-shell
+          .distributor-team-status-button.is-inactive.ant-btn.ant-btn-default,
+        .distributor-shell
+          .distributor-team-status-button.is-inactive.ant-btn.ant-btn-color-default,
+        .distributor-shell
+          .distributor-team-status-button.is-inactive.ant-btn.ant-btn-variant-outlined {
           border-color: #fecdd3 !important;
           color: #be123c !important;
           background: #fff1f2 !important;
@@ -382,14 +404,52 @@ export default function DistributorTeamPage() {
         }
 
         .distributor-team-status-button.is-active.ant-btn:hover,
-        .distributor-team-status-button.is-active.ant-btn:focus {
+        .distributor-team-status-button.is-active.ant-btn:focus,
+        .distributor-team-status-button.is-active.ant-btn:active,
+        .distributor-shell
+          .distributor-team-status-button.is-active.ant-btn:hover:not(:disabled),
+        .distributor-shell
+          .distributor-team-status-button.is-active.ant-btn:focus:not(:disabled),
+        .distributor-shell
+          .distributor-team-status-button.is-active.ant-btn:active:not(:disabled),
+        .distributor-shell
+          .distributor-team-status-button.is-active.ant-btn.ant-btn-default:hover:not(
+            :disabled
+          ),
+        .distributor-shell
+          .distributor-team-status-button.is-active.ant-btn.ant-btn-color-default:hover:not(
+            :disabled
+          ),
+        .distributor-shell
+          .distributor-team-status-button.is-active.ant-btn.ant-btn-variant-outlined:hover:not(
+            :disabled
+          ) {
           border-color: #22c55e !important;
           color: #166534 !important;
           background: #dcfce7 !important;
         }
 
         .distributor-team-status-button.is-inactive.ant-btn:hover,
-        .distributor-team-status-button.is-inactive.ant-btn:focus {
+        .distributor-team-status-button.is-inactive.ant-btn:focus,
+        .distributor-team-status-button.is-inactive.ant-btn:active,
+        .distributor-shell
+          .distributor-team-status-button.is-inactive.ant-btn:hover:not(:disabled),
+        .distributor-shell
+          .distributor-team-status-button.is-inactive.ant-btn:focus:not(:disabled),
+        .distributor-shell
+          .distributor-team-status-button.is-inactive.ant-btn:active:not(:disabled),
+        .distributor-shell
+          .distributor-team-status-button.is-inactive.ant-btn.ant-btn-default:hover:not(
+            :disabled
+          ),
+        .distributor-shell
+          .distributor-team-status-button.is-inactive.ant-btn.ant-btn-color-default:hover:not(
+            :disabled
+          ),
+        .distributor-shell
+          .distributor-team-status-button.is-inactive.ant-btn.ant-btn-variant-outlined:hover:not(
+            :disabled
+          ) {
           border-color: #fb7185 !important;
           color: #9f1239 !important;
           background: #ffe4e6 !important;
@@ -419,6 +479,20 @@ export default function DistributorTeamPage() {
           min-height: 34px;
           border-radius: 8px !important;
           padding: 6px 8px !important;
+        }
+
+        .distributor-team-status-menu
+          .ant-dropdown-menu-item:hover:has(.distributor-team-status-menu-item.is-active),
+        .distributor-team-status-menu
+          .ant-dropdown-menu-item-selected:has(.distributor-team-status-menu-item.is-active) {
+          background: #dcfce7 !important;
+        }
+
+        .distributor-team-status-menu
+          .ant-dropdown-menu-item:hover:has(.distributor-team-status-menu-item.is-inactive),
+        .distributor-team-status-menu
+          .ant-dropdown-menu-item-selected:has(.distributor-team-status-menu-item.is-inactive) {
+          background: #ffe4e6 !important;
         }
 
         .distributor-team-status-menu-item {
