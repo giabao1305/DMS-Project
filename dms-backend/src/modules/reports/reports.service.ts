@@ -302,7 +302,10 @@ export class ReportsService {
       {
         $addFields: {
           revenueDate: {
-            $ifNull: ['$deliveredAt', { $ifNull: ['$updatedAt', '$createdAt'] }],
+            $ifNull: [
+              '$deliveredAt',
+              { $ifNull: ['$updatedAt', '$createdAt'] },
+            ],
           },
         },
       },
@@ -363,7 +366,10 @@ export class ReportsService {
       {
         $addFields: {
           revenueDate: {
-            $ifNull: ['$deliveredAt', { $ifNull: ['$updatedAt', '$createdAt'] }],
+            $ifNull: [
+              '$deliveredAt',
+              { $ifNull: ['$updatedAt', '$createdAt'] },
+            ],
           },
         },
       },
@@ -458,7 +464,10 @@ export class ReportsService {
       {
         $addFields: {
           revenueDate: {
-            $ifNull: ['$deliveredAt', { $ifNull: ['$updatedAt', '$createdAt'] }],
+            $ifNull: [
+              '$deliveredAt',
+              { $ifNull: ['$updatedAt', '$createdAt'] },
+            ],
           },
         },
       },

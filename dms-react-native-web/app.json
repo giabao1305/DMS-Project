@@ -5,11 +5,11 @@
     "scheme": "dmsseller",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/favicon.png",
+    "icon": "./assets/dms-seller-icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/favicon.png",
+      "image": "./assets/dms-seller-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#2563EB"
     },
@@ -23,14 +23,14 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/favicon.png",
+        "foregroundImage": "./assets/dms-seller-icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/dms-seller-icon.png"
     },
     "extra": {
       "eas": {

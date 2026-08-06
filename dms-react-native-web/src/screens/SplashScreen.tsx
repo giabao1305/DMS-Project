@@ -8,7 +8,7 @@ export function SplashScreen() {
       <View style={styles.content}>
         <View style={styles.logoMark}>
           <Image
-            source={require("../../assets/favicon.png")}
+            source={require("../../assets/dms-seller-icon.png")}
             style={styles.logoImage}
             resizeMode="contain"
           />

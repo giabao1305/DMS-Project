@@ -170,7 +170,7 @@ export function LoginScreen({
           <View style={styles.header}>
             <View style={styles.logo}>
               <Image
-                source={require("../../assets/favicon.png")}
+                source={require("../../assets/dms-seller-icon.png")}
                 style={styles.logoImage}
                 resizeMode="contain"
               />

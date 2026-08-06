@@ -22,7 +22,7 @@ import {
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   DistributorCommandCenter,
@@ -112,7 +112,7 @@ export default function DistributorWarehouseImportPage() {
     setSellingPrice(0);
   };
 
-  const handleProductChange = (nextProductId?: string) => {
+  const handleProductChange = useCallback((nextProductId?: string) => {
     setProductId(nextProductId);
 
     const product = selectableProducts.find(
@@ -127,7 +127,7 @@ export default function DistributorWarehouseImportPage() {
     const stock = stockByProductId.get(product._id);
     setAverageCost(stock?.averageCost ?? product.price);
     setSellingPrice(stock?.sellingPrice ?? product.price);
-  };
+  }, [selectableProducts, stockByProductId]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -143,7 +143,7 @@ export default function DistributorWarehouseImportPage() {
     if (!stockByProductId.has(prefillProductId)) return;
 
     handleProductChange(prefillProductId);
-  }, [activeProducts, items.length, prefillProductId, productId, stockByProductId]);
+  }, [activeProducts, handleProductChange, items.length, prefillProductId, productId, stockByProductId]);
 
   const addItem = () => {
     const product = selectableProducts.find((entry) => entry._id === productId);

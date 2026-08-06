@@ -175,10 +175,9 @@ export class ProductsService {
     return filter;
   }
 
-  private hideManufacturerStockForNonAdmin<T extends Product | Product[] | PaginatedResult<Product>>(
-    value: T,
-    role?: UserRole,
-  ): T {
+  private hideManufacturerStockForNonAdmin<
+    T extends Product | Product[] | PaginatedResult<Product>,
+  >(value: T, role?: UserRole): T {
     if (role === UserRole.ADMIN) {
       return value;
     }
@@ -201,7 +200,7 @@ export class ProductsService {
       return {
         ...value,
         data: value.data.map(hideStock),
-      } as T;
+      };
     }
 
     return hideStock(value as Product) as T;
