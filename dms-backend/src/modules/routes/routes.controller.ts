@@ -112,7 +112,7 @@ export class RoutesController {
     );
   }
 
-  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR)
+  @Roles(UserRole.ADMIN, UserRole.DISTRIBUTOR, UserRole.SELLER)
   @Patch(':id/status')
   updateStatus(
     @Param('id') id: string,

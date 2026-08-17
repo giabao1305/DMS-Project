@@ -164,6 +164,15 @@ export class RoutesService {
       await this.assertManagedSeller(userId, route.seller.toString());
     }
 
+    if (role === UserRole.SELLER) {
+      const isAssignedSeller = route.seller.toString() === userId;
+      const isSubstituteSeller = route.substituteSeller?.toString() === userId;
+
+      if (!isAssignedSeller && !isSubstituteSeller) {
+        throw new ForbiddenException('You can only update routes assigned to you');
+      }
+    }
+
     return route;
   }
 
@@ -863,7 +872,19 @@ export class RoutesService {
     userId: string,
     role: UserRole,
   ): Promise<Route> {
-    await this.assertRouteAccess(id, userId, role);
+    const existingRoute = await this.assertRouteAccess(id, userId, role);
+
+    if (role === UserRole.SELLER) {
+      const isValidTransition =
+        (existingRoute.status === RouteStatus.PLANNED &&
+          updateRouteStatusDto.status === RouteStatus.IN_PROGRESS) ||
+        (existingRoute.status === RouteStatus.IN_PROGRESS &&
+          updateRouteStatusDto.status === RouteStatus.COMPLETED);
+
+      if (!isValidTransition) {
+        throw new BadRequestException('Invalid route status transition');
+      }
+    }
 
     const route = await this.routeModel
       .findByIdAndUpdate(
