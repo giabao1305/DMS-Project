@@ -131,6 +131,7 @@ export class CustomersService {
   ): Promise<Customer> {
     const isAdmin = currentUserRole === UserRole.ADMIN;
     const isDistributor = currentUserRole === UserRole.DISTRIBUTOR;
+    const isAutoApproved = isAdmin || isDistributor;
 
     const assignedSeller =
       isAdmin || isDistributor
@@ -155,11 +156,15 @@ export class CustomersService {
       assignedSeller: new Types.ObjectId(assignedSeller),
       createdBy: new Types.ObjectId(currentUserId),
 
-      status: isAdmin ? CustomerStatus.APPROVED : CustomerStatus.PENDING,
+      status: isAutoApproved
+        ? CustomerStatus.APPROVED
+        : CustomerStatus.PENDING,
 
-      approvedBy: isAdmin ? new Types.ObjectId(currentUserId) : undefined,
+      approvedBy: isAutoApproved
+        ? new Types.ObjectId(currentUserId)
+        : undefined,
 
-      approvedAt: isAdmin ? new Date() : undefined,
+      approvedAt: isAutoApproved ? new Date() : undefined,
 
       rejectReason: undefined,
       isActive: true,
@@ -167,7 +172,7 @@ export class CustomersService {
 
     const savedCustomer = await createdCustomer.save();
 
-    if (!isAdmin) {
+    if (!isAutoApproved) {
       const admins = await this.customerModel.db
         .collection('users')
         .find({ role: 'admin' })
@@ -178,7 +183,7 @@ export class CustomersService {
           this.notificationsService.create({
             user: admin._id.toString(),
             title: 'Khách hàng mới chờ duyệt',
-            message: `Seller vừa tạo khách hàng ${savedCustomer.name}`,
+            message: `DSR vừa tạo khách hàng ${savedCustomer.name}`,
             type: NotificationType.SYSTEM,
             relatedId: savedCustomer._id.toString(),
           }),
@@ -188,7 +193,7 @@ export class CustomersService {
       await this.notificationsService.create({
         user: assignedSeller,
         title: 'Khách hàng mới được gán',
-        message: `Admin vừa gán khách hàng ${savedCustomer.name} cho bạn`,
+        message: `${isAdmin ? 'Admin' : 'Nhà phân phối'} vừa gán khách hàng ${savedCustomer.name} cho bạn`,
         type: NotificationType.SYSTEM,
         relatedId: savedCustomer._id.toString(),
       });

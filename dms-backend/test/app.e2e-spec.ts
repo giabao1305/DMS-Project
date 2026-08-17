@@ -50,6 +50,7 @@ describe('DMS critical workflows (e2e)', () => {
   const password = 'Password123!';
 
   let adminToken: string;
+  let distributorToken: string;
   let sellerToken: string;
   let sellerRefreshToken: string;
   let adminId: string;
@@ -462,6 +463,28 @@ describe('DMS critical workflows (e2e)', () => {
       });
   });
 
+  it('distributor-created customer is immediately approved for its managed seller', async () => {
+    const createdCustomer = await request(app.getHttpServer())
+      .post('/customers')
+      .set('Authorization', `Bearer ${distributorToken}`)
+      .send({
+        name: `E2E Distributor Customer ${runId}`,
+        phone: '0922222222',
+        address: 'E2E Distributor Ward',
+        ownerName: 'E2E Distributor Owner',
+        customerType: 'retail',
+        assignedSeller: sellerId,
+      })
+      .expect(201)
+      .then((response) => response.body as Customer & { _id: string });
+
+    expect(createdCustomer.status).toBe(CustomerStatus.APPROVED);
+    expect(createdCustomer.createdBy.toString()).toBe(distributorId);
+    expect(createdCustomer.assignedSeller.toString()).toBe(sellerId);
+    expect(createdCustomer.approvedBy?.toString()).toBe(distributorId);
+    expect(createdCustomer.approvedAt).toBeTruthy();
+  });
+
   it('seller leave requests can be approved or rejected by admin', async () => {
     const approvedLeave = await createLeaveRequest({
       startDate: '2026-06-01',
@@ -627,9 +650,11 @@ describe('DMS critical workflows (e2e)', () => {
 
   async function loginUsers() {
     const adminLogin = await login(adminEmail);
+    const distributorLogin = await login(distributorEmail);
     const sellerLogin = await login(sellerEmail);
 
     adminToken = adminLogin.accessToken;
+    distributorToken = distributorLogin.accessToken;
     sellerToken = sellerLogin.accessToken;
     sellerRefreshToken = sellerLogin.refreshToken;
   }
